@@ -39,6 +39,7 @@
       inetutils # Network utilities (includes netstat-like tools)
       git # Version control (if not already available)
       kubernetes-helm
+      ginkgo
     ];
   };
 

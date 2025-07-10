@@ -104,17 +104,8 @@ add_error() {
 
 print_summary() {
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
-        # Only show failures when there are errors
-        echo -e "\n${BLUE}═══ Summary ═══${NC}" >&2
-        for item in "${CLAUDE_HOOKS_SUMMARY[@]}"; do
-            echo -e "$item" >&2
-        done
-        
-        echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
-        echo -e "${RED}════════════════════════════════════════════${NC}" >&2
-        echo -e "${RED}❌ ALL ISSUES ARE BLOCKING ❌${NC}" >&2
-        echo -e "${RED}════════════════════════════════════════════${NC}" >&2
-        echo -e "${RED}Fix EVERYTHING above until all checks are ✅ GREEN${NC}" >&2
+        # Simple one-line summary when there are errors
+        echo -e "\n${RED}❌ Found $CLAUDE_HOOKS_ERROR_COUNT blocking issue(s) - fix all above${NC}" >&2
     fi
 }
 
@@ -174,7 +165,7 @@ lint_python() {
         return 0
     fi
     
-    log_info "Running Python linters..."
+    log_debug "Running Python linters..."
     
     # Find Python files
     local py_files=$(find . -name "*.py" -type f | grep -v -E "(venv/|\.venv/|__pycache__|\.git/)" | head -100)
@@ -234,7 +225,7 @@ lint_javascript() {
         return 0
     fi
     
-    log_info "Running JavaScript/TypeScript linters..."
+    log_debug "Running JavaScript/TypeScript linters..."
     
     # Find JS/TS files
     local js_files=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f | grep -v -E "(node_modules/|dist/|build/|\.git/)" | head -100)
@@ -302,7 +293,7 @@ lint_rust() {
         return 0
     fi
     
-    log_info "Running Rust linters..."
+    log_debug "Running Rust linters..."
     
     # Find Rust files
     local rust_files=$(find . -name "*.rs" -type f | grep -v -E "(target/|\.git/)" | head -100)
@@ -342,7 +333,7 @@ lint_rust() {
             echo "$clippy_output" >&2
         fi
     else
-        log_info "Cargo not found, skipping Rust checks"
+        log_debug "Cargo not found, skipping Rust checks"
     fi
     
     return 0
@@ -354,7 +345,7 @@ lint_nix() {
         return 0
     fi
     
-    log_info "Running Nix linters..."
+    log_debug "Running Nix linters..."
     
     # Find all .nix files
     local nix_files=$(find . -name "*.nix" -type f | grep -v -E "(result/|/nix/store/)" | head -20)
@@ -436,10 +427,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Print header
-echo "" >&2
-echo "🔍 Style Check - Validating code formatting..." >&2
-echo "────────────────────────────────────────────" >&2
+# Print header only in debug mode
+if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+    echo "" >&2
+    echo "🔍 Style Check - Validating code formatting..." >&2
+    echo "────────────────────────────────────────────" >&2
+fi
 
 # Load configuration
 load_config
@@ -449,7 +442,6 @@ START_TIME=$(time_start)
 
 # Detect project type
 PROJECT_TYPE=$(detect_project_type_with_tilt)
-log_info "Project type: $PROJECT_TYPE"
 
 # Main execution
 main() {
@@ -495,7 +487,7 @@ main() {
                 fi
                 ;;
             "unknown") 
-                log_info "No recognized project type, skipping checks"
+                log_debug "No recognized project type, skipping checks"
                 ;;
         esac
     fi
@@ -520,14 +512,10 @@ exit_code=$?
 
 # Final message and exit
 if [[ $exit_code -eq 2 ]]; then
-    echo -e "\n${RED}🛑 FAILED - Fix all issues above! 🛑${NC}" >&2
-    echo -e "${YELLOW}📋 NEXT STEPS:${NC}" >&2
-    echo -e "${YELLOW}  1. Fix the issues listed above${NC}" >&2
-    echo -e "${YELLOW}  2. Verify the fix by running the lint command again${NC}" >&2
-    echo -e "${YELLOW}  3. Continue with your original task${NC}" >&2
+    echo -e "${RED}⛔ BLOCKING: Must fix ALL errors above before continuing${NC}" >&2
     exit 2
 else
     # Always exit with 2 so Claude sees the continuation message
-    echo -e "\n${YELLOW}👉 Style clean. Continue with your task.${NC}" >&2
+    echo -e "${YELLOW}👉 Style clean. Continue with your task.${NC}" >&2
     exit 2
 fi

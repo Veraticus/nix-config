@@ -84,7 +84,7 @@ run_go_tests() {
         
         # If this IS a test file, run it directly
         if [[ "$target" =~ _test\.go$ ]]; then
-            echo -e "${BLUE}🧪 Running test file directly: $target${NC}" >&2
+            log_debug "🧪 Running test file directly: $target"
             local test_output
             if ! test_output=$($GO_TEST_CMD "$target" 2>&1); then
                 echo -e "${RED}❌ Tests failed in $target${NC}" >&2
@@ -120,7 +120,7 @@ run_go_tests() {
                 # Focused tests only make sense for specific files
                 if [[ "$is_package_path" == "false" ]]; then
                     if [[ "$test_file_exists" == "true" ]]; then
-                        echo -e "${BLUE}🧪 Running focused tests for $base...${NC}" >&2
+                        log_debug "🧪 Running focused tests for $base..."
                         tests_run=$((tests_run + 1))
                         
                         local test_output
@@ -145,7 +145,7 @@ run_go_tests() {
                 if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
                     race_msg=" (with race detection)"
                 fi
-                echo -e "${BLUE}📦 Running package tests${race_msg} in $dir...${NC}" >&2
+                log_debug "📦 Running package tests${race_msg} in $dir..."
                 tests_run=$((tests_run + 1))
                 
                 # Debug: show the actual command being run
@@ -169,7 +169,7 @@ run_go_tests() {
                 if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
                     race_msg=" (with race detection)"
                 fi
-                echo -e "${BLUE}🌍 Running all project tests${race_msg}...${NC}" >&2
+                log_debug "🌍 Running all project tests${race_msg}..."
                 tests_run=$((tests_run + 1))
                 
                 local test_output
@@ -185,7 +185,7 @@ run_go_tests() {
             "integration")
                 # Check if integration tests exist
                 if go test -tags=integration -list . "$dir" >/dev/null 2>&1; then
-                    echo -e "${BLUE}🔗 Running integration tests...${NC}" >&2
+                    log_debug "🔗 Running integration tests..."
                     tests_run=$((tests_run + 1))
                     
                     local test_output
@@ -211,7 +211,7 @@ run_go_tests() {
             echo -e "${YELLOW}⚠️  No tests run for $target${NC}" >&2
         fi
     elif [[ $failed -eq 0 ]]; then
-        log_success "All tests passed for $target"
+        log_debug "All tests passed for $target"
     fi
     
     return $failed

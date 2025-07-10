@@ -90,17 +90,8 @@ add_error() {
 
 print_error_summary() {
     if [[ $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
-        # Only show failures when there are errors
-        echo -e "\n${BLUE}═══ Summary ═══${NC}" >&2
-        for item in "${CLAUDE_HOOKS_ERRORS[@]}"; do
-            echo -e "$item" >&2
-        done
-        
-        echo -e "\n${RED}Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) that MUST be fixed!${NC}" >&2
-        echo -e "${RED}════════════════════════════════════════════${NC}" >&2
-        echo -e "${RED}❌ ALL ISSUES ARE BLOCKING ❌${NC}" >&2
-        echo -e "${RED}════════════════════════════════════════════${NC}" >&2
-        echo -e "${RED}Fix EVERYTHING above until all checks are ✅ GREEN${NC}" >&2
+        # Concise summary for errors
+        echo -e "\n${RED}❌ Found $CLAUDE_HOOKS_ERROR_COUNT issue(s) - ALL BLOCKING${NC}" >&2
     fi
 }
 
@@ -126,31 +117,18 @@ print_test_header() {
 
 exit_with_success_message() {
     local message="${1:-Continue with your task.}"
-    echo -e "\n${YELLOW}👉 $message${NC}" >&2
+    echo -e "${YELLOW}👉 $message${NC}" >&2
     exit 2
 }
 
 exit_with_style_failure() {
-    echo -e "\n${RED}🛑 FAILED - Fix all issues above! 🛑${NC}" >&2
-    echo -e "${YELLOW}📋 NEXT STEPS:${NC}" >&2
-    echo -e "${YELLOW}  1. Fix the issues listed above${NC}" >&2
-    echo -e "${YELLOW}  2. Verify the fix by running the lint command again${NC}" >&2
-    echo -e "${YELLOW}  3. Continue with your original task${NC}" >&2
+    echo -e "\n${RED}🛑 Style check failed. Fix issues and re-run.${NC}" >&2
     exit 2
 }
 
 exit_with_test_failure() {
     local file_path="$1"
-    echo -e "\n${RED}════════════════════════════════════════════${NC}" >&2
-    echo -e "${RED}❌ TESTS FAILED - BLOCKING ❌${NC}" >&2
-    echo -e "${RED}════════════════════════════════════════════${NC}" >&2
-    echo -e "${RED}Tests are FAILING after your changes to $file_path${NC}" >&2
-    echo -e "\n${RED}🛑 FAILED - Fix all failing tests above! 🛑${NC}" >&2
-    echo -e "${YELLOW}📋 NEXT STEPS:${NC}" >&2
-    echo -e "${YELLOW}  1. Review the test failures above${NC}" >&2
-    echo -e "${YELLOW}  2. Fix the code to make tests pass${NC}" >&2
-    echo -e "${YELLOW}  3. Or revert your changes if the tests are correct${NC}" >&2
-    echo -e "${YELLOW}  4. Continue ONLY after all tests are ✅ GREEN${NC}" >&2
+    echo -e "${RED}⛔ BLOCKING: Must fix ALL test failures above before continuing${NC}" >&2
     exit 2
 }
 

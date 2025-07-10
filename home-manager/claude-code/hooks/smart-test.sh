@@ -182,7 +182,7 @@ run_python_tests() {
     
     # If this IS a test file, run it directly
     if [[ "$file" =~ (test_.*|.*_test)\.py$ ]]; then
-        echo -e "${BLUE}🧪 Running test file directly: $file${NC}" >&2
+        log_debug "🧪 Running test file directly: $file"
         local test_output
         if command -v pytest >/dev/null 2>&1; then
             if ! test_output=$(
@@ -201,7 +201,7 @@ run_python_tests() {
                 return 1
             fi
         fi
-        echo -e "${GREEN}✅ Tests passed in $file${NC}" >&2
+        log_debug "✅ Tests passed in $file"
         return 0
     fi
     
@@ -243,7 +243,7 @@ run_python_tests() {
         case "$mode" in
             "focused")
                 if [[ -n "$test_file" ]]; then
-                    echo -e "${BLUE}🧪 Running focused tests for $base...${NC}" >&2
+                    log_debug "🧪 Running focused tests for $base..."
                     tests_run=$((tests_run + 1))
                     
                     local test_output
@@ -275,7 +275,7 @@ run_python_tests() {
                 ;;
                 
             "package")
-                echo -e "${BLUE}📦 Running package tests in $dir...${NC}" >&2
+                log_debug "📦 Running package tests in $dir..."
                 tests_run=$((tests_run + 1))
                 
                 if command -v pytest >/dev/null 2>&1; then
@@ -299,7 +299,7 @@ run_python_tests() {
         add_error "No tests found for $file (tests required)"
         return 2
     elif [[ $failed -eq 0 && $tests_run -gt 0 ]]; then
-        log_success "All tests passed for $file"
+        log_debug "All tests passed for $file"
     fi
     
     return $failed
@@ -318,7 +318,7 @@ run_javascript_tests() {
     
     # If this IS a test file, run it directly
     if [[ "$file" =~ \.(test|spec)\.[tj]sx?$ ]]; then
-        echo -e "${BLUE}🧪 Running test file directly: $file${NC}" >&2
+        log_debug "🧪 Running test file directly: $file"
         
         local test_output
         if [[ -f "package.json" ]] && jq -e '.scripts.test' package.json >/dev/null 2>&1; then
@@ -338,7 +338,7 @@ run_javascript_tests() {
                 return 1
             fi
         fi
-        echo -e "${GREEN}✅ Tests passed in $file${NC}" >&2
+        log_debug "✅ Tests passed in $file"
         return 0
     fi
     
@@ -391,7 +391,7 @@ run_javascript_tests() {
             case "$mode" in
                 "focused")
                     if [[ -n "$test_file" ]]; then
-                        echo -e "${BLUE}🧪 Running focused tests for $base...${NC}" >&2
+                        log_debug "🧪 Running focused tests for $base..."
                         tests_run=$((tests_run + 1))
                         
                         local test_output
@@ -412,7 +412,7 @@ run_javascript_tests() {
                     ;;
                     
                 "package")
-                    echo -e "${BLUE}📦 Running all tests...${NC}" >&2
+                    log_debug "📦 Running all tests..."
                     tests_run=$((tests_run + 1))
                     
                     local test_output
@@ -439,7 +439,7 @@ run_javascript_tests() {
         add_error "No tests found for $file (tests required)"
         return 2
     elif [[ $failed -eq 0 && $tests_run -gt 0 ]]; then
-        log_success "All tests passed for $file"
+        log_debug "All tests passed for $file"
     fi
     
     return $failed
@@ -451,8 +451,10 @@ run_javascript_tests() {
 
 # Determine file type and run appropriate tests
 main() {
-    # Print header
-    print_test_header
+    # Print header only in debug mode
+    if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+        print_test_header
+    fi
     
     local failed=0
     

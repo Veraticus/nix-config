@@ -14,7 +14,7 @@ lint_go() {
         return 0
     fi
     
-    log_info "Running Go formatting and linting..."
+    log_debug "Running Go formatting and linting..."
     
     # Check if Makefile exists with fmt and lint targets
     if [[ -f "Makefile" ]]; then
@@ -22,11 +22,13 @@ lint_go() {
         local has_lint=$(grep -E "^lint:" Makefile 2>/dev/null || echo "")
         
         if [[ -n "$has_fmt" && -n "$has_lint" ]]; then
-            log_info "Using Makefile targets"
+            log_debug "Using Makefile targets"
             
             local fmt_output
+            # Suppress output unless there's an error
             if ! fmt_output=$(make fmt 2>&1); then
                 add_error "Go formatting failed (make fmt)"
+                # Only show output on failure
                 echo "$fmt_output" >&2
             fi
             
@@ -47,7 +49,7 @@ lint_go() {
 
 # Run Go linting tools directly (when no Makefile targets)
 run_go_direct_lint() {
-    log_info "Using direct Go tools"
+    log_debug "Using direct Go tools"
     
     # Format check - filter files through should_skip_file
     local unformatted_files=$(gofmt -l . 2>/dev/null | grep -v vendor/ | while read -r file; do

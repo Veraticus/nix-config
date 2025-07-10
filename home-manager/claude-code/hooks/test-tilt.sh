@@ -30,7 +30,7 @@ run_tilt_tests() {
         local has_test_tilt=$(grep -E "^test-tilt:" Makefile 2>/dev/null || echo "")
         
         if [[ -n "$has_test_tilt" ]]; then
-            echo -e "${BLUE}🧪 Running Tiltfile tests via Makefile...${NC}" >&2
+            log_debug "🧪 Running Tiltfile tests via Makefile..."
             
             local test_output
             if ! test_output=$(make test-tilt 2>&1); then
@@ -40,14 +40,14 @@ run_tilt_tests() {
                 add_error "Tiltfile tests failed"
                 return 1
             fi
-            echo -e "${GREEN}✅ Tiltfile tests passed${NC}" >&2
+            log_debug "✅ Tiltfile tests passed"
             return 0
         fi
     fi
     
     # Check for pytest-based tests (common pattern for Starlark)
     if [[ -f "tests/test_tiltfiles.py" ]] && command_exists pytest; then
-        echo -e "${BLUE}🧪 Running Tiltfile tests with pytest...${NC}" >&2
+        log_debug "🧪 Running Tiltfile tests with pytest..."
         
         local test_output
         if ! test_output=$(pytest tests/test_tiltfiles.py -v 2>&1); then
@@ -57,7 +57,7 @@ run_tilt_tests() {
             add_error "Tiltfile pytest tests failed"
             return 1
         fi
-        echo -e "${GREEN}✅ Tiltfile pytest tests passed${NC}" >&2
+        log_debug "✅ Tiltfile pytest tests passed"
         return 0
     fi
     
@@ -81,7 +81,7 @@ run_tilt_tests() {
             return 1
         fi
         
-        echo -e "${GREEN}✅ Tiltfile validation passed${NC}" >&2
+        log_debug "✅ Tiltfile validation passed"
     else
         log_debug "tilt command not found, skipping validation"
     fi
@@ -133,7 +133,7 @@ run_tilt_tests() {
                     fi
                 done
                 
-                echo -e "${GREEN}✅ All Tiltfile tests passed${NC}" >&2
+                log_debug "✅ All Tiltfile tests passed"
             fi
         fi
     done

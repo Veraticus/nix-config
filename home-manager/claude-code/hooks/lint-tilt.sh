@@ -14,7 +14,7 @@ lint_tilt() {
         return 0
     fi
     
-    log_info "Running Tiltfile/Starlark linters..."
+    log_debug "Running Tiltfile/Starlark linters..."
     
     # Check if we're in a project with Tiltfiles
     local tiltfiles=$(find . -name "Tiltfile" -not -path "./vendor/*" -not -path "./.git/*" -not -path "./node_modules/*" | head -20)
@@ -44,13 +44,15 @@ lint_tilt() {
         local has_fix_tilt=$(grep -E "^fix-tilt:" Makefile 2>/dev/null || echo "")
         
         if [[ -n "$has_lint_tilt" ]]; then
-            log_info "Using Makefile lint-tilt target"
+            log_debug "Using Makefile lint-tilt target"
             
             # First try to fix issues
             if [[ -n "$has_fix_tilt" ]]; then
                 local fix_output
+                # Suppress output unless there's an error
                 if ! fix_output=$(make fix-tilt 2>&1); then
-                    log_debug "make fix-tilt output: $fix_output"
+                    # Only log on error
+                    log_debug "make fix-tilt failed: $fix_output"
                 fi
             fi
             
@@ -58,6 +60,7 @@ lint_tilt() {
             local lint_output
             if ! lint_output=$(make lint-tilt 2>&1); then
                 add_error "Tiltfile linting failed (make lint-tilt)"
+                # Only show output on failure
                 echo "$lint_output" >&2
             fi
             return 0
@@ -66,17 +69,18 @@ lint_tilt() {
     
     # Check for buildifier
     if command_exists buildifier; then
-        log_info "Using buildifier for Tiltfile formatting"
+        log_debug "Using buildifier for Tiltfile formatting"
         
         # First, try to auto-fix formatting issues
+        # Disable loadTop to prevent moving loads to top (but allow sorting)
         local fixed_count=0
         for tiltfile in $tiltfiles; do
             log_debug "Checking $tiltfile with buildifier"
             
             # Check if file needs formatting
             if ! buildifier --mode=check --type=default "$tiltfile" &>/dev/null; then
-                # Try to fix it
-                if buildifier --mode=fix --lint=fix --type=default "$tiltfile" 2>/dev/null; then
+                # Try to fix it, but don't move loads to top
+                if buildifier --mode=fix --lint=fix --type=default -buildifier_disable=loadTop "$tiltfile" 2>/dev/null; then
                     ((fixed_count++))
                     log_debug "Fixed formatting in $tiltfile"
                 fi
@@ -91,7 +95,7 @@ lint_tilt() {
         local has_issues=false
         for tiltfile in $tiltfiles; do
             local lint_output
-            if ! lint_output=$(buildifier --mode=check --lint=warn --type=default "$tiltfile" 2>&1); then
+            if ! lint_output=$(buildifier --mode=check --lint=warn --type=default -buildifier_disable=loadTop "$tiltfile" 2>&1); then
                 has_issues=true
                 add_error "Buildifier found issues in $tiltfile"
                 echo "$lint_output" >&2

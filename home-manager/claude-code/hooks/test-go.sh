@@ -55,9 +55,29 @@ setup_go_test_command() {
 run_go_tests() {
     local target="$1"
     
+    # Debug: Show what we're processing
+    log_debug "run_go_tests called with target: '$target'"
+    log_debug "CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS='${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}'"
+    
     # Initialize test command if not already done
     if [[ -z "$GO_TEST_CMD" ]]; then
         setup_go_test_command
+    fi
+    
+    # Check if target matches any excluded test patterns
+    if [[ -n "${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}" ]]; then
+        log_debug "Checking exclusion patterns: '$CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS' against target: '$target'"
+        IFS=',' read -ra EXCLUDE_PATTERNS <<< "$CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS"
+        for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+            pattern=$(echo "$pattern" | xargs)  # Trim whitespace
+            log_debug "Checking pattern: '$pattern' against '$target'"
+            if [[ "$target" =~ $pattern ]]; then
+                log_info "🚫 Skipping tests matching exclusion pattern '$pattern': $target"
+                return 0
+            fi
+        done
+    else
+        log_debug "No GO_TEST_EXCLUDE_PATTERNS configured"
     fi
     
     # Determine if target is a package path or a file
@@ -140,6 +160,25 @@ run_go_tests() {
                 ;;
             
             "package")
+                # Check if directory matches any excluded test patterns
+                if [[ -n "${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}" ]]; then
+                    local skip_dir=false
+                    log_debug "Checking package exclusion patterns: '$CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS' against dir: '$dir'"
+                    IFS=',' read -ra EXCLUDE_PATTERNS <<< "$CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS"
+                    for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+                        pattern=$(echo "$pattern" | xargs)  # Trim whitespace
+                        log_debug "Checking pattern: '$pattern' against '$dir'"
+                        if [[ "$dir" =~ $pattern ]]; then
+                            log_info "🚫 Skipping package tests matching exclusion pattern '$pattern': $dir"
+                            skip_dir=true
+                            break
+                        fi
+                    done
+                    [[ "$skip_dir" == "true" ]] && continue
+                else
+                    log_debug "No GO_TEST_EXCLUDE_PATTERNS configured for package tests"
+                fi
+                
                 local race_msg=""
                 if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
                     race_msg=" (with race detection)"

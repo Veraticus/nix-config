@@ -43,10 +43,13 @@ load_config() {
     # Load project config
     load_project_config
     
+    # Debug output to verify config loaded
+    log_debug "After loading config, CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS='${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}'"
+    
     # Quick exit if disabled
     if [[ "$CLAUDE_HOOKS_TEST_ON_EDIT" != "true" ]]; then
-        echo "DEBUG: Test on edit disabled, exiting" >&2
-        exit 0
+        log_debug "Test on edit disabled, exiting"
+        exit_with_success_message "Tests disabled. Continue with your task."
     fi
 }
 
@@ -70,7 +73,8 @@ else
         
         # Only process edit-related tools
         if [[ ! "$TOOL_NAME" =~ ^(Edit|Write|MultiEdit)$ ]]; then
-            exit 0
+            # Silent exit for non-edit tools - don't show message
+            exit 2
         fi
         
         # Extract file path(s)
@@ -82,11 +86,20 @@ else
         fi
         
         # Skip if no file path
-        [[ -z "$FILE_PATH" ]] && exit 0
+        if [[ -z "$FILE_PATH" ]]; then
+            exit_with_success_message "No file to test. Continue with your task."
+        fi
     else
         # Not valid JSON - treat as CLI mode
         FILE_PATH="./..."
     fi
+fi
+
+# Change to the directory of the file being edited (if it's a file)
+if [[ -n "$FILE_PATH" ]] && [[ "$FILE_PATH" != "./..." ]] && [[ -f "$FILE_PATH" ]]; then
+    FILE_DIR=$(dirname "$FILE_PATH")
+    cd "$FILE_DIR" || true
+    log_debug "Changed to file directory: $(pwd)"
 fi
 
 # Load configuration
@@ -475,7 +488,7 @@ main() {
         fi
     else
         # No tests for this file type
-        exit 0
+        exit_with_success_message "No tests applicable. Continue with your task."
     fi
     
     if [[ $failed -ne 0 ]]; then

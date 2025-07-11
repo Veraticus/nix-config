@@ -94,6 +94,9 @@ CLAUDE_HOOKS_GO_ENABLED=false
 CLAUDE_HOOKS_GO_COMPLEXITY_THRESHOLD=30
 CLAUDE_HOOKS_PYTHON_ENABLED=false
 
+# Exclude specific test patterns (e.g., E2E tests requiring special context)
+CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS="e2e,integration_test"
+
 # See example-claude-hooks-config.sh for all options
 ```
 

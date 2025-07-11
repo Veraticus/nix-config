@@ -1,9 +1,14 @@
-{ inputs, lib, config, pkgs, ... }:
+{ inputs
+, lib
+, config
+, pkgs
+, ...
+}:
 {
   # Go language configuration
   programs.go = {
     enable = true;
-    package = pkgs.go_1_23;
+    package = pkgs.go_1_24;
     goPath = "go";
     goBin = "go/bin";
   };
@@ -72,6 +77,15 @@
     if [ ! -f "$HOME/go/bin/golangci-lint" ]; then
       export PATH="${pkgs.curl}/bin:${pkgs.coreutils}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:${pkgs.gnused}/bin:${pkgs.gawk}/bin:$PATH"
       $DRY_RUN_CMD ${pkgs.curl}/bin/curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $HOME/go/bin
+    fi
+  '';
+
+  # Activation script to ensure deadcode is installed
+  home.activation.installDeadcode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    echo "Installing deadcode..."
+    if [ ! -f "$HOME/go/bin/deadcode" ]; then
+      export PATH="${pkgs.go_1_23}/bin:$PATH"
+      $DRY_RUN_CMD ${pkgs.go_1_23}/bin/go install golang.org/x/tools/cmd/deadcode@latest
     fi
   '';
 

@@ -82,17 +82,17 @@ run_go_tests() {
             return 0
         fi
         
-        # If this IS a test file, run it directly
+        # If this IS a test file, run the package tests (not just the single file)
         if [[ "$target" =~ _test\.go$ ]]; then
-            log_debug "🧪 Running test file directly: $target"
+            log_debug "🧪 Running package tests for edited test file: $target"
             local test_output
-            if ! test_output=$($GO_TEST_CMD "$target" 2>&1); then
-                echo -e "${RED}❌ Tests failed in $target${NC}" >&2
-                echo -e "\n${RED}Failed test output:${NC}" >&2
+            # Run all tests in the package to handle inter-test dependencies
+            if ! test_output=$($GO_TEST_CMD -short "$dir" 2>&1); then
+                # Output test failures directly without preamble
                 format_test_output "$test_output" "go" >&2
                 return 1
             fi
-            echo -e "${GREEN}✅ Tests passed in $target${NC}" >&2
+            log_debug "✅ Tests passed in $dir"
             return 0
         fi
     fi
@@ -126,8 +126,7 @@ run_go_tests() {
                         local test_output
                         if ! test_output=$($GO_TEST_CMD -run "Test.*${base}" "$dir" 2>&1); then
                             failed=1
-                            echo -e "${RED}❌ Focused tests failed for $base${NC}" >&2
-                            echo -e "\n${RED}Failed test output:${NC}" >&2
+                            # Output test failures directly
                             format_test_output "$test_output" "go" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -156,8 +155,7 @@ run_go_tests() {
                 local test_output
                 if ! test_output=$($GO_TEST_CMD -short "$dir" 2>&1); then
                     failed=1
-                    echo -e "${RED}❌ Package tests failed in $dir${NC}" >&2
-                    echo -e "\n${RED}Failed test output:${NC}" >&2
+                    # Output test failures directly
                     format_test_output "$test_output" "go" >&2
                     add_error "Package tests failed in $dir"
                 fi
@@ -175,8 +173,7 @@ run_go_tests() {
                 local test_output
                 if ! test_output=$($GO_TEST_CMD -short "./..." 2>&1); then
                     failed=1
-                    echo -e "${RED}❌ Project tests failed${NC}" >&2
-                    echo -e "\n${RED}Failed test output:${NC}" >&2
+                    # Output test failures directly
                     format_test_output "$test_output" "go" >&2
                     add_error "Project tests failed"
                 fi
@@ -191,8 +188,7 @@ run_go_tests() {
                     local test_output
                     if ! test_output=$($GO_TEST_CMD -tags=integration "$dir" 2>&1); then
                         failed=1
-                        echo -e "${RED}❌ Integration tests failed${NC}" >&2
-                        echo -e "\n${RED}Failed test output:${NC}" >&2
+                        # Output test failures directly
                         format_test_output "$test_output" "go" >&2
                         add_error "Integration tests failed"
                     fi

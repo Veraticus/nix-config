@@ -35,7 +35,7 @@ source "${SCRIPT_DIR}/common-helpers.sh"
 load_config() {
     # Global defaults
     export CLAUDE_HOOKS_TEST_ON_EDIT="${CLAUDE_HOOKS_TEST_ON_EDIT:-true}"
-    export CLAUDE_HOOKS_TEST_MODES="${CLAUDE_HOOKS_TEST_MODES:-focused,package}"
+    export CLAUDE_HOOKS_TEST_MODES="${CLAUDE_HOOKS_TEST_MODES:-package}"
     export CLAUDE_HOOKS_ENABLE_RACE="${CLAUDE_HOOKS_ENABLE_RACE:-true}"
     export CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS="${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}"
     export CLAUDE_HOOKS_TEST_VERBOSE="${CLAUDE_HOOKS_TEST_VERBOSE:-false}"
@@ -187,16 +187,14 @@ run_python_tests() {
         if command -v pytest >/dev/null 2>&1; then
             if ! test_output=$(
                 pytest -xvs "$file" 2>&1); then
-                echo -e "${RED}❌ Tests failed in $file${NC}" >&2
-                echo -e "\n${RED}Failed test output:${NC}" >&2
+                # Output test failures directly without preamble
                 format_test_output "$test_output" "python" >&2
                 return 1
             fi
         elif command -v python >/dev/null 2>&1; then
             if ! test_output=$(
                 python -m unittest "$file" 2>&1); then
-                echo -e "${RED}❌ Tests failed in $file${NC}" >&2
-                echo -e "\n${RED}Failed test output:${NC}" >&2
+                # Output test failures directly without preamble
                 format_test_output "$test_output" "python" >&2
                 return 1
             fi
@@ -251,8 +249,7 @@ run_python_tests() {
                         if ! test_output=$(
                             pytest -xvs "$test_file" -k "$base" 2>&1); then
                             failed=1
-                            echo -e "${RED}❌ Focused tests failed for $base${NC}" >&2
-                            echo -e "\n${RED}Failed test output:${NC}" >&2
+                            # Output test failures directly
                             format_test_output "$test_output" "python" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -260,8 +257,7 @@ run_python_tests() {
                         if ! test_output=$(
                             python -m unittest "$test_file" 2>&1); then
                             failed=1
-                            echo -e "${RED}❌ Focused tests failed for $base${NC}" >&2
-                            echo -e "\n${RED}Failed test output:${NC}" >&2
+                            # Output test failures directly
                             format_test_output "$test_output" "python" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -283,8 +279,7 @@ run_python_tests() {
                     if ! test_output=$(
                         pytest -xvs "$dir" 2>&1); then
                         failed=1
-                        echo -e "${RED}❌ Package tests failed in $dir${NC}" >&2
-                        echo -e "\n${RED}Failed test output:${NC}" >&2
+                        # Output test failures directly
                         format_test_output "$test_output" "python" >&2
                         add_error "Package tests failed in $dir"
                     fi
@@ -324,16 +319,14 @@ run_javascript_tests() {
         if [[ -f "package.json" ]] && jq -e '.scripts.test' package.json >/dev/null 2>&1; then
             if ! test_output=$(
                 npm test -- "$file" 2>&1); then
-                echo -e "${RED}❌ Tests failed in $file${NC}" >&2
-                echo -e "\n${RED}Failed test output:${NC}" >&2
+                # Output test failures directly without preamble
                 format_test_output "$test_output" "javascript" >&2
                 return 1
             fi
         elif command -v jest >/dev/null 2>&1; then
             if ! test_output=$(
                 jest "$file" 2>&1); then
-                echo -e "${RED}❌ Tests failed in $file${NC}" >&2
-                echo -e "\n${RED}Failed test output:${NC}" >&2
+                # Output test failures directly without preamble
                 format_test_output "$test_output" "javascript" >&2
                 return 1
             fi
@@ -398,8 +391,7 @@ run_javascript_tests() {
                         if ! test_output=$(
                             npm test -- "$test_file" 2>&1); then
                             failed=1
-                            echo -e "${RED}❌ Focused tests failed for $base${NC}" >&2
-                            echo -e "\n${RED}Failed test output:${NC}" >&2
+                            # Output test failures directly
                             format_test_output "$test_output" "javascript" >&2
                             add_error "Focused tests failed for $base"
                         fi
@@ -419,8 +411,7 @@ run_javascript_tests() {
                     if ! test_output=$(
                         npm test 2>&1); then
                         failed=1
-                        echo -e "${RED}❌ Package tests failed${NC}" >&2
-                        echo -e "\n${RED}Failed test output:${NC}" >&2
+                        # Output test failures directly
                         format_test_output "$test_output" "javascript" >&2
                         add_error "Package tests failed"
                     fi

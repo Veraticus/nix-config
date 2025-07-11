@@ -10,7 +10,6 @@
 #
 # OPTIONS
 #   --debug       Enable debug output
-#   --fast        Skip slow checks (import cycles, security scans)
 #
 # EXIT CODES
 #   0 - Success (all checks passed - everything is ✅ GREEN)
@@ -20,6 +19,10 @@
 # CONFIGURATION
 #   Project-specific overrides can be placed in .claude-hooks-config.sh
 #   See inline documentation for all available options.
+#
+#   Go-specific options:
+#     CLAUDE_HOOKS_GO_DEADCODE_ENABLED=false  # Disable deadcode analysis (default: true)
+#                                             # Note: deadcode can take 5-10 seconds on large projects
 
 # Don't use set -e - we need to control exit codes carefully
 set +e
@@ -409,15 +412,10 @@ lint_nix() {
 # ============================================================================
 
 # Parse command line options
-FAST_MODE=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --debug)
             export CLAUDE_HOOKS_DEBUG=1
-            shift
-            ;;
-        --fast)
-            FAST_MODE=true
             shift
             ;;
         *)

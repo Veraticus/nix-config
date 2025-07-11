@@ -16,8 +16,8 @@ Features:
 - Detects project type automatically
 - Respects project-specific Makefiles (`make lint`)
 - Smart file filtering (only checks modified files)
-- Fast mode available (`--fast` to skip slow checks)
 - Exit code 2 means issues found - ALL must be fixed
+- Configurable deadcode analysis for Go (detects unreachable functions)
 
 #### Failure
 
@@ -181,7 +181,6 @@ The `.claude-hooks-ignore` is for code you **can't** fix, not code you **won't**
 ```bash
 ./smart-lint.sh           # Auto-runs after Claude edits
 ./smart-lint.sh --debug   # Debug mode
-./smart-lint.sh --fast    # Skip slow checks
 ```
 
 ### Exit Codes

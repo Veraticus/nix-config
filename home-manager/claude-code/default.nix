@@ -64,9 +64,16 @@
     executable = true;
   };
   
+  # Integration helper script
+  home.file.".claude/hooks/integrate.sh" = {
+    source = ./hooks/integrate.sh;
+    executable = true;
+  };
+  
   # Copy documentation and examples (not executable)
   home.file.".claude/hooks/README.md".source = ./hooks/README.md;
   home.file.".claude/hooks/INTEGRATION.md".source = ./hooks/INTEGRATION.md;
+  home.file.".claude/hooks/QUICK_START.md".source = ./hooks/QUICK_START.md;
   home.file.".claude/hooks/example-Makefile".source = ./hooks/example-Makefile;
   home.file.".claude/hooks/example-claude-hooks-config.sh".source = ./hooks/example-claude-hooks-config.sh;
   home.file.".claude/hooks/example-claude-hooks-ignore".source = ./hooks/example-claude-hooks-ignore;

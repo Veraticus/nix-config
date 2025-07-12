@@ -2,9 +2,26 @@
 
 Automated code quality checks that run after Claude Code modifies files, enforcing project standards with zero tolerance for errors.
 
-## 📚 Quick Links
+## 🚀 Quick Start
 
-- **[INTEGRATION.md](INTEGRATION.md)** - How to add `make lint` and `make test` to your project
+```bash
+# From your project root, run:
+~/.claude/hooks/integrate.sh
+
+# Copy the generated prompt and give it to Claude
+# Done! Your project now has integrated hooks
+```
+
+The `integrate.sh` script automatically:
+- Detects your project's languages and structure
+- Identifies monorepos and subprojects
+- Generates a custom integration prompt for Claude
+- Takes under 5 minutes!
+
+## 📚 Documentation
+
+- **[QUICK_START.md](QUICK_START.md)** - Get started in 5 minutes
+- **[INTEGRATION.md](INTEGRATION.md)** - Detailed integration guide
 - **[example-Makefile](example-Makefile)** - Copy-paste Makefile template
 - **[example-claude-hooks-config.sh](example-claude-hooks-config.sh)** - Configuration options
 
@@ -186,6 +203,8 @@ CLAUDE_HOOKS_SCRIPT_TEST_NAMES="test test.sh run-tests.sh"
 # Disable project integration for specific languages
 CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS=false  # Always use golangci-lint directly
 ```
+
+**Tip**: Run `~/.claude/hooks/integrate.sh` to generate the right configuration for your project!
 
 ### 6. Examples
 

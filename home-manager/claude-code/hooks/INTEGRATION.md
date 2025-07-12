@@ -2,6 +2,17 @@
 
 This guide shows how to integrate your project with Claude Code's smart-lint and smart-test hooks by implementing `make lint` and `make test` targets.
 
+## 🚀 Automated Integration
+
+The easiest way to integrate hooks into your project:
+
+```bash
+cd /path/to/your/project
+~/.claude/hooks/integrate.sh
+```
+
+This will analyze your project and generate a custom integration prompt for Claude!
+
 ## For Claude: Quick Summary
 
 When you edit files, these hooks automatically run. To integrate a project:
@@ -10,7 +21,7 @@ When you edit files, these hooks automatically run. To integrate a project:
 3. The hooks pass `FILE=relative/path/to/edited/file.ext`
 4. Exit 0 = success, Exit 1+ = failure (blocks further edits)
 
-## Quick Start
+## Manual Integration
 
 ### 1. Create a Makefile
 

@@ -66,6 +66,8 @@
   
   # Copy documentation and examples (not executable)
   home.file.".claude/hooks/README.md".source = ./hooks/README.md;
+  home.file.".claude/hooks/INTEGRATION.md".source = ./hooks/INTEGRATION.md;
+  home.file.".claude/hooks/example-Makefile".source = ./hooks/example-Makefile;
   home.file.".claude/hooks/example-claude-hooks-config.sh".source = ./hooks/example-claude-hooks-config.sh;
   home.file.".claude/hooks/example-claude-hooks-ignore".source = ./hooks/example-claude-hooks-ignore;
 

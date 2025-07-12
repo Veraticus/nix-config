@@ -36,15 +36,16 @@ source "${SCRIPT_DIR}/common-helpers.sh"
 echo "=== Testing original add_error ==="
 add_error "Test error 1"
 echo "Error count: $CLAUDE_HOOKS_ERROR_COUNT"
-echo "Errors array: ${CLAUDE_HOOKS_ERRORS[@]}"
+echo "Errors array: ${CLAUDE_HOOKS_ERRORS[*]}"
 
 # Now source smart-lint which overrides add_error
 echo -e "\n=== After smart-lint override ==="
+# shellcheck disable=SC1090
 source <(grep -A 10 "Override add_error" "${SCRIPT_DIR}/smart-lint.sh")
 
 add_error "Test error 2"
 echo "Error count: $CLAUDE_HOOKS_ERROR_COUNT"
-echo "Errors array: ${CLAUDE_HOOKS_ERRORS[@]}"
+echo "Errors array: ${CLAUDE_HOOKS_ERRORS[*]}"
 
 # Clean up
 cd /

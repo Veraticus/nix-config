@@ -89,7 +89,8 @@ export CLAUDE_HOOKS_GO_DEADCODE_ENABLED="false"
 # Run the hook and capture ALL output
 echo "Running smart-lint.sh..."
 echo "$json" | /home/joshsymonds/nix-config/home-manager/claude-code/hooks/smart-lint.sh 2>&1
+exit_code=$?
 
 echo ""
-echo "Exit code: $?"
+echo "Exit code: $exit_code"
 echo "Temp dir: $TEMP_DIR"

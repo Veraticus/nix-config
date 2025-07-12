@@ -9,6 +9,7 @@ export HOOK_DIR="/home/joshsymonds/nix-config/home-manager/claude-code/hooks"
 export SPEC_DIR="$HOOK_DIR/spec"
 
 # Source the test helpers
+# shellcheck source=/dev/null
 source "$SPEC_DIR/spec_helper.sh"
 
 # Mock tilt command  

@@ -163,7 +163,7 @@ mock_command_stdout() {
         echo "# Mock for $command with stdout - auto-generated"
         echo "echo \"\$@\" >> \"$args_file\""
         # Use printf to avoid any interpretation issues
-        echo "printf '%s\n' '$output'"
+        printf "printf '%%s\\n' '%s'\n" "$output"
         echo "exit $exit_code"
     } > "${mock_dir}/${command}"
     chmod +x "${mock_dir}/${command}"

@@ -1,9 +1,0 @@
-{
-  "session_id": "test-session",
-  "transcript_path": "/tmp/test-transcript",
-  "hook_event_name": "PostToolUse",
-  "tool_name": "Edit",
-  "tool_input": {
-    "file_path": "math.go"
-  }
-}

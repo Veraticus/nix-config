@@ -48,7 +48,8 @@ time_start() {
 time_end() {
     if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
         local start=$1
-        local end=$(($(date +%s%N)/1000000))
+        local end
+        end=$(($(date +%s%N)/1000000))
         local duration=$((end - start))
         log_debug "Execution time: ${duration}ms"
     fi
@@ -88,17 +89,20 @@ find_project_root() {
 # Load project configuration
 load_project_config() {
     # User-level config
+    # shellcheck disable=SC1091
     [[ -f "$HOME/.claude-hooks.conf" ]] && source "$HOME/.claude-hooks.conf"
     
     # Debug current directory
     log_debug "load_project_config called from PWD: $(pwd)"
     
     # Find project root and load config from there
-    local project_root=$(find_project_root)
+    local project_root
+    project_root=$(find_project_root)
     log_debug "Project root found: $project_root"
     
     if [[ -f "$project_root/.claude-hooks-config.sh" ]]; then
         log_debug "Found config file at: $project_root/.claude-hooks-config.sh"
+        # shellcheck disable=SC1091
         source "$project_root/.claude-hooks-config.sh"
         log_debug "After sourcing project config, CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS='${CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS:-}'"
     else
@@ -146,12 +150,15 @@ print_test_header() {
 }
 
 # ============================================================================
-# STANDARD EXIT HANDLERS
+# STANDARD EXIT HANDLERS (DEPRECATED - kept for compatibility)
 # ============================================================================
+
+# Note: These functions are deprecated in favor of inline exit handling
+# that properly distinguishes between hook mode and CLI mode
 
 exit_with_success_message() {
     local message="${1:-Continue with your task.}"
-    echo -e "${YELLOW}👉 $message${NC}" >&2
+    echo -e "$message" >&2
     exit 2
 }
 
@@ -161,7 +168,6 @@ exit_with_style_failure() {
 }
 
 exit_with_test_failure() {
-    local file_path="$1"
     echo -e "${RED}⛔ BLOCKING: Must fix ALL test failures above before continuing${NC}" >&2
     exit 2
 }
@@ -173,12 +179,16 @@ exit_with_test_failure() {
 # Check if we should skip a file based on .claude-hooks-ignore
 should_skip_file() {
     local file="$1"
-    local project_root=$(find_project_root)
+    local project_root
+    project_root=$(find_project_root)
     
     # Check .claude-hooks-ignore if it exists in project root
     if [[ -f "$project_root/.claude-hooks-ignore" ]]; then
         # Make file path relative to project root for pattern matching
-        local relative_file="${file#$project_root/}"
+        local relative_file="${file#"$project_root"/}"
+        # Also get just the basename for matching
+        local base_file
+        base_file=$(basename "$file")
         
         while IFS= read -r pattern; do
             # Skip comments and empty lines
@@ -187,20 +197,29 @@ should_skip_file() {
             # Check if pattern ends with /** for directory matching
             if [[ "$pattern" == */** ]]; then
                 local dir_pattern="${pattern%/**}"
-                if [[ "$relative_file" == $dir_pattern/* ]]; then
+                if [[ "$relative_file" == "$dir_pattern"/* ]]; then
                     log_debug "Skipping $file due to .claude-hooks-ignore directory pattern: $pattern"
                     return 0
                 fi
             # Check for glob patterns - use case statement for proper glob matching
             elif [[ "$pattern" == *[*?]* ]]; then
+                # shellcheck disable=SC2254
                 case "$relative_file" in
                     $pattern)
                         log_debug "Skipping $file due to .claude-hooks-ignore glob pattern: $pattern"
                         return 0
                         ;;
                 esac
-            # Exact match
-            elif [[ "$relative_file" == "$pattern" ]]; then
+                # Also check against basename
+                # shellcheck disable=SC2254
+                case "$base_file" in
+                    $pattern)
+                        log_debug "Skipping $file due to .claude-hooks-ignore glob pattern: $pattern"
+                        return 0
+                        ;;
+                esac
+            # Exact match - check both relative path and basename
+            elif [[ "$relative_file" == "$pattern" ]] || [[ "$base_file" == "$pattern" ]]; then
                 log_debug "Skipping $file due to .claude-hooks-ignore pattern: $pattern"
                 return 0
             fi
@@ -214,6 +233,51 @@ should_skip_file() {
     fi
     
     return 1
+}
+
+# ============================================================================
+# JSON OUTPUT HELPERS
+# ============================================================================
+
+# Output JSON response for hook control
+# Usage: output_json_response "continue|block|error" "message" ["field:value" ...]
+output_json_response() {
+    local action="$1"
+    local message="$2"
+    shift 2
+    
+    # Start JSON object
+    local json='{'
+    
+    # Add action field
+    case "$action" in
+        "continue")
+            json+='"action":"continue"'
+            ;;
+        "block")
+            json+='"action":"block"'
+            ;;
+        "error")
+            json+='"action":"error"'
+            ;;
+    esac
+    
+    # Add message if provided
+    if [[ -n "$message" ]]; then
+        json+=",\"message\":\"$(echo -n "$message" | sed 's/"/\\"/g')\""
+    fi
+    
+    # Add any additional fields
+    for field in "$@"; do
+        local key="${field%%:*}"
+        local value="${field#*:}"
+        json+=",\"$key\":\"$(echo -n "$value" | sed 's/"/\\"/g')\""
+    done
+    
+    # Close JSON object
+    json+='}'
+    
+    echo "$json"
 }
 
 # ============================================================================

@@ -23,6 +23,52 @@ find_go_project_root() {
     return 1
 }
 
+# Check for forbidden patterns according to CLAUDE.md rules
+check_go_forbidden_patterns() {
+    log_debug "Checking for forbidden patterns..."
+    
+    # Find all Go files, excluding vendor directory
+    local go_files
+    go_files=$(find . -name "*.go" -type f | grep -v vendor/ | grep -v '\.git/' || true)
+    
+    if [[ -z "$go_files" ]]; then
+        log_debug "No Go files found to check"
+        return 0
+    fi
+    
+    local found_violations=false
+    
+    # Check each Go file for forbidden patterns
+    for file in $go_files; do
+        # Skip if file should be ignored
+        if should_skip_file "$file"; then
+            continue
+        fi
+        
+        # Check for interface{} or any
+        if grep -q -E '\binterface\{\}|\bany\b' "$file" 2>/dev/null; then
+            add_error "FORBIDDEN PATTERN: interface{} found in $file - use concrete types!"
+            found_violations=true
+        fi
+        
+        # Check for time.Sleep
+        if grep -q 'time\.Sleep' "$file" 2>/dev/null; then
+            add_error "FORBIDDEN PATTERN: time.Sleep found in $file - use channels for synchronization!"
+            found_violations=true
+        fi
+        
+        # Check for panic() calls (but not in test files)
+        if [[ ! "$file" =~ _test\.go$ ]] && grep -q -E '\bpanic\s*\(' "$file" 2>/dev/null; then
+            add_error "FORBIDDEN PATTERN: panic() found in $file - return errors instead!"
+            found_violations=true
+        fi
+    done
+    
+    if [[ "$found_violations" == "true" ]]; then
+        echo -e "${RED}⛔ FORBIDDEN PATTERNS DETECTED - Fix these violations before continuing!${NC}" >&2
+    fi
+}
+
 # ============================================================================
 # GO LINTING
 # ============================================================================
@@ -39,7 +85,8 @@ lint_go() {
     export CLAUDE_HOOKS_GO_DEADCODE_ENABLED="${CLAUDE_HOOKS_GO_DEADCODE_ENABLED:-true}"
     
     # Find the Go project root
-    local go_root=$(find_go_project_root)
+    local go_root
+    go_root=$(find_go_project_root)
     local original_dir="$PWD"
     
     if [[ "$go_root" != "$PWD" ]]; then
@@ -50,13 +97,17 @@ lint_go() {
         }
     fi
     
+    # Check for forbidden patterns first (according to CLAUDE.md rules)
+    check_go_forbidden_patterns
+    
     # Run linting from the project root
-    local lint_result=0
     
     # Check if Makefile exists with fmt and lint targets
     if [[ -f "Makefile" ]]; then
-        local has_fmt=$(grep -E "^fmt:" Makefile 2>/dev/null || echo "")
-        local has_lint=$(grep -E "^lint:" Makefile 2>/dev/null || echo "")
+        local has_fmt
+        has_fmt=$(grep -E "^fmt:" Makefile 2>/dev/null || echo "")
+        local has_lint
+        has_lint=$(grep -E "^lint:" Makefile 2>/dev/null || echo "")
         
         if [[ -n "$has_fmt" && -n "$has_lint" ]]; then
             log_debug "Using Makefile targets"
@@ -94,7 +145,8 @@ run_go_direct_lint() {
     log_debug "Using direct Go tools"
     
     # Format check - filter files through should_skip_file
-    local unformatted_files=$(gofmt -l . 2>/dev/null | grep -v vendor/ | while read -r file; do
+    local unformatted_files
+    unformatted_files=$(gofmt -l . 2>/dev/null | grep -v vendor/ | while read -r file; do
         if ! should_skip_file "$file"; then
             echo "$file"
         fi

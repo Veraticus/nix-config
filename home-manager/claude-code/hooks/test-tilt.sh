@@ -19,15 +19,17 @@ run_tilt_tests() {
     # Check if the file should be skipped
     if should_skip_file "$file"; then
         log_debug "Skipping tests for $file due to .claude-hooks-ignore"
+        export CLAUDE_HOOKS_FILE_SKIPPED=true
         return 0
     fi
     
-    local dir=$(dirname "$file")
-    local base=$(basename "$file")
+    local dir
+    dir=$(dirname "$file")
     
     # Check for Makefile with test-tilt target
     if [[ -f "Makefile" ]]; then
-        local has_test_tilt=$(grep -E "^test-tilt:" Makefile 2>/dev/null || echo "")
+        local has_test_tilt
+        has_test_tilt=$(grep -E "^test-tilt:" Makefile 2>/dev/null || echo "")
         
         if [[ -n "$has_test_tilt" ]]; then
             log_debug "🧪 Running Tiltfile tests via Makefile..."
@@ -88,7 +90,8 @@ run_tilt_tests() {
     
     # Basic syntax validation using Python
     if command_exists python || command_exists python3; then
-        local python_cmd=$(command -v python3 || command -v python)
+        local python_cmd
+        python_cmd=$(command -v python3 || command -v python)
         
         echo -e "${BLUE}🐍 Checking Tiltfile syntax...${NC}" >&2
         local syntax_output
@@ -107,7 +110,8 @@ run_tilt_tests() {
     for test_dir in "${test_dirs[@]}"; do
         if [[ -d "$test_dir" ]]; then
             # Look for test files related to this Tiltfile
-            local test_files=$(find "$test_dir" -name "*tilt*.py" -o -name "*tiltfile*.py" 2>/dev/null | head -10)
+            local test_files
+            test_files=$(find "$test_dir" -name "*tilt*.py" -o -name "*tiltfile*.py" 2>/dev/null | head -10)
             
             if [[ -n "$test_files" ]]; then
                 echo -e "${BLUE}🧪 Found Tiltfile test files, running...${NC}" >&2

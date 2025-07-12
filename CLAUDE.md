@@ -19,6 +19,24 @@ This is a flake-based Nix configuration managing multiple systems:
 
 **IMPORTANT**: After making changes to any Nix configuration files (including hooks), you MUST run `update` to apply the changes to the current system. Changes won't take effect until the system is rebuilt!
 
+### Hook Development Workflow
+When working on Claude Code hooks (`home-manager/claude-code/hooks/`):
+
+1. **Test Locally** (no rebuild needed):
+   ```bash
+   cd home-manager/claude-code/hooks
+   make lint    # Run shellcheck on all scripts
+   make test    # Run test suites
+   make check   # Run both lint and test
+   ```
+
+2. **Deploy Changes** (after testing):
+   ```bash
+   update       # Rebuild system to activate hook changes
+   ```
+
+This separation allows rapid development and testing without constant system rebuilds.
+
 ### Building Packages
 - **Build custom package**: `nix build .#<package>`
   - Available packages: myCaddy

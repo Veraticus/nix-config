@@ -2,6 +2,41 @@
 
 Automated code quality checks that run after Claude Code modifies files, enforcing project standards with zero tolerance for errors.
 
+## Hook Protocol
+
+Claude Code hooks follow a JSON-based protocol:
+
+### Input
+Hooks receive JSON via stdin when triggered by Claude Code:
+```json
+{
+  "event": "PostToolUse",
+  "tool": "Edit",
+  "tool_input": {
+    "file_path": "/path/to/file.go",
+    "old_string": "...",
+    "new_string": "..."
+  },
+  "tool_output": {
+    "status": "success"
+  }
+}
+```
+
+### Output
+Hooks can optionally output JSON for advanced control (not required):
+```json
+{
+  "action": "block",
+  "message": "Linting failed - fix issues before continuing"
+}
+```
+
+### Exit Codes
+- `0`: Continue with operation
+- `1`: General error (missing dependencies, etc.)
+- `2`: Block operation (e.g., linting/test failures)
+
 ## Hooks
 
 ### `smart-lint.sh`
@@ -62,8 +97,18 @@ Features:
 ```
 ```
 
-By `exit 2` on success and telling it to continue, we prevent Claude from stopping after it has corrected
-the style issues.
+### `smart-test.sh`
+Automatically runs relevant tests when files are edited:
+- Detects test files for edited source files
+- Runs focused tests for specific changes
+- Supports multiple test modes (focused, package, all, integration)
+- Language support: Go, Python, JavaScript/TypeScript, Shell, Tilt
+
+Features:
+- Smart test discovery
+- Race detection for Go tests
+- Configurable test modes via `.claude-hooks-config.sh`
+- Skips files that typically don't need tests (main.go, migrations, etc.)
 
 ### `ntfy-notifier.sh`
 Push notifications via ntfy service for Claude Code events:

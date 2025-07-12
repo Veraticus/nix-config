@@ -2,19 +2,22 @@
 # smart-lint.sh - Intelligent project-aware code quality checks for Claude Code
 #
 # SYNOPSIS
-#   smart-lint.sh [options]
+#   Claude Code PostToolUse hook that runs linting after file edits
 #
 # DESCRIPTION
 #   Automatically detects project type and runs ALL quality checks.
 #   Every issue found is blocking - code must be 100% clean to proceed.
 #
-# OPTIONS
-#   --debug       Enable debug output
+# INPUT
+#   JSON via stdin with PostToolUse event data
+#
+# OUTPUT
+#   Optional JSON response for advanced control
 #
 # EXIT CODES
-#   0 - Success (all checks passed - everything is ✅ GREEN)
+#   0 - Continue with operation
 #   1 - General error (missing dependencies, etc.)
-#   2 - ANY issues found - ALL must be fixed
+#   2 - Block operation (linting issues found)
 #
 # CONFIGURATION
 #   Project-specific overrides can be placed in .claude-hooks-config.sh
@@ -65,6 +68,11 @@ detect_project_type_with_tilt() {
         types+=("nix")
     fi
     
+    # Shell project
+    if [[ -n "$(find . -maxdepth 3 -name "*.sh" -type f -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.bash" -type f -print -quit 2>/dev/null)" ]]; then
+        types+=("shell")
+    fi
+    
     # Tilt project
     if [[ -f "Tiltfile" ]] || [[ -n "$(find . -maxdepth 3 -name "Tiltfile" -type f -print -quit 2>/dev/null)" ]] || [[ -n "$(find . -maxdepth 3 -name "*.tiltfile" -type f -print -quit 2>/dev/null)" ]]; then
         types+=("tilt")
@@ -82,6 +90,8 @@ detect_project_type_with_tilt() {
 }
 
 # Get list of modified files (if available from git)
+# Note: This function is currently unused but kept for future use
+# shellcheck disable=SC2317
 get_modified_files() {
     if [[ -d .git ]] && command_exists git; then
         # Get files modified in the last commit or currently staged/modified
@@ -97,12 +107,14 @@ get_modified_files() {
 # Use the CLAUDE_HOOKS_ERRORS array from common-helpers.sh but with a different name for summary
 declare -a CLAUDE_HOOKS_SUMMARY=()
 
-# Override add_error to also add to summary
+# Override add_error to also add to summary and print immediately
 add_error() {
     local message="$1"
     CLAUDE_HOOKS_ERROR_COUNT+=1
     CLAUDE_HOOKS_ERRORS+=("${RED}❌${NC} $message")
     CLAUDE_HOOKS_SUMMARY+=("${RED}❌${NC} $message")
+    # Print error immediately to stderr so tests can capture it
+    echo -e "${RED}❌${NC} $message" >&2
 }
 
 print_summary() {
@@ -132,6 +144,7 @@ load_config() {
     
     # Project-specific overrides
     if [[ -f ".claude-hooks-config.sh" ]]; then
+        # shellcheck disable=SC1091
         source ".claude-hooks-config.sh" || {
             log_error "Failed to load .claude-hooks-config.sh"
             exit 2
@@ -171,7 +184,8 @@ lint_python() {
     log_debug "Running Python linters..."
     
     # Find Python files
-    local py_files=$(find . -name "*.py" -type f | grep -v -E "(venv/|\.venv/|__pycache__|\.git/)" | head -100)
+    local py_files
+    py_files=$(find . -name "*.py" -type f | grep -v -E "(venv/|\.venv/|__pycache__|\.git/)" | head -100)
     
     if [[ -z "$py_files" ]]; then
         log_debug "No Python files found"
@@ -193,8 +207,8 @@ lint_python() {
     
     # Black formatting
     if command_exists black; then
-        local black_output
-        if ! black_output=$(echo "$filtered_files" | xargs black --check 2>&1); then
+        # Check if files need formatting
+        if ! echo "$filtered_files" | xargs black --check >/dev/null 2>&1; then
             # Apply formatting and capture any errors
             local format_output
             if ! format_output=$(echo "$filtered_files" | xargs black 2>&1); then
@@ -231,7 +245,8 @@ lint_javascript() {
     log_debug "Running JavaScript/TypeScript linters..."
     
     # Find JS/TS files
-    local js_files=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f | grep -v -E "(node_modules/|dist/|build/|\.git/)" | head -100)
+    local js_files
+    js_files=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -type f | grep -v -E "(node_modules/|dist/|build/|\.git/)" | head -100)
     
     if [[ -z "$js_files" ]]; then
         log_debug "No JavaScript/TypeScript files found"
@@ -265,8 +280,8 @@ lint_javascript() {
     # Prettier
     if [[ -f ".prettierrc" ]] || [[ -f "prettier.config.js" ]] || [[ -f ".prettierrc.json" ]]; then
         if command_exists prettier; then
-            local prettier_output
-            if ! prettier_output=$(echo "$filtered_files" | xargs prettier --check 2>&1); then
+            # Check if files need formatting
+            if ! echo "$filtered_files" | xargs prettier --check >/dev/null 2>&1; then
                 # Apply formatting and capture any errors
                 local format_output
                 if ! format_output=$(echo "$filtered_files" | xargs prettier --write 2>&1); then
@@ -275,8 +290,8 @@ lint_javascript() {
                 fi
             fi
         elif command_exists npx; then
-            local prettier_output
-            if ! prettier_output=$(echo "$filtered_files" | xargs npx prettier --check 2>&1); then
+            # Check if files need formatting
+            if ! echo "$filtered_files" | xargs npx prettier --check >/dev/null 2>&1; then
                 # Apply formatting and capture any errors
                 local format_output
                 if ! format_output=$(echo "$filtered_files" | xargs npx prettier --write 2>&1); then
@@ -299,7 +314,8 @@ lint_rust() {
     log_debug "Running Rust linters..."
     
     # Find Rust files
-    local rust_files=$(find . -name "*.rs" -type f | grep -v -E "(target/|\.git/)" | head -100)
+    local rust_files
+    rust_files=$(find . -name "*.rs" -type f | grep -v -E "(target/|\.git/)" | head -100)
     
     if [[ -z "$rust_files" ]]; then
         log_debug "No Rust files found"
@@ -351,7 +367,8 @@ lint_nix() {
     log_debug "Running Nix linters..."
     
     # Find all .nix files
-    local nix_files=$(find . -name "*.nix" -type f | grep -v -E "(result/|/nix/store/)" | head -20)
+    local nix_files
+    nix_files=$(find . -name "*.nix" -type f | grep -v -E "(result/|/nix/store/)" | head -20)
     
     if [[ -z "$nix_files" ]]; then
         log_debug "No Nix files found"
@@ -408,22 +425,151 @@ lint_nix() {
 }
 
 # ============================================================================
+# SHELL SCRIPT LINTING
+# ============================================================================
+
+lint_shell() {
+    if [[ "${CLAUDE_HOOKS_SHELL_ENABLED:-true}" != "true" ]]; then
+        log_debug "Shell linting disabled"
+        return 0
+    fi
+    
+    log_debug "Running Shell linters..."
+    
+    # Find all shell scripts
+    local shell_files
+    shell_files=$(find . -type f \( -name "*.sh" -o -name "*.bash" -o -name "*.zsh" \) | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
+    
+    # Also find files with bash/sh/zsh shebang
+    local shebang_files
+    shebang_files=$(grep -r -l "^#!.*\(bash\|sh\|zsh\)" . --include="*" | grep -v -E "(\.git/|node_modules/|venv/)" | head -50)
+    
+    # Combine and deduplicate
+    shell_files=$(echo -e "$shell_files\n$shebang_files" | sort -u | grep -v "^$")
+    
+    if [[ -z "$shell_files" ]]; then
+        log_debug "No shell scripts found"
+        return 0
+    fi
+    
+    # Filter out files that should be skipped
+    local filtered_files=""
+    for file in $shell_files; do
+        if ! should_skip_file "$file"; then
+            filtered_files="$filtered_files$file "
+        fi
+    done
+    
+    if [[ -z "$filtered_files" ]]; then
+        log_debug "All shell scripts were skipped by .claude-hooks-ignore"
+        return 0
+    fi
+    
+    shell_files="$filtered_files"
+    
+    # Shellcheck
+    if command_exists shellcheck; then
+        log_debug "Running shellcheck..."
+        local shellcheck_errors=false
+        
+        for file in $shell_files; do
+            if ! shellcheck -x "$file" 2>&1; then
+                shellcheck_errors=true
+                add_error "shellcheck violations in $file"
+            fi
+        done
+        
+        if [[ "$shellcheck_errors" == "false" ]]; then
+            log_success "shellcheck passed"
+        fi
+    else
+        log_debug "shellcheck not found - skipping shell script validation"
+    fi
+    
+    # Bash formatting with shfmt (if available)
+    if command_exists shfmt; then
+        log_debug "Running shfmt..."
+        local format_errors=false
+        
+        for file in $shell_files; do
+            # Check if file needs formatting
+            if ! shfmt -d "$file" >/dev/null 2>&1; then
+                format_errors=true
+                echo -e "${RED}❌ Formatting issues in: $file${NC}" >&2
+                echo "Run: shfmt -w $file" >&2
+                add_error "Shell formatting issues in $file"
+            fi
+        done
+        
+        if [[ "$format_errors" == "false" ]]; then
+            log_success "shfmt passed"
+        fi
+    else
+        log_debug "shfmt not found - skipping shell formatting check"
+    fi
+    
+    return 0
+}
+
+# ============================================================================
+# HOOK INPUT PARSING
+# ============================================================================
+
+# This script only works as a Claude Code hook (JSON on stdin)
+JSON_INPUT=""
+
+# Ensure jq is available for JSON parsing
+if ! command_exists jq; then
+    log_error "jq is required for JSON parsing but not found"
+    exit 1
+fi
+
+if [ ! -t 0 ]; then
+    # We have input on stdin - try to read it
+    JSON_INPUT=$(cat)
+    
+    # Check if it's valid JSON
+    if echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
+        # Extract relevant fields from the JSON
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.event // empty')
+        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool // empty')
+        TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // empty')
+        
+        # Only process edit-related tools
+        if [[ "$EVENT" == "PostToolUse" ]] && [[ "$TOOL_NAME" =~ ^(Edit|Write|MultiEdit)$ ]]; then
+            # Extract file path(s) that were edited
+            if [[ "$TOOL_NAME" == "MultiEdit" ]]; then
+                FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // empty')
+            else
+                FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // empty')
+            fi
+            
+            # Change to the directory of the edited file
+            if [[ -n "$FILE_PATH" ]] && [[ -f "$FILE_PATH" ]]; then
+                FILE_DIR=$(dirname "$FILE_PATH")
+                cd "$FILE_DIR" || true
+                log_debug "Changed to file directory: $(pwd)"
+            fi
+        else
+            # Not an edit operation - exit silently
+            exit 0
+        fi
+    else
+        # Invalid JSON input
+        log_error "Invalid JSON input provided"
+        exit 1
+    fi
+else
+    # No input on stdin
+    log_error "No JSON input provided. This hook only works with Claude Code."
+    exit 1
+fi
+
+# ============================================================================
 # MAIN EXECUTION
 # ============================================================================
 
-# Parse command line options
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --debug)
-            export CLAUDE_HOOKS_DEBUG=1
-            shift
-            ;;
-        *)
-            echo "Unknown option: $1" >&2
-            exit 2
-            ;;
-    esac
-done
+# This script only works as a Claude Code hook - no CLI mode support
 
 # Print header only in debug mode
 if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
@@ -445,8 +591,8 @@ PROJECT_TYPE=$(detect_project_type_with_tilt)
 main() {
     # Handle mixed project types
     if [[ "$PROJECT_TYPE" == mixed:* ]]; then
-        local types="${PROJECT_TYPE#mixed:}"
-        IFS=',' read -ra TYPE_ARRAY <<< "$types"
+        local type_string="${PROJECT_TYPE#mixed:}"
+        IFS=',' read -ra TYPE_ARRAY <<< "$type_string"
         
         for type in "${TYPE_ARRAY[@]}"; do
             case "$type" in
@@ -455,6 +601,7 @@ main() {
                 "javascript") lint_javascript ;;
                 "rust") lint_rust ;;
                 "nix") lint_nix ;;
+                "shell") lint_shell ;;
                 "tilt") 
                     if type -t lint_tilt &>/dev/null; then
                         lint_tilt
@@ -477,6 +624,7 @@ main() {
             "javascript") lint_javascript ;;
             "rust") lint_rust ;;
             "nix") lint_nix ;;
+            "shell") lint_shell ;;
             "tilt") 
                 if type -t lint_tilt &>/dev/null; then
                     lint_tilt
@@ -514,6 +662,5 @@ if [[ $exit_code -eq 2 ]]; then
     exit 2
 else
     # Always exit with 2 so Claude sees the continuation message
-    echo -e "${YELLOW}👉 Style clean. Continue with your task.${NC}" >&2
-    exit 2
+    exit_with_success_message "${YELLOW}👉 Style clean. Continue with your task.${NC}"
 fi

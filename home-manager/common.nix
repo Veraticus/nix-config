@@ -1,4 +1,10 @@
-{ inputs, lib, config, pkgs, ... }:
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 {
   # You can import other home-manager modules here
   imports = [
@@ -34,6 +40,8 @@
       manix
       talosctl
       wget
+      shellcheck
+      shellspec
       socat
       wireguard-tools
       k9s

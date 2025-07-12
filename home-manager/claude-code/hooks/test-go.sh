@@ -5,6 +5,47 @@
 # It follows the same pattern as other language-specific testers.
 
 # ============================================================================
+# GO UTILITIES
+# ============================================================================
+
+# Find the Go project root by looking for go.mod
+find_go_project_root() {
+    local dir="$PWD"
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/go.mod" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    # No go.mod found, return current directory
+    echo "$PWD"
+    return 1
+}
+
+# Find the Go project root for a specific file
+find_go_project_root_for_file() {
+    local file_path="$1"
+    local dir
+    dir=$(dirname "$file_path")
+    
+    # Convert to absolute path
+    if [[ "$dir" != /* ]]; then
+        dir="$PWD/$dir"
+    fi
+    
+    while [[ "$dir" != "/" ]]; do
+        if [[ -f "$dir/go.mod" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        dir="$(dirname "$dir")"
+    done
+    # No go.mod found
+    return 1
+}
+
+# ============================================================================
 # GO TEST CONFIGURATION
 # ============================================================================
 
@@ -36,7 +77,7 @@ setup_go_test_command() {
         echo "DEBUG: CLAUDE_HOOKS_ENABLE_RACE='${CLAUDE_HOOKS_ENABLE_RACE}'" >&2
     fi
     
-    if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
+    if [[ "${CLAUDE_HOOKS_ENABLE_RACE:-false}" == "true" ]]; then
         race_flag=" -race"
         GO_TEST_CMD="$base_cmd$race_flag"
     else
@@ -99,6 +140,8 @@ run_go_tests() {
         # Check if the file should be skipped
         if should_skip_file "$target"; then
             log_debug "Skipping tests for $target due to .claude-hooks-ignore"
+            # Set global flag to indicate file was skipped
+            export CLAUDE_HOOKS_FILE_SKIPPED=true
             return 0
         fi
         
@@ -180,7 +223,7 @@ run_go_tests() {
                 fi
                 
                 local race_msg=""
-                if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
+                if [[ "${CLAUDE_HOOKS_ENABLE_RACE:-false}" == "true" ]]; then
                     race_msg=" (with race detection)"
                 fi
                 log_debug "📦 Running package tests${race_msg} in $dir..."
@@ -203,7 +246,7 @@ run_go_tests() {
             "all")
                 # Run all tests in the project
                 local race_msg=""
-                if [[ "${CLAUDE_HOOKS_ENABLE_RACE}" == "true" ]]; then
+                if [[ "${CLAUDE_HOOKS_ENABLE_RACE:-false}" == "true" ]]; then
                     race_msg=" (with race detection)"
                 fi
                 log_debug "🌍 Running all project tests${race_msg}..."
@@ -242,6 +285,8 @@ run_go_tests() {
             echo -e "${RED}❌ No tests found for $target (tests required)${NC}" >&2
             add_error "No tests found for $target (tests required)"
             return 2
+        elif [[ "$test_file_exists" == "false" ]]; then
+            echo -e "${YELLOW}⚠️  No test files found for $target${NC}" >&2
         elif [[ "$CLAUDE_HOOKS_TEST_VERBOSE" == "true" ]]; then
             echo -e "${YELLOW}⚠️  No tests run for $target${NC}" >&2
         fi
@@ -253,14 +298,33 @@ run_go_tests() {
 }
 
 # ============================================================================
+# TEST OUTPUT FORMATTING
+# ============================================================================
+
+format_test_output() {
+    local output="$1"
+    
+    # If output is empty, say so
+    if [[ -z "$output" ]]; then
+        echo "(no output captured)"
+        return
+    fi
+    
+    # Show the full output - no truncation when tests fail
+    echo "$output"
+}
+
+# ============================================================================
 # GO-SPECIFIC TEST HELPERS
 # ============================================================================
 
 # Check if we should skip test requirement for this Go file
 should_skip_go_test_requirement() {
     local file="$1"
-    local base=$(basename "$file")
-    local dir=$(dirname "$file")
+    local base
+    base=$(basename "$file")
+    local dir
+    dir=$(dirname "$file")
     
     # Files that typically don't have tests
     local skip_patterns=(
@@ -274,15 +338,16 @@ should_skip_go_test_requirement() {
         "migrations/*.go"   # Database migrations
     )
     
-    # Check patterns
+    # Check patterns (using glob matching)
     for pattern in "${skip_patterns[@]}"; do
+        # shellcheck disable=SC2053  # We want glob matching here
         if [[ "$base" == $pattern ]]; then
             return 0
         fi
     done
     
     # Skip if in specific directories
-    if [[ "$dir" =~ /(vendor|testdata|examples|cmd/[^/]+|gen|generated|.gen)(/|$) ]]; then
+    if [[ "$dir" =~ (^|/)(vendor|testdata|examples|cmd/[^/]+|gen|generated|.gen)(/|$) ]]; then
         return 0
     fi
     
@@ -293,3 +358,4 @@ should_skip_go_test_requirement() {
     
     return 1
 }
+

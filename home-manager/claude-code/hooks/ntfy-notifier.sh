@@ -2,85 +2,87 @@
 # ntfy-notifier.sh - Send notifications to ntfy service for Claude Code events
 #
 # SYNOPSIS
-#   ntfy-notifier.sh <event_type>
+#   ntfy-notifier.sh [--debug]
+#   echo '{"event":"PostToolUse","tool":"Edit","tool_input":{"file_path":"test.go"}}' | ntfy-notifier.sh
 #
 # DESCRIPTION
 #   Sends push notifications via ntfy service when Claude Code events occur.
-#   Supports notification and stop events. Automatically detects terminal
-#   context and includes it in the notification for better identification.
-#
-# ARGUMENTS
-#   event_type    Either "notification" or "stop"
+#   Supports both CLI mode for testing and hook mode for actual notifications.
 #
 # CONFIGURATION
-#   Requires ~/.config/claude-code-ntfy/config.yaml with:
-#     ntfy_topic: your-topic-name
-#     ntfy_server: https://ntfy.sh (optional, defaults to public server)
-#
-# ENVIRONMENT
-#   CLAUDE_HOOK_PAYLOAD   JSON payload from Claude Code (for notifications)
-#   CLAUDE_HOOKS_NTFY_ENABLED   Set to "false" to disable notifications
-#
-# TERMINAL DETECTION
-#   Attempts to detect terminal context from:
-#   - tmux window name
-#   - macOS Terminal window title
-#   - X11 window title (Linux)
+#   CLAUDE_HOOKS_NTFY_ENABLED   Set to "true" to enable notifications
+#   CLAUDE_HOOKS_NTFY_URL       Full ntfy URL (e.g., https://ntfy.sh/mytopic)
+#   CLAUDE_HOOKS_NTFY_TOKEN     Optional authentication token
 #
 # EXAMPLES
-#   # Send notification
-#   ./ntfy-notifier.sh notification
+#   # Test notification in CLI mode
+#   ./ntfy-notifier.sh
 #
-#   # Send stop notification
-#   ./ntfy-notifier.sh stop
+#   # Hook mode (JSON input from stdin)
+#   echo '{"event":"PostToolUse","tool":"Edit","tool_input":{"file_path":"test.go"}}' | ./ntfy-notifier.sh
 #
 # ERROR HANDLING
-#   - Validates configuration file exists
+#   - Validates configuration
 #   - Retries failed notifications
 #   - Rate limits to prevent spam
 
 set -euo pipefail
 
-# Get the event type from the first argument
-EVENT_TYPE="${1:-notification}"
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
 
 # Check if notifications are enabled (allow easy disable)
-if [[ "${CLAUDE_HOOKS_NTFY_ENABLED:-true}" != "true" ]]; then
+if [[ "${CLAUDE_HOOKS_NTFY_ENABLED:-}" != "true" ]]; then
     exit 0
 fi
 
-# Configuration file location
-CONFIG_FILE="${CLAUDE_HOOKS_NTFY_CONFIG:-$HOME/.config/claude-code-ntfy/config.yaml}"
+# Parse command line arguments
+DEBUG=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --debug)
+            DEBUG=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            exit 1
+            ;;
+    esac
+done
 
-# Check if config file exists
-if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "Warning: Ntfy config not found at $CONFIG_FILE" >&2
-    echo "Create it with:" >&2
-    echo "  ntfy_topic: your-topic-name" >&2
-    echo "  ntfy_server: https://ntfy.sh" >&2
-    exit 0  # Exit gracefully to not block Claude
-fi
+# Debug logging function
+log_debug() {
+    if [[ "$DEBUG" == "true" ]]; then
+        echo "[DEBUG] $*" >&2
+    fi
+}
 
-# Check if yq is available
-if ! command -v yq >/dev/null 2>&1; then
-    echo "Warning: yq not found, cannot parse ntfy config" >&2
+# Check configuration
+if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]]; then
+    echo "CLAUDE_HOOKS_NTFY_URL not configured" >&2
     exit 0
 fi
 
-# Extract configuration with error handling
-NTFY_TOPIC=$(yq -r '.ntfy_topic // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
-NTFY_SERVER=$(yq -r '.ntfy_server // "https://ntfy.sh"' "$CONFIG_FILE" 2>/dev/null || echo "https://ntfy.sh")
-
-# Validate required configuration
-if [[ -z "$NTFY_TOPIC" ]]; then
-    echo "Warning: ntfy_topic not configured in $CONFIG_FILE" >&2
+# Check if curl is available
+if ! command -v curl >/dev/null 2>&1; then
+    echo "curl not found" >&2
     exit 0
+fi
+
+if [[ "$DEBUG" == "true" ]]; then
+    log_debug "ntfy is enabled"
+    log_debug "URL: ${CLAUDE_HOOKS_NTFY_URL}"
+    if [[ -n "${CLAUDE_HOOKS_NTFY_TOKEN:-}" ]]; then
+        log_debug "Token: [configured]"
+    fi
 fi
 
 # Rate limiting - prevent notification spam
 RATE_LIMIT_FILE="/tmp/.claude-ntfy-rate-limit"
 if [[ -f "$RATE_LIMIT_FILE" ]]; then
-    LAST_NOTIFICATION=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || echo "0")
+    LAST_NOTIFICATION=$(cat "$RATE_LIMIT_FILE" 2>/dev/null) || LAST_NOTIFICATION="0"
     CURRENT_TIME=$(date +%s)
     TIME_DIFF=$((CURRENT_TIME - LAST_NOTIFICATION))
     
@@ -89,96 +91,37 @@ if [[ -f "$RATE_LIMIT_FILE" ]]; then
         exit 0
     fi
 fi
-echo "$(date +%s)" > "$RATE_LIMIT_FILE"
+date +%s > "$RATE_LIMIT_FILE"
+
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
 
 # Get context information
-CWD=$(pwd)
-CWD_BASENAME=$(basename "$CWD")
-
-# Function to clean terminal title
-clean_terminal_title() {
-    local title="$1"
-    # Remove Claude icons and control characters
-    echo "$title" | sed -E 's/[✅🤖⚡✨🔮💫☁️🌟🚀🎯🔍🛡️📝🧠🖨️🔐📤⏳❌⚠️]//g' | sed 's/[[:cntrl:]]//g' | xargs
+get_context() {
+    local cwd_basename
+    cwd_basename=$(basename "$PWD")
+    echo "Claude Code: $cwd_basename"
 }
-
-# Get terminal title with improved detection
-get_terminal_title() {
-    local title=""
-    
-    if [[ "${TERM_PROGRAM:-}" == "tmux" ]] && command -v tmux >/dev/null 2>&1; then
-        # In tmux, we can get the pane's environment variables
-        # The hook runs in the same pane as claude, so we can get the current pane's info
-        # Check if we're in a tmux session
-        if [[ -n "${TMUX:-}" ]]; then
-            # Get the current pane's window name
-            local window_name=$(tmux display-message -p '#W' 2>/dev/null || echo "")
-            local pane_title=$(tmux display-message -p '#{pane_title}' 2>/dev/null || echo "")
-            
-            if [[ -n "$window_name" ]]; then
-                title="$window_name"
-                [[ -n "$pane_title" && "$pane_title" != "$window_name" ]] && title="$title - $pane_title"
-            fi
-        else
-            # Not in a tmux session, just get the shell's tty
-            title="tty: $(tty 2>/dev/null | xargs basename)"
-        fi
-    elif [[ "${TERM_PROGRAM:-}" == "kitty" ]] && command -v kitty >/dev/null 2>&1; then
-        # Kitty: Get window title using kitty remote control
-        # This requires allow_remote_control to be enabled in kitty.conf
-        title=$(kitty @ ls | jq -r '.[] | select(.is_focused) | .tabs[] | select(.is_focused) | .title' 2>/dev/null || echo "")
-        if [[ -z "$title" ]]; then
-            # Fallback: get from environment if remote control is disabled
-            title="${KITTY_WINDOW_TITLE:-Kitty}"
-        fi
-    elif [[ "$(uname)" == "Darwin" ]] && command -v osascript >/dev/null 2>&1; then
-        # macOS: Get Terminal or iTerm2 window title (only if they're the active terminal)
-        if [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
-            title=$(osascript -e 'tell application "iTerm2" to name of current window' 2>/dev/null || echo "")
-        elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
-            # Only try to get Terminal.app title if we're actually running in Terminal.app
-            title=$(osascript -e 'tell application "Terminal" to name of front window' 2>/dev/null || echo "")
-        fi
-    elif [[ -n "${DISPLAY:-}" ]] && command -v xprop >/dev/null 2>&1; then
-        # Linux with X11: Get window title
-        local window_id=$(xprop -root _NET_ACTIVE_WINDOW 2>/dev/null | awk '{print $5}')
-        if [[ -n "$window_id" && "$window_id" != "0x0" ]]; then
-            title=$(xprop -id "$window_id" WM_NAME 2>/dev/null | cut -d'"' -f2 || echo "")
-        fi
-    elif [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v swaymsg >/dev/null 2>&1; then
-        # Wayland with Sway: Get focused window title
-        title=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .name' 2>/dev/null || echo "")
-    fi
-    
-    clean_terminal_title "$title"
-}
-
-TERM_TITLE=$(get_terminal_title)
-
-# Build context string
-CONTEXT="Claude Code: $CWD_BASENAME"
-if [[ -n "$TERM_TITLE" ]]; then
-    CONTEXT="$CONTEXT - $TERM_TITLE"
-fi
 
 # Function to send notification with retry
 send_notification() {
-    local title="$1"
-    local message="$2"
-    local tags="$3"
-    local priority="${4:-default}"
-    
+    local message="$1"
     local max_retries=2
     local retry_count=0
     
     while [[ $retry_count -lt $max_retries ]]; do
-        if curl -s \
-            --max-time 5 \
-            -H "Title: $title" \
-            -H "Tags: $tags" \
-            -H "Priority: $priority" \
-            -d "$message" \
-            "$NTFY_SERVER/$NTFY_TOPIC" >/dev/null 2>&1; then
+        local curl_args=(-s --max-time 5 -X POST)
+        
+        # Add authentication if token is configured
+        if [[ -n "${CLAUDE_HOOKS_NTFY_TOKEN:-}" ]]; then
+            curl_args+=(-H "Authorization: Bearer ${CLAUDE_HOOKS_NTFY_TOKEN}")
+        fi
+        
+        # Add message and URL
+        curl_args+=(-d "$message" "$CLAUDE_HOOKS_NTFY_URL")
+        
+        if curl "${curl_args[@]}" >/dev/null 2>&1; then
             return 0
         fi
         
@@ -186,50 +129,97 @@ send_notification() {
         [[ $retry_count -lt $max_retries ]] && sleep 1
     done
     
-    echo "Warning: Failed to send notification after $max_retries attempts" >&2
+    echo "Failed to send notification after $max_retries attempts" >&2
     return 1
 }
 
-# Prepare notification based on event type
-case "$EVENT_TYPE" in
-    "notification")
-        # Claude sent a notification - parse the payload if available
-        if [[ -n "${CLAUDE_HOOK_PAYLOAD:-}" ]]; then
-            # Extract message from JSON payload
-            MESSAGE=$(echo "$CLAUDE_HOOK_PAYLOAD" | jq -r '.message // "Claude notification"' 2>/dev/null || echo "Claude notification")
-            
-            # Check for error or warning indicators
-            PRIORITY="default"
-            if echo "$MESSAGE" | grep -qiE '(error|fail|problem|issue)'; then
-                PRIORITY="high"
-            elif echo "$MESSAGE" | grep -qiE '(warn|warning|attention)'; then
-                PRIORITY="default"
+# Format notification message for different tools
+format_notification() {
+    local tool="$1"
+    local tool_input="$2"
+    
+    case "$tool" in
+        "Edit"|"Write"|"MultiEdit")
+            if command -v jq >/dev/null 2>&1; then
+                local file_path
+                file_path=$(echo "$tool_input" | jq -r '.file_path // empty' 2>/dev/null)
+                if [[ -n "$file_path" ]]; then
+                    echo "$tool: $file_path"
+                else
+                    echo "$tool"
+                fi
+            else
+                echo "$tool"
+            fi
+            ;;
+        "Bash")
+            if command -v jq >/dev/null 2>&1; then
+                local command
+                command=$(echo "$tool_input" | jq -r '.command // empty' 2>/dev/null)
+                if [[ -n "$command" ]]; then
+                    echo "$tool: $command"
+                else
+                    echo "$tool"
+                fi
+            else
+                echo "$tool"
+            fi
+            ;;
+        "Read")
+            # Ignore Read tool notifications
+            return 1
+            ;;
+        *)
+            echo "$tool"
+            ;;
+    esac
+}
+
+# ============================================================================
+# MAIN LOGIC
+# ============================================================================
+
+# Check if we have JSON input (hook mode)
+if [[ ! -t 0 ]]; then
+    # Read JSON input
+    JSON_INPUT=$(cat)
+    
+    # Ensure jq is available for JSON parsing
+    if ! command -v jq >/dev/null 2>&1; then
+        log_debug "jq not available for JSON parsing"
+        exit 0
+    fi
+    
+    # Parse JSON input
+    if echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.event // empty' 2>/dev/null)
+        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool // empty' 2>/dev/null)
+        TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // "{}"' 2>/dev/null)
+        
+        # Only process PostToolUse events
+        if [[ "$EVENT" == "PostToolUse" ]]; then
+            # Format notification message
+            if MESSAGE=$(format_notification "$TOOL_NAME" "$TOOL_INPUT"); then
+                log_debug "Sending notification: $MESSAGE"
+                send_notification "$MESSAGE"
+            else
+                log_debug "Ignoring tool: $TOOL_NAME"
+                exit 0
             fi
         else
-            MESSAGE="Claude notification"
-            PRIORITY="default"
+            log_debug "Ignoring event: $EVENT"
+            exit 0
         fi
-        
-        TITLE="$CONTEXT"
-        TAGS="claude-code,notification"
-        ;;
-    
-    "stop")
-        TITLE="$CONTEXT"
-        MESSAGE="Claude finished responding"
-        TAGS="claude-code,stop,checkmark"
-        PRIORITY="low"
-        ;;
-    
-    *)
-        echo "Error: Unknown event type: $EVENT_TYPE" >&2
-        echo "Usage: $0 {notification|stop}" >&2
-        exit 1
-        ;;
-esac
-
-# Send notification
-send_notification "$TITLE" "$MESSAGE" "$TAGS" "$PRIORITY"
+    else
+        log_debug "Invalid JSON input"
+        exit 0
+    fi
+else
+    # CLI mode - send test notification
+    MESSAGE="Test notification"
+    log_debug "Sending test notification"
+    send_notification "$MESSAGE"
+fi
 
 # Clean up old rate limit files (older than 1 hour)
 find /tmp -name ".claude-ntfy-rate-limit" -mmin +60 -delete 2>/dev/null || true

@@ -881,8 +881,6 @@ try_project_test_command() {
         log_debug "Checking make targets: $make_targets"
         for target in $make_targets; do
             if check_make_target "$target" "$cmd_root"; then
-                log_info "🔨 Running 'make $target' from $cmd_root"
-                
                 # Run make command with FILE argument
                 local make_output
                 local make_exit_code
@@ -896,14 +894,15 @@ try_project_test_command() {
                     log_debug "Make command failed with exit code: $make_exit_code"
                 fi
                 
-                # Output any make output
-                if [[ -n "$make_output" ]]; then
-                    echo "$make_output" >&2
-                fi
-                
-                # If make failed, we need to handle errors
-                if [[ $make_exit_code -ne 0 ]]; then
-                    add_error "Tests failed (make $target)"
+                # Output information if it failed OR if in test mode
+                if [[ $make_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
+                    log_info "🔨 Running 'make $target' from $cmd_root"
+                    if [[ -n "$make_output" ]]; then
+                        echo "$make_output" >&2
+                    fi
+                    if [[ $make_exit_code -ne 0 ]]; then
+                        add_error "Tests failed (make $target)"
+                    fi
                 fi
                 
                 # Return 0 to indicate we found and ran the command (even if tests failed)
@@ -917,8 +916,6 @@ try_project_test_command() {
         log_debug "Checking scripts: $script_names"
         for script in $script_names; do
             if check_script_exists "$script" "$cmd_root/scripts"; then
-                log_info "📜 Running 'scripts/$script' from $cmd_root"
-                
                 # Run script with file argument
                 local script_output
                 local script_exit_code
@@ -932,14 +929,15 @@ try_project_test_command() {
                     log_debug "Script failed with exit code: $script_exit_code"
                 fi
                 
-                # Output any script output
-                if [[ -n "$script_output" ]]; then
-                    echo "$script_output" >&2
-                fi
-                
-                # If script failed, we need to handle errors
-                if [[ $script_exit_code -ne 0 ]]; then
-                    add_error "Tests failed (scripts/$script)"
+                # Output information if it failed OR if in test mode
+                if [[ $script_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
+                    log_info "📜 Running 'scripts/$script' from $cmd_root"
+                    if [[ -n "$script_output" ]]; then
+                        echo "$script_output" >&2
+                    fi
+                    if [[ $script_exit_code -ne 0 ]]; then
+                        add_error "Tests failed (scripts/$script)"
+                    fi
                 fi
                 
                 # Return 0 to indicate we found and ran the command (even if tests failed)
@@ -965,8 +963,8 @@ main() {
     
     local failed=0
     
-    # Reset skip flag
-    export CLAUDE_HOOKS_FILE_SKIPPED=false
+    # Don't set CLAUDE_HOOKS_FILE_SKIPPED initially - only set to true when skipping
+    unset CLAUDE_HOOKS_FILE_SKIPPED
     
     log_debug "Starting main() with FILE_PATH: $FILE_PATH"
     log_debug "Current directory: $(pwd)"
@@ -1039,7 +1037,7 @@ main() {
         # Exit 2 blocks the operation with error message
         echo -e "${RED}⛔ BLOCKING: Must fix ALL test failures above before continuing${NC}" >&2
         exit 2
-    elif [[ "${CLAUDE_HOOKS_FILE_SKIPPED}" == "true" ]]; then
+    elif [[ "${CLAUDE_HOOKS_FILE_SKIPPED:-}" == "true" ]]; then
         # File was skipped - exit 0 silently unless debug mode
         if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
             echo -e "${CYAN}[DEBUG]${NC} File was skipped (debug mode active)" >&2

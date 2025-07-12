@@ -17,22 +17,56 @@ help:
 	@echo "Hook-specific targets:"
 	@echo "  make hooks-test  - Test Claude Code hooks only"
 	@echo "  make hooks-lint  - Lint Claude Code hooks only"
+	@echo ""
+	@echo "The lint and test targets accept FILE= for specific file changes:"
+	@echo "  make lint FILE=path/to/file"
+	@echo "  make test FILE=path/to/file"
 
 # Run all linters
-lint: hooks-lint
-	@echo "Running Nix linters..."
-	@if command -v statix >/dev/null 2>&1; then \
-		echo "Running statix..."; \
-		statix check . || exit 1; \
-	fi
-	@if command -v deadnix >/dev/null 2>&1; then \
-		echo "Running deadnix..."; \
-		deadnix . || exit 1; \
+lint:
+	@# Check if FILE is a shell file in hooks directory
+	@if [ -n "$(FILE)" ] && echo "$(FILE)" | grep -q "^home-manager/claude-code/hooks/.*\.sh$$"; then \
+		echo "Shell file in hooks directory changed: $(FILE)"; \
+		echo "Running lint on all hook files..."; \
+		$(MAKE) hooks-lint; \
+	elif [ -n "$(FILE)" ]; then \
+		echo "File changed: $(FILE)"; \
+		echo "Running standard linters..."; \
+		if command -v statix >/dev/null 2>&1; then \
+			echo "Running statix..."; \
+			statix check . || exit 1; \
+		fi; \
+		if command -v deadnix >/dev/null 2>&1; then \
+			echo "Running deadnix..."; \
+			deadnix . || exit 1; \
+		fi; \
+	else \
+		$(MAKE) hooks-lint; \
+		echo "Running Nix linters..."; \
+		if command -v statix >/dev/null 2>&1; then \
+			echo "Running statix..."; \
+			statix check . || exit 1; \
+		fi; \
+		if command -v deadnix >/dev/null 2>&1; then \
+			echo "Running deadnix..."; \
+			deadnix . || exit 1; \
+		fi; \
 	fi
 	@echo "✅ All linting passed!"
 
 # Run all tests
-test: hooks-test
+test:
+	@# Check if FILE is a shell file in hooks directory
+	@if [ -n "$(FILE)" ] && echo "$(FILE)" | grep -q "^home-manager/claude-code/hooks/.*\.sh$$"; then \
+		echo "Shell file in hooks directory changed: $(FILE)"; \
+		echo "Running tests on all hook files..."; \
+		$(MAKE) hooks-test; \
+	elif [ -n "$(FILE)" ]; then \
+		echo "File changed: $(FILE)"; \
+		echo "No specific tests for this file type"; \
+	else \
+		$(MAKE) hooks-test; \
+	fi
 	@echo "✅ All tests passed!"
 
 # Run both lint and test

@@ -654,7 +654,7 @@ main.go:16:2: NO panic() - return errors instead (CLAUDE.md rule) (forbidigo)"
                 mock_jq_for_lint
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.go")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "Running 'make lint'"
                 The stderr should include "Running project lint with FILE=main.go"
@@ -667,7 +667,7 @@ main.go:16:2: NO panic() - return errors instead (CLAUDE.md rule) (forbidigo)"
                 mv main.go src/
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/src/main.go")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "FILE=src/main.go"
             End
@@ -708,7 +708,7 @@ main.go:16:2: NO panic() - return errors instead (CLAUDE.md rule) (forbidigo)"
                 mock_jq_for_lint
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.py")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "Running 'scripts/lint'"
                 The stderr should include "Running project lint script"
@@ -719,7 +719,7 @@ main.go:16:2: NO panic() - return errors instead (CLAUDE.md rule) (forbidigo)"
                 mock_jq_for_lint
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.py")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "FILE=main.py"
                 The stderr should include "Linting specific file: main.py"
@@ -759,7 +759,7 @@ EOF
                 export CLAUDE_HOOKS_MAKE_LINT_TARGETS="check fmt"
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.go")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "Running 'make check'"
                 The stderr should include "Running check target"
@@ -771,7 +771,7 @@ EOF
                 export CLAUDE_HOOKS_MAKE_LINT_TARGETS="nonexistent check"
                 local json
                 json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.go")
-                When run run_hook_with_json "smart-lint.sh" "$json"
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
                 The status should equal 2
                 The stderr should include "Running 'make check'"
             End

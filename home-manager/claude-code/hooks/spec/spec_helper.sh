@@ -317,6 +317,13 @@ run_hook_with_json_debug() {
     echo "$json" | CLAUDE_HOOKS_DEBUG=1 "$HOOK_DIR/$hook" 2>&1
 }
 
+# Run a hook with JSON input in test mode (shows output even on success)
+run_hook_with_json_test_mode() {
+    local hook="$1"
+    local json="$2"
+    echo "$json" | CLAUDE_HOOKS_TEST_MODE=1 "$HOOK_DIR/$hook"
+}
+
 # Run a hook in CLI mode
 run_hook_cli() {
     local hook="$1"

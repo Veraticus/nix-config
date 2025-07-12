@@ -7,6 +7,7 @@
 # DESCRIPTION
 #   Automatically detects project type and runs ALL quality checks.
 #   Every issue found is blocking - code must be 100% clean to proceed.
+#   Test comment to trigger hooks.
 #
 # INPUT
 #   JSON via stdin with PostToolUse event data
@@ -675,8 +676,6 @@ try_project_lint_command() {
         log_debug "Checking make targets: $make_targets"
         for target in $make_targets; do
             if check_make_target "$target" "$cmd_root"; then
-                log_info "🔨 Running 'make $target' from $cmd_root"
-                
                 # Run make command with FILE argument
                 local make_output
                 local make_exit_code
@@ -690,9 +689,12 @@ try_project_lint_command() {
                     log_debug "Make command failed with exit code: $make_exit_code"
                 fi
                 
-                # Output any make output
-                if [[ -n "$make_output" ]]; then
-                    echo "$make_output" >&2
+                # Output information if it failed OR if in test mode
+                if [[ $make_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
+                    log_info "🔨 Running 'make $target' from $cmd_root"
+                    if [[ -n "$make_output" ]]; then
+                        echo "$make_output" >&2
+                    fi
                 fi
                 
                 # Return make's exit code
@@ -706,8 +708,6 @@ try_project_lint_command() {
         log_debug "Checking scripts: $script_names"
         for script in $script_names; do
             if check_script_exists "$script" "$cmd_root/scripts"; then
-                log_info "📜 Running 'scripts/$script' from $cmd_root"
-                
                 # Run script with file argument
                 local script_output
                 local script_exit_code
@@ -721,9 +721,12 @@ try_project_lint_command() {
                     log_debug "Script failed with exit code: $script_exit_code"
                 fi
                 
-                # Output any script output
-                if [[ -n "$script_output" ]]; then
-                    echo "$script_output" >&2
+                # Output information if it failed OR if in test mode
+                if [[ $script_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
+                    log_info "📜 Running 'scripts/$script' from $cmd_root"
+                    if [[ -n "$script_output" ]]; then
+                        echo "$script_output" >&2
+                    fi
                 fi
                 
                 # Return script's exit code

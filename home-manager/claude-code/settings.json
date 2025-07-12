@@ -3,7 +3,16 @@
     "PostToolUse": [
       {
         "matcher": "Write|Edit|MultiEdit",
-        "hooks": []
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/smart-lint.sh"
+          },
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/smart-test.sh"
+          }
+        ]
       }
     ],
     "Stop": [

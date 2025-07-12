@@ -59,6 +59,7 @@ setup_edge_cases() {
 
 cleanup() {
     cleanup_test
+    unset CLAUDE_HOOKS_FILE_SKIPPED
 }
 
 # Source the required files
@@ -359,6 +360,7 @@ Describe 'test-tilt.sh'
             setup_ignore_with_errors() {
                 setup_ignore_patterns
                 init_error_tracking
+                unset CLAUDE_HOOKS_FILE_SKIPPED
             }
             
             BeforeEach 'setup_ignore_with_errors'

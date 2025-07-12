@@ -183,7 +183,7 @@ Describe 'smart-test.sh'
             AfterEach 'cleanup_makefile'
             
             It 'uses make test instead of go test'
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
                 The status should equal 2
                 The stderr should include "Running 'make test'"
                 The stderr should include "Running project tests with FILE=main.go"
@@ -194,7 +194,7 @@ Describe 'smart-test.sh'
                 mkdir -p src
                 mv main.go src/
                 mv main_test.go src/
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$TEMP_DIR/src/main.go")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "$TEMP_DIR/src/main.go")"
                 The status should equal 2
                 The stderr should include "FILE=src/main.go"
             End
@@ -225,7 +225,7 @@ Describe 'smart-test.sh'
             AfterEach 'cleanup_scripts'
             
             It 'uses scripts/test instead of pytest'
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "calculator.py")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "calculator.py")"
                 The status should equal 2
                 The stderr should include "Running 'scripts/test'"
                 The stderr should include "Running project test script"
@@ -233,7 +233,7 @@ Describe 'smart-test.sh'
             End
             
             It 'passes file argument to script'
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "calculator.py")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "calculator.py")"
                 The status should equal 2
                 The stderr should include "FILE=calculator.py"
                 The stderr should include "Testing specific file: calculator.py"
@@ -266,7 +266,7 @@ EOF
             
             It 'respects custom make target configuration'
                 export CLAUDE_HOOKS_MAKE_TEST_TARGETS="test-unit verify"
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
                 The status should equal 2
                 The stderr should include "Running 'make test-unit'"
                 The stderr should include "Running unit tests"
@@ -275,7 +275,7 @@ EOF
             
             It 'tries targets in order'
                 export CLAUDE_HOOKS_MAKE_TEST_TARGETS="nonexistent test"
-                When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
+                When run run_hook_with_json_test_mode "smart-test.sh" "$(create_post_tool_use_json "Edit" "main.go")"
                 The status should equal 2
                 The stderr should include "Running 'make test'"
             End

@@ -13,6 +13,10 @@ setup_basic() {
     unset CLAUDE_HOOKS_NTFY_TOKEN
     # Clean up any rate limit files
     rm -f /tmp/.claude-ntfy-rate-limit
+    # Override HOME to prevent reading actual config file
+    export HOME="$TEMP_DIR"
+    # Mock curl to prevent actual network calls
+    mock_command "curl" 0
 }
 
 setup_with_config() {

@@ -32,11 +32,6 @@ set -euo pipefail
 # CONFIGURATION
 # ============================================================================
 
-# Check if notifications are enabled (allow easy disable)
-if [[ "${CLAUDE_HOOKS_NTFY_ENABLED:-}" != "true" ]]; then
-    exit 0
-fi
-
 # Parse command line arguments
 DEBUG=false
 while [[ $# -gt 0 ]]; do
@@ -52,6 +47,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Use CLAUDE_HOOKS_DEBUG environment variable or command line flag
+if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]] || [[ "$DEBUG" == "true" ]]; then
+    DEBUG=true
+fi
+
 # Debug logging function
 log_debug() {
     if [[ "$DEBUG" == "true" ]]; then
@@ -59,14 +59,38 @@ log_debug() {
     fi
 }
 
+# Check if notifications are enabled (allow easy disable)
+if [[ "${CLAUDE_HOOKS_NTFY_ENABLED:-}" != "true" ]]; then
+    log_debug "ntfy notifications disabled (CLAUDE_HOOKS_NTFY_ENABLED != true)"
+    exit 0
+fi
+
+# Try to read configuration from file if CLAUDE_HOOKS_NTFY_URL is not set
+if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]]; then
+    CONFIG_FILE="$HOME/.config/claude-code-ntfy/config.yaml"
+    if [[ -f "$CONFIG_FILE" ]]; then
+        # Extract ntfy_server and ntfy_topic from config file
+        NTFY_SERVER=$(grep "^ntfy_server:" "$CONFIG_FILE" 2>/dev/null | sed 's/^ntfy_server:[ ]*//' | tr -d '"' || true)
+        NTFY_TOPIC=$(grep "^ntfy_topic:" "$CONFIG_FILE" 2>/dev/null | sed 's/^ntfy_topic:[ ]*//' | tr -d '"' || true)
+        
+        if [[ -n "$NTFY_SERVER" ]] && [[ -n "$NTFY_TOPIC" ]]; then
+            export CLAUDE_HOOKS_NTFY_URL="${NTFY_SERVER}/${NTFY_TOPIC}"
+            log_debug "Loaded ntfy config from $CONFIG_FILE"
+            log_debug "Server: $NTFY_SERVER, Topic: $NTFY_TOPIC"
+        fi
+    fi
+fi
+
 # Check configuration
 if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]]; then
+    log_debug "CLAUDE_HOOKS_NTFY_URL not configured"
     echo "CLAUDE_HOOKS_NTFY_URL not configured" >&2
     exit 0
 fi
 
 # Check if curl is available
 if ! command -v curl >/dev/null 2>&1; then
+    log_debug "curl not found"
     echo "curl not found" >&2
     exit 0
 fi
@@ -88,6 +112,7 @@ if [[ -f "$RATE_LIMIT_FILE" ]]; then
     
     # Limit to one notification per 2 seconds
     if [[ $TIME_DIFF -lt 2 ]]; then
+        log_debug "Rate limit: skipping notification (last was ${TIME_DIFF}s ago)"
         exit 0
     fi
 fi
@@ -110,6 +135,8 @@ send_notification() {
     local max_retries=2
     local retry_count=0
     
+    log_debug "send_notification called with message: $message"
+    
     while [[ $retry_count -lt $max_retries ]]; do
         local curl_args=(-s --max-time 5 -X POST)
         
@@ -121,14 +148,29 @@ send_notification() {
         # Add message and URL
         curl_args+=(-d "$message" "$CLAUDE_HOOKS_NTFY_URL")
         
+        # Log curl args but hide the auth token
+        local safe_args=()
+        for arg in "${curl_args[@]}"; do
+            if [[ "$arg" == "Authorization: Bearer"* ]]; then
+                safe_args+=("Authorization: Bearer [REDACTED]")
+            else
+                safe_args+=("$arg")
+            fi
+        done
+        log_debug "Attempting curl with args: ${safe_args[*]}"
+        
         if curl "${curl_args[@]}" >/dev/null 2>&1; then
+            log_debug "Notification sent successfully"
             return 0
+        else
+            log_debug "Curl failed (attempt $((retry_count + 1))/$max_retries)"
         fi
         
         retry_count=$((retry_count + 1))
         [[ $retry_count -lt $max_retries ]] && sleep 1
     done
     
+    log_debug "Failed to send notification after $max_retries attempts"
     echo "Failed to send notification after $max_retries attempts" >&2
     return 1
 }
@@ -144,6 +186,10 @@ format_notification() {
                 local file_path
                 file_path=$(echo "$tool_input" | jq -r '.file_path // empty' 2>/dev/null)
                 if [[ -n "$file_path" ]]; then
+                    # Truncate long paths
+                    if [[ ${#file_path} -gt 50 ]]; then
+                        file_path="...${file_path: -47}"
+                    fi
                     echo "$tool: $file_path"
                 else
                     echo "$tool"
@@ -157,6 +203,10 @@ format_notification() {
                 local command
                 command=$(echo "$tool_input" | jq -r '.command // empty' 2>/dev/null)
                 if [[ -n "$command" ]]; then
+                    # Truncate long commands
+                    if [[ ${#command} -gt 50 ]]; then
+                        command="${command:0:47}..."
+                    fi
                     echo "$tool: $command"
                 else
                     echo "$tool"
@@ -167,9 +217,11 @@ format_notification() {
             ;;
         "Read")
             # Ignore Read tool notifications
+            log_debug "Ignoring Read tool"
             return 1
             ;;
         *)
+            log_debug "Formatting notification for tool: $tool"
             echo "$tool"
             ;;
     esac
@@ -184,6 +236,9 @@ if [[ ! -t 0 ]]; then
     # Read JSON input
     JSON_INPUT=$(cat)
     
+    # Log raw JSON input for debugging
+    log_debug "Raw JSON input: $JSON_INPUT"
+    
     # Ensure jq is available for JSON parsing
     if ! command -v jq >/dev/null 2>&1; then
         log_debug "jq not available for JSON parsing"
@@ -195,8 +250,14 @@ if [[ ! -t 0 ]]; then
         EVENT=$(echo "$JSON_INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
         TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
         TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // "{}"' 2>/dev/null)
+        TOOL_RESPONSE=$(echo "$JSON_INPUT" | jq -r '.tool_response // "{}"' 2>/dev/null)
         
-        # Only process PostToolUse events
+        log_debug "Parsed event: $EVENT"
+        log_debug "Tool name: $TOOL_NAME"
+        log_debug "Tool input: $TOOL_INPUT"
+        log_debug "Tool response: $TOOL_RESPONSE"
+        
+        # Process different event types
         if [[ "$EVENT" == "PostToolUse" ]]; then
             # Format notification message
             if MESSAGE=$(format_notification "$TOOL_NAME" "$TOOL_INPUT"); then
@@ -206,8 +267,18 @@ if [[ ! -t 0 ]]; then
                 log_debug "Ignoring tool: $TOOL_NAME"
                 exit 0
             fi
+        elif [[ "$EVENT" == "Stop" ]] || [[ "$EVENT" == "SubagentStop" ]]; then
+            # Handle Stop events
+            log_debug "Processing Stop event: $EVENT"
+            MESSAGE="Session stopped"
+            send_notification "$MESSAGE"
+        elif [[ "$EVENT" == "Notification" ]]; then
+            # Handle Notification events
+            MESSAGE=$(echo "$JSON_INPUT" | jq -r '.message // "Notification"' 2>/dev/null)
+            log_debug "Processing Notification event: $MESSAGE"
+            send_notification "$MESSAGE"
         else
-            log_debug "Ignoring event: $EVENT"
+            log_debug "Ignoring unknown event: $EVENT"
             exit 0
         fi
     else

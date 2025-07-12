@@ -1,5 +1,5 @@
 package main
 
 func main() {
-    // Regular Go code
+	// Regular Go code
 }

@@ -9,7 +9,7 @@ func main() {
 	fmt.Println("Hello, World!")
 	result := Add(2, 3)
 	fmt.Printf("2 + 3 = %d\n", result)
-	
+
 	greeting := util.Greet("Go")
 	fmt.Println(greeting)
 }

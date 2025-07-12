@@ -67,7 +67,7 @@ func TestCalculateScore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := CalculateScore(tt.base, tt.multiplier, tt.bonus)
 			if got != tt.expected {
-				t.Errorf("CalculateScore(%d, %f, %d) = %d; want %d", 
+				t.Errorf("CalculateScore(%d, %f, %d) = %d; want %d",
 					tt.base, tt.multiplier, tt.bonus, got, tt.expected)
 			}
 		})

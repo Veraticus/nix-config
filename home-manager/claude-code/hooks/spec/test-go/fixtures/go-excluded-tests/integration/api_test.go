@@ -19,7 +19,7 @@ func TestAPIClientGetUser(t *testing.T) {
 	defer server.Close()
 
 	client := NewAPIClient(server.URL)
-	
+
 	t.Run("existing user", func(t *testing.T) {
 		data, err := client.GetUser("123")
 		if err != nil {
@@ -29,7 +29,7 @@ func TestAPIClientGetUser(t *testing.T) {
 			t.Error("expected data, got empty string")
 		}
 	})
-	
+
 	t.Run("non-existing user", func(t *testing.T) {
 		_, err := client.GetUser("999")
 		if err == nil {
@@ -50,7 +50,7 @@ func TestAPIClientPostData(t *testing.T) {
 	defer server.Close()
 
 	client := NewAPIClient(server.URL)
-	
+
 	err := client.PostData("data", []byte(`{"key": "value"}`))
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -60,12 +60,12 @@ func TestAPIClientPostData(t *testing.T) {
 func TestIntegrationDatabaseConnection(t *testing.T) {
 	// This would be a database integration test
 	t.Log("This is a database integration test that should be excluded")
-	
+
 	// Simulate database connection test
 	if testing.Short() {
 		t.Skip("skipping database integration test in short mode")
 	}
-	
+
 	// Test would connect to real database here
 	t.Log("Testing database connection...")
 }

@@ -50,20 +50,20 @@ if [[ "$1" == "." ]]; then
     exit 0
 elif [[ "$1" == "-r" ]]; then
     case "$2" in
-        ".event // empty")
+        ".hook_event_name // empty")
             echo "PostToolUse"
             ;;
-        ".tool // empty")
+        ".tool_name // empty")
             # Extract tool from input
-            if echo "$input" | grep -q '"tool":"Edit"'; then
+            if echo "$input" | grep -q '"tool_name":"Edit"'; then
                 echo "Edit"
-            elif echo "$input" | grep -q '"tool":"Write"'; then
+            elif echo "$input" | grep -q '"tool_name":"Write"'; then
                 echo "Write"
-            elif echo "$input" | grep -q '"tool":"MultiEdit"'; then
+            elif echo "$input" | grep -q '"tool_name":"MultiEdit"'; then
                 echo "MultiEdit"
-            elif echo "$input" | grep -q '"tool":"Bash"'; then
+            elif echo "$input" | grep -q '"tool_name":"Bash"'; then
                 echo "Bash"
-            elif echo "$input" | grep -q '"tool":"Read"'; then
+            elif echo "$input" | grep -q '"tool_name":"Read"'; then
                 echo "Read"
             else
                 echo "CustomTool"
@@ -242,7 +242,7 @@ Describe 'ntfy-notifier.sh'
             mock_jq_for_ntfy
             args_file=$(mock_command_with_args "curl")
             
-            json='{"event":"PostToolUse","tool":"Bash","tool_input":{"command":"ls -la"}}'
+            json='{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"ls -la"}}'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             
@@ -264,7 +264,7 @@ Describe 'ntfy-notifier.sh'
             mock_jq_for_ntfy
             args_file=$(mock_command_with_args "curl")
             
-            json='{"event":"PostToolUse","tool":"CustomTool","tool_input":{"action":"deploy"}}'
+            json='{"hook_event_name":"PostToolUse","tool_name":"CustomTool","tool_input":{"action":"deploy"}}'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             
@@ -354,7 +354,7 @@ Describe 'ntfy-notifier.sh'
             mock_jq_for_ntfy
             args_file=$(mock_command_with_args "curl")
             
-            json='{"event":"PostToolUse","tool":"Edit","tool_input":{}}'
+            json='{"hook_event_name":"PostToolUse","tool_name":"Edit","tool_input":{}}'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             
@@ -367,7 +367,7 @@ Describe 'ntfy-notifier.sh'
             mock_jq_for_ntfy
             args_file=$(mock_command_with_args "curl")
             
-            json='{"event":"PostToolUse","tool":"Bash","tool_input":{}}'
+            json='{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{}}'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             

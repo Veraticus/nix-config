@@ -282,4 +282,160 @@ Describe 'common-helpers.sh'
             The stderr should include "Custom success message"
         End
     End
+    
+    Describe 'Project command discovery'
+        BeforeEach 'setup_basic'
+        AfterEach 'cleanup'
+        
+        Describe 'find_project_command_root()'
+            It 'finds Makefile in current directory'
+                echo 'lint:' > Makefile
+                When call find_project_command_root "$TEMP_DIR"
+                The output should equal "$TEMP_DIR"
+                The status should be success
+            End
+            
+            It 'finds scripts directory in current directory'
+                mkdir scripts
+                When call find_project_command_root "$TEMP_DIR"
+                The output should equal "$TEMP_DIR"
+                The status should be success
+            End
+            
+            It 'finds Makefile in parent directory'
+                mkdir -p subdir/nested
+                echo 'lint:' > Makefile
+                When call find_project_command_root "$TEMP_DIR/subdir/nested"
+                The output should equal "$TEMP_DIR"
+                The status should be success
+            End
+            
+            It 'stops at project root markers'
+                mkdir -p project/src
+                touch project/go.mod
+                When call find_project_command_root "$TEMP_DIR/project/src"
+                The status should be failure
+            End
+            
+            It 'returns failure when no command root found'
+                mkdir -p deeply/nested/structure
+                When call find_project_command_root "$TEMP_DIR/deeply/nested/structure"
+                The status should be failure
+            End
+        End
+        
+        Describe 'check_make_target()'
+            BeforeEach 'setup_basic'
+            AfterEach 'cleanup'
+            
+            It 'returns success for existing target'
+                cat > Makefile << 'EOF'
+lint:
+	@echo "Linting"
+EOF
+                When call check_make_target "lint" "$TEMP_DIR"
+                The status should be success
+            End
+            
+            It 'returns failure for non-existing target'
+                cat > Makefile << 'EOF'
+build:
+	@echo "Building"
+EOF
+                When call check_make_target "lint" "$TEMP_DIR"
+                The status should be failure
+            End
+            
+            It 'handles missing Makefile gracefully'
+                When call check_make_target "lint" "$TEMP_DIR"
+                The status should be failure
+            End
+        End
+        
+        Describe 'check_script_exists()'
+            It 'returns success for executable script'
+                mkdir scripts
+                echo '#!/bin/bash' > scripts/lint
+                chmod +x scripts/lint
+                When call check_script_exists "lint" "$TEMP_DIR/scripts"
+                The status should be success
+            End
+            
+            It 'returns failure for non-executable script'
+                mkdir scripts
+                echo '#!/bin/bash' > scripts/lint
+                When call check_script_exists "lint" "$TEMP_DIR/scripts"
+                The status should be failure
+            End
+            
+            It 'returns failure for missing script'
+                mkdir scripts
+                When call check_script_exists "lint" "$TEMP_DIR/scripts"
+                The status should be failure
+            End
+        End
+        
+        Describe 'calculate_relative_path()'
+            It 'calculates simple relative path'
+                mkdir -p project/src
+                touch project/src/main.go
+                When call calculate_relative_path "$TEMP_DIR/project" "$TEMP_DIR/project/src/main.go"
+                The output should equal "src/main.go"
+            End
+            
+            It 'handles same directory'
+                touch main.go
+                When call calculate_relative_path "$TEMP_DIR" "$TEMP_DIR/main.go"
+                The output should equal "main.go"
+            End
+            
+            It 'handles complex paths'
+                mkdir -p a/b/c
+                mkdir -p a/d/e
+                touch a/d/e/file.txt
+                When call calculate_relative_path "$TEMP_DIR/a/b/c" "$TEMP_DIR/a/d/e/file.txt"
+                # Output depends on whether realpath is available
+                The output should match pattern "*file.txt"
+            End
+        End
+        
+        Describe 'get_project_command_config()'
+            BeforeEach 'setup_basic'
+            AfterEach 'cleanup'
+            
+            It 'returns default lint configuration'
+                When call get_project_command_config "lint"
+                The line 1 of output should equal "lint"
+                The line 2 of output should equal "lint"
+                The status should be success
+            End
+            
+            It 'returns default test configuration'
+                When call get_project_command_config "test"
+                The line 1 of output should equal "test"
+                The line 2 of output should equal "test"
+                The status should be success
+            End
+            
+            It 'respects custom configuration'
+                export CLAUDE_HOOKS_MAKE_LINT_TARGETS="check fmt"
+                export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="style.sh lint.py"
+                When call get_project_command_config "lint"
+                The line 1 of output should equal "check fmt"
+                The line 2 of output should equal "style.sh lint.py"
+            End
+            
+            It 'returns failure when globally disabled'
+                export CLAUDE_HOOKS_USE_PROJECT_COMMANDS=false
+                When call get_project_command_config "lint"
+                The status should be failure
+            End
+            
+            It 'returns failure for unknown command type'
+                When call get_project_command_config "unknown"
+                The status should be failure
+                The stderr should include "Unknown command type: unknown"
+            End
+        End
+    End
 End

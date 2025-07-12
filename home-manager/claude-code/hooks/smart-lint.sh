@@ -34,6 +34,9 @@ set +e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common-helpers.sh"
 
+# Debug output after sourcing helpers so we have log_debug
+log_debug "smart-lint.sh started"
+
 # ============================================================================
 # PROJECT DETECTION
 # ============================================================================
@@ -142,6 +145,20 @@ load_config() {
     export CLAUDE_HOOKS_NIX_ENABLED="${CLAUDE_HOOKS_NIX_ENABLED:-true}"
     export CLAUDE_HOOKS_TILT_ENABLED="${CLAUDE_HOOKS_TILT_ENABLED:-true}"
     
+    # Project command configuration
+    export CLAUDE_HOOKS_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_MAKE_LINT_TARGETS="${CLAUDE_HOOKS_MAKE_LINT_TARGETS:-lint}"
+    export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="${CLAUDE_HOOKS_SCRIPT_LINT_NAMES:-lint}"
+    
+    # Per-language project command opt-out
+    export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS:-true}"
+    
     # Project-specific overrides
     if [[ -f ".claude-hooks-config.sh" ]]; then
         # shellcheck disable=SC1091
@@ -154,6 +171,10 @@ load_config() {
     # Quick exit if hooks are disabled
     if [[ "$CLAUDE_HOOKS_ENABLED" != "true" ]]; then
         log_info "Claude hooks are disabled"
+        log_debug "Exiting because CLAUDE_HOOKS_ENABLED=$CLAUDE_HOOKS_ENABLED"
+        if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+            exit 2  # Exit 2 in debug mode to show output
+        fi
         exit 0
     fi
 }
@@ -526,17 +547,24 @@ fi
 
 if [ ! -t 0 ]; then
     # We have input on stdin - try to read it
+    log_debug "Reading JSON from stdin"
     JSON_INPUT=$(cat)
     
     # Check if it's valid JSON
     if echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
+        log_debug "Valid JSON input"
+        
+        
         # Extract relevant fields from the JSON
-        EVENT=$(echo "$JSON_INPUT" | jq -r '.event // empty')
-        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool // empty')
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.hook_event_name // empty')
+        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool_name // empty')
         TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // empty')
+        
+        log_debug "Event: $EVENT, Tool: $TOOL_NAME"
         
         # Only process edit-related tools
         if [[ "$EVENT" == "PostToolUse" ]] && [[ "$TOOL_NAME" =~ ^(Edit|Write|MultiEdit)$ ]]; then
+            log_debug "Processing $TOOL_NAME operation"
             # Extract file path(s) that were edited
             if [[ "$TOOL_NAME" == "MultiEdit" ]]; then
                 FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // empty')
@@ -549,9 +577,16 @@ if [ ! -t 0 ]; then
                 FILE_DIR=$(dirname "$FILE_PATH")
                 cd "$FILE_DIR" || true
                 log_debug "Changed to file directory: $(pwd)"
+                # Update FILE_PATH to just the basename since we've changed directories
+                FILE_PATH=$(basename "$FILE_PATH")
+                log_debug "FILE_PATH is now: $FILE_PATH"
             fi
         else
             # Not an edit operation - exit silently
+            log_debug "Not an edit operation (Event: $EVENT, Tool: $TOOL_NAME), exiting silently"
+            if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+                exit 2  # Exit 2 in debug mode to show output
+            fi
             exit 0
         fi
     else
@@ -564,6 +599,142 @@ else
     log_error "No JSON input provided. This hook only works with Claude Code."
     exit 1
 fi
+
+# ============================================================================
+# PROJECT COMMAND INTEGRATION
+# ============================================================================
+
+# Try to use project-specific lint command (make target or script)
+try_project_lint_command() {
+    local file_path="$1"
+    local language="$2"
+    
+    # Check if project commands are disabled globally
+    if [[ "${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}" != "true" ]]; then
+        log_debug "Project commands disabled globally"
+        return 1
+    fi
+    
+    # Check language-specific opt-out
+    local opt_out_var="CLAUDE_HOOKS_${language^^}_USE_PROJECT_COMMANDS"
+    if [[ "${!opt_out_var:-true}" != "true" ]]; then
+        log_debug "Project commands disabled for $language"
+        return 1
+    fi
+    
+    # Get file directory (absolute path)
+    local file_dir
+    # Since we already cd'd to the file directory, file_path is just the basename
+    # So we need to use PWD as the file directory
+    file_dir="$PWD"
+    
+    # Find command root (Makefile or scripts/)
+    local cmd_root
+    cmd_root=$(find_project_command_root "$file_dir")
+    if [[ -z "$cmd_root" ]]; then
+        log_debug "No project command root found"
+        return 1
+    fi
+    
+    log_debug "Found project command root: $cmd_root"
+    
+    # Calculate relative path from command root to file
+    local rel_path
+    # Since we're already in the file's directory, file_path is just the basename
+    # We need to calculate the path from command root to the current directory + filename
+    if [[ "$cmd_root" == "$PWD" ]]; then
+        # Command root is the current directory, just use the filename
+        rel_path="$file_path"
+    else
+        # Calculate relative path from command root to current directory
+        local dir_rel_path
+        dir_rel_path=$(calculate_relative_path "$cmd_root" "$PWD")
+        if [[ "$dir_rel_path" == "." ]]; then
+            rel_path="$file_path"
+        else
+            rel_path="$dir_rel_path/$file_path"
+        fi
+    fi
+    
+    log_debug "Relative path from command root: $rel_path"
+    
+    # Get configured targets/scripts
+    local config_output
+    if ! config_output=$(get_project_command_config "lint"); then
+        log_debug "Failed to get project command config"
+        return 1
+    fi
+    
+    local make_targets
+    local script_names
+    make_targets=$(echo "$config_output" | head -1)
+    script_names=$(echo "$config_output" | tail -1)
+    
+    # Try make targets first
+    if [[ -f "$cmd_root/Makefile" ]]; then
+        log_debug "Checking make targets: $make_targets"
+        for target in $make_targets; do
+            if check_make_target "$target" "$cmd_root"; then
+                log_info "🔨 Running 'make $target' from $cmd_root"
+                
+                # Run make command with FILE argument
+                local make_output
+                local make_exit_code
+                
+                # Change to command root and run make
+                if make_output=$(cd "$cmd_root" && make "$target" FILE="$rel_path" 2>&1); then
+                    make_exit_code=0
+                    log_debug "Make command succeeded"
+                else
+                    make_exit_code=$?
+                    log_debug "Make command failed with exit code: $make_exit_code"
+                fi
+                
+                # Output any make output
+                if [[ -n "$make_output" ]]; then
+                    echo "$make_output" >&2
+                fi
+                
+                # Return make's exit code
+                return $make_exit_code
+            fi
+        done
+    fi
+    
+    # Try scripts if no make target worked
+    if [[ -d "$cmd_root/scripts" ]]; then
+        log_debug "Checking scripts: $script_names"
+        for script in $script_names; do
+            if check_script_exists "$script" "$cmd_root/scripts"; then
+                log_info "📜 Running 'scripts/$script' from $cmd_root"
+                
+                # Run script with file argument
+                local script_output
+                local script_exit_code
+                
+                # Change to command root and run script
+                if script_output=$(cd "$cmd_root" && "./scripts/$script" "$rel_path" 2>&1); then
+                    script_exit_code=0
+                    log_debug "Script succeeded"
+                else
+                    script_exit_code=$?
+                    log_debug "Script failed with exit code: $script_exit_code"
+                fi
+                
+                # Output any script output
+                if [[ -n "$script_output" ]]; then
+                    echo "$script_output" >&2
+                fi
+                
+                # Return script's exit code
+                return $script_exit_code
+            fi
+        done
+    fi
+    
+    log_debug "No project commands found"
+    return 1
+}
 
 # ============================================================================
 # MAIN EXECUTION
@@ -595,7 +766,41 @@ main() {
         IFS=',' read -ra TYPE_ARRAY <<< "$type_string"
         
         for type in "${TYPE_ARRAY[@]}"; do
-            case "$type" in
+            # Try project command first
+            if try_project_lint_command "$FILE_PATH" "$type"; then
+                log_debug "Used project command for $type linting"
+            else
+                # Fall back to language-specific linters
+                case "$type" in
+                    "go") lint_go ;;
+                    "python") lint_python ;;
+                    "javascript") lint_javascript ;;
+                    "rust") lint_rust ;;
+                    "nix") lint_nix ;;
+                    "shell") lint_shell ;;
+                    "tilt") 
+                        if type -t lint_tilt &>/dev/null; then
+                            lint_tilt
+                        else
+                            log_debug "Tilt linting function not available"
+                        fi
+                        ;;
+                esac
+            fi
+            
+            # Fail fast if configured
+            if [[ "$CLAUDE_HOOKS_FAIL_FAST" == "true" && $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
+                break
+            fi
+        done
+    else
+        # Single project type
+        # Try project command first
+        if [[ "$PROJECT_TYPE" != "unknown" ]] && try_project_lint_command "$FILE_PATH" "$PROJECT_TYPE"; then
+            log_debug "Used project command for $PROJECT_TYPE linting"
+        else
+            # Fall back to language-specific linters
+            case "$PROJECT_TYPE" in
                 "go") lint_go ;;
                 "python") lint_python ;;
                 "javascript") lint_javascript ;;
@@ -609,33 +814,11 @@ main() {
                         log_debug "Tilt linting function not available"
                     fi
                     ;;
+                "unknown") 
+                    log_debug "No recognized project type, skipping checks"
+                    ;;
             esac
-            
-            # Fail fast if configured
-            if [[ "$CLAUDE_HOOKS_FAIL_FAST" == "true" && $CLAUDE_HOOKS_ERROR_COUNT -gt 0 ]]; then
-                break
-            fi
-        done
-    else
-        # Single project type
-        case "$PROJECT_TYPE" in
-            "go") lint_go ;;
-            "python") lint_python ;;
-            "javascript") lint_javascript ;;
-            "rust") lint_rust ;;
-            "nix") lint_nix ;;
-            "shell") lint_shell ;;
-            "tilt") 
-                if type -t lint_tilt &>/dev/null; then
-                    lint_tilt
-                else
-                    log_debug "Tilt linting function not available"
-                fi
-                ;;
-            "unknown") 
-                log_debug "No recognized project type, skipping checks"
-                ;;
-        esac
+        fi
     fi
     
     # Show timing if enabled
@@ -661,6 +844,11 @@ if [[ $exit_code -eq 2 ]]; then
     echo -e "${RED}⛔ BLOCKING: Must fix ALL errors above before continuing${NC}" >&2
     exit 2
 else
+    # In debug mode, always exit 2 to show debug output
+    if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+        echo -e "${CYAN}[DEBUG]${NC} Hook completed successfully (debug mode active)" >&2
+        exit 2
+    fi
     # Always exit with 2 so Claude sees the continuation message
     exit_with_success_message "${YELLOW}👉 Style clean. Continue with your task.${NC}"
 fi

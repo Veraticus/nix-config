@@ -28,6 +28,15 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/common-helpers.sh"
 
+# Override add_error to also print immediately
+add_error() {
+    local message="$1"
+    CLAUDE_HOOKS_ERROR_COUNT+=1
+    CLAUDE_HOOKS_ERRORS+=("${RED}❌${NC} $message")
+    # Print error immediately to stderr so tests can capture it
+    echo -e "${RED}❌${NC} $message" >&2
+}
+
 
 # ============================================================================
 # CONFIGURATION LOADING
@@ -40,6 +49,20 @@ load_config() {
     export CLAUDE_HOOKS_ENABLE_RACE="${CLAUDE_HOOKS_ENABLE_RACE:-true}"
     export CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS="${CLAUDE_HOOKS_FAIL_ON_MISSING_TESTS:-false}"
     export CLAUDE_HOOKS_TEST_VERBOSE="${CLAUDE_HOOKS_TEST_VERBOSE:-false}"
+    
+    # Project command configuration
+    export CLAUDE_HOOKS_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_MAKE_TEST_TARGETS="${CLAUDE_HOOKS_MAKE_TEST_TARGETS:-test}"
+    export CLAUDE_HOOKS_SCRIPT_TEST_NAMES="${CLAUDE_HOOKS_SCRIPT_TEST_NAMES:-test}"
+    
+    # Per-language project command opt-out
+    export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS:-true}"
+    export CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS="${CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS:-true}"
     
     # Load project config
     load_project_config
@@ -85,8 +108,8 @@ if [ ! -t 0 ]; then
         log_debug "Valid JSON detected"
         
         # Extract relevant fields from the JSON
-        EVENT=$(echo "$JSON_INPUT" | jq -r '.event // empty')
-        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool // empty')
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.hook_event_name // empty')
+        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool_name // empty')
         TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // empty')
         
         log_debug "Parsed JSON - Event: $EVENT, Tool: $TOOL_NAME"
@@ -784,6 +807,152 @@ run_rust_tests() {
 }
 
 # ============================================================================
+# PROJECT COMMAND INTEGRATION
+# ============================================================================
+
+# Try to use project-specific test command (make target or script)
+try_project_test_command() {
+    local file_path="$1"
+    local language="$2"
+    
+    # Check if project commands are disabled globally
+    if [[ "${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}" != "true" ]]; then
+        log_debug "Project commands disabled globally"
+        return 1
+    fi
+    
+    # Check language-specific opt-out
+    local opt_out_var="CLAUDE_HOOKS_${language^^}_USE_PROJECT_COMMANDS"
+    if [[ "${!opt_out_var:-true}" != "true" ]]; then
+        log_debug "Project commands disabled for $language"
+        return 1
+    fi
+    
+    # Get file directory (absolute path)
+    local file_dir
+    # Since we already cd'd to the file directory, file_path is just the basename
+    # So we need to use PWD as the file directory
+    file_dir="$PWD"
+    
+    # Find command root (Makefile or scripts/)
+    local cmd_root
+    cmd_root=$(find_project_command_root "$file_dir")
+    if [[ -z "$cmd_root" ]]; then
+        log_debug "No project command root found"
+        return 1
+    fi
+    
+    log_debug "Found project command root: $cmd_root"
+    
+    # Calculate relative path from command root to file
+    local rel_path
+    # Since we're already in the file's directory, file_path is just the basename
+    # We need to calculate the path from command root to the current directory + filename
+    if [[ "$cmd_root" == "$PWD" ]]; then
+        # Command root is the current directory, just use the filename
+        rel_path="$file_path"
+    else
+        # Calculate relative path from command root to current directory
+        local dir_rel_path
+        dir_rel_path=$(calculate_relative_path "$cmd_root" "$PWD")
+        if [[ "$dir_rel_path" == "." ]]; then
+            rel_path="$file_path"
+        else
+            rel_path="$dir_rel_path/$file_path"
+        fi
+    fi
+    
+    log_debug "Relative path from command root: $rel_path"
+    
+    # Get configured targets/scripts
+    local config_output
+    if ! config_output=$(get_project_command_config "test"); then
+        log_debug "Failed to get project command config"
+        return 1
+    fi
+    
+    local make_targets
+    local script_names
+    make_targets=$(echo "$config_output" | head -1)
+    script_names=$(echo "$config_output" | tail -1)
+    
+    # Try make targets first
+    if [[ -f "$cmd_root/Makefile" ]]; then
+        log_debug "Checking make targets: $make_targets"
+        for target in $make_targets; do
+            if check_make_target "$target" "$cmd_root"; then
+                log_info "🔨 Running 'make $target' from $cmd_root"
+                
+                # Run make command with FILE argument
+                local make_output
+                local make_exit_code
+                
+                # Change to command root and run make
+                if make_output=$(cd "$cmd_root" && make "$target" FILE="$rel_path" 2>&1); then
+                    make_exit_code=0
+                    log_debug "Make command succeeded"
+                else
+                    make_exit_code=$?
+                    log_debug "Make command failed with exit code: $make_exit_code"
+                fi
+                
+                # Output any make output
+                if [[ -n "$make_output" ]]; then
+                    echo "$make_output" >&2
+                fi
+                
+                # If make failed, we need to handle errors
+                if [[ $make_exit_code -ne 0 ]]; then
+                    add_error "Tests failed (make $target)"
+                fi
+                
+                # Return 0 to indicate we found and ran the command (even if tests failed)
+                return 0
+            fi
+        done
+    fi
+    
+    # Try scripts if no make target worked
+    if [[ -d "$cmd_root/scripts" ]]; then
+        log_debug "Checking scripts: $script_names"
+        for script in $script_names; do
+            if check_script_exists "$script" "$cmd_root/scripts"; then
+                log_info "📜 Running 'scripts/$script' from $cmd_root"
+                
+                # Run script with file argument
+                local script_output
+                local script_exit_code
+                
+                # Change to command root and run script
+                if script_output=$(cd "$cmd_root" && "./scripts/$script" "$rel_path" 2>&1); then
+                    script_exit_code=0
+                    log_debug "Script succeeded"
+                else
+                    script_exit_code=$?
+                    log_debug "Script failed with exit code: $script_exit_code"
+                fi
+                
+                # Output any script output
+                if [[ -n "$script_output" ]]; then
+                    echo "$script_output" >&2
+                fi
+                
+                # If script failed, we need to handle errors
+                if [[ $script_exit_code -ne 0 ]]; then
+                    add_error "Tests failed (scripts/$script)"
+                fi
+                
+                # Return 0 to indicate we found and ran the command (even if tests failed)
+                return 0
+            fi
+        done
+    fi
+    
+    log_debug "No project commands found"
+    return 1
+}
+
+# ============================================================================
 # MAIN EXECUTION
 # ============================================================================
 
@@ -802,51 +971,88 @@ main() {
     log_debug "Starting main() with FILE_PATH: $FILE_PATH"
     log_debug "Current directory: $(pwd)"
     
-    # Language-specific test runners
+    # Determine the language based on file extension
+    local language=""
     if [[ "$FILE_PATH" =~ \.go$ ]] || { [[ "$FILE_PATH" == "./..." ]] && [[ -n "$(find . -name "*.go" -type f -print -quit 2>/dev/null)" ]]; }; then
-        log_debug "Detected Go file/project"
-        # Check if Go testing function is available
-        if type -t run_go_tests &>/dev/null; then
-            log_debug "Running Go tests"
-            run_go_tests "$FILE_PATH" || failed=1
-        else
-            log_debug "Go testing function not available"
-        fi
+        language="go"
     elif [[ "$FILE_PATH" =~ \.py$ ]]; then
-        run_python_tests "$FILE_PATH" || failed=1
+        language="python"
     elif [[ "$FILE_PATH" =~ \.[jt]sx?$ ]]; then
-        run_javascript_tests "$FILE_PATH" || failed=1
+        language="javascript"
     elif [[ "$FILE_PATH" =~ \.sh$ ]]; then
-        run_shell_tests "$FILE_PATH" || failed=1
+        language="shell"
     elif [[ "$FILE_PATH" =~ \.rs$ ]]; then
-        run_rust_tests "$FILE_PATH" || failed=1
+        language="rust"
     elif [[ "$FILE_PATH" =~ (Tiltfile|.*\.tiltfile|.*\.star|.*\.bzl)$ ]]; then
-        # Check if Tilt testing function is available
-        if type -t run_tilt_tests &>/dev/null; then
-            run_tilt_tests "$FILE_PATH" || failed=1
-        else
-            log_debug "Tilt testing function not available"
-        fi
+        language="tilt"
     elif type -t should_run_tilt_tests &>/dev/null && should_run_tilt_tests "$FILE_PATH"; then
-        # Additional check for Tilt-related files
-        if type -t run_tilt_tests &>/dev/null; then
-            run_tilt_tests "$FILE_PATH" || failed=1
-        fi
+        language="tilt"
     else
         # No tests for this file type - exit silently with success
         log_debug "No test runner for file type: $FILE_PATH"
         exit 0
     fi
     
-    if [[ $failed -ne 0 ]]; then
+    log_debug "Detected language: $language"
+    
+    # Try project command first
+    if try_project_test_command "$FILE_PATH" "$language"; then
+        log_debug "Used project command for $language testing"
+        # Note: try_project_test_command handles errors internally and returns 0 if it ran a command
+    else
+        # Fall back to language-specific test runners
+        case "$language" in
+            "go")
+                # Check if Go testing function is available
+                if type -t run_go_tests &>/dev/null; then
+                    log_debug "Running Go tests"
+                    run_go_tests "$FILE_PATH" || failed=1
+                else
+                    log_debug "Go testing function not available"
+                fi
+                ;;
+            "python")
+                run_python_tests "$FILE_PATH" || failed=1
+                ;;
+            "javascript")
+                run_javascript_tests "$FILE_PATH" || failed=1
+                ;;
+            "shell")
+                run_shell_tests "$FILE_PATH" || failed=1
+                ;;
+            "rust")
+                run_rust_tests "$FILE_PATH" || failed=1
+                ;;
+            "tilt")
+                # Check if Tilt testing function is available
+                if type -t run_tilt_tests &>/dev/null; then
+                    run_tilt_tests "$FILE_PATH" || failed=1
+                else
+                    log_debug "Tilt testing function not available"
+                fi
+                ;;
+        esac
+    fi
+    
+    # Check both failed flag and error count (project commands use error count)
+    if [[ $failed -ne 0 ]] || [[ ${CLAUDE_HOOKS_ERROR_COUNT:-0} -gt 0 ]]; then
         # Exit 2 blocks the operation with error message
         echo -e "${RED}⛔ BLOCKING: Must fix ALL test failures above before continuing${NC}" >&2
         exit 2
     elif [[ "${CLAUDE_HOOKS_FILE_SKIPPED}" == "true" ]]; then
-        # File was skipped - exit 0 silently
+        # File was skipped - exit 0 silently unless debug mode
+        if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+            echo -e "${CYAN}[DEBUG]${NC} File was skipped (debug mode active)" >&2
+            exit 2
+        fi
         log_debug "File was skipped, exiting with 0"
         exit 0
     else
+        # In debug mode, always exit 2 to show debug output
+        if [[ "${CLAUDE_HOOKS_DEBUG:-0}" == "1" ]]; then
+            echo -e "${CYAN}[DEBUG]${NC} Tests passed (debug mode active)" >&2
+            exit 2
+        fi
         # Exit 2 with success message per Claude Code documentation
         exit_with_success_message "${YELLOW}👉 Tests pass. Continue with your task.${NC}"
     fi

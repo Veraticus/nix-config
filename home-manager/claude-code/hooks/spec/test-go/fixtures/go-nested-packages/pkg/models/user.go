@@ -37,19 +37,19 @@ func (u *User) Validate() error {
 	if u.ID <= 0 {
 		return fmt.Errorf("invalid user ID: %d", u.ID)
 	}
-	
+
 	if u.Name == "" {
 		return fmt.Errorf("user name cannot be empty")
 	}
-	
+
 	if u.Email == "" {
 		return fmt.Errorf("user email cannot be empty")
 	}
-	
+
 	if !strings.Contains(u.Email, "@") {
 		return fmt.Errorf("invalid email format: %s", u.Email)
 	}
-	
+
 	return nil
 }
 
@@ -58,11 +58,11 @@ func (u *User) UpdateEmail(email string) error {
 	if email == "" {
 		return fmt.Errorf("email cannot be empty")
 	}
-	
+
 	if !strings.Contains(email, "@") {
 		return fmt.Errorf("invalid email format: %s", email)
 	}
-	
+
 	u.Email = email
 	u.UpdatedAt = time.Now()
 	return nil

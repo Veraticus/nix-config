@@ -65,6 +65,36 @@
 # export CLAUDE_HOOKS_GO_TEST_EXCLUDE_PATTERNS="holodeck/e2e,special/context"
 
 # ============================================================================
+# PROJECT COMMAND INTEGRATION
+# ============================================================================
+
+# Enable/disable project command discovery (make targets, scripts)
+# export CLAUDE_HOOKS_USE_PROJECT_COMMANDS=true
+
+# Configure which make targets to check for linting
+# Format: space-separated list of target names to try (in order)
+# export CLAUDE_HOOKS_MAKE_LINT_TARGETS="lint check lint-all"  # default: "lint"
+
+# Configure which make targets to check for testing
+# export CLAUDE_HOOKS_MAKE_TEST_TARGETS="test test-unit tests"  # default: "test"
+
+# Configure which script names to check in scripts/ directory for linting
+# Format: space-separated list of script names to try (in order)
+# export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="lint lint.sh check.sh"  # default: "lint"
+
+# Configure which script names to check in scripts/ directory for testing
+# export CLAUDE_HOOKS_SCRIPT_TEST_NAMES="test test.sh run-tests.sh"  # default: "test"
+
+# Per-language opt-out of project commands
+# export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS=false     # Use direct go tools instead
+# export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS=false # Use direct python tools instead
+# export CLAUDE_HOOKS_JAVASCRIPT_USE_PROJECT_COMMANDS=false
+# export CLAUDE_HOOKS_RUST_USE_PROJECT_COMMANDS=false
+# export CLAUDE_HOOKS_NIX_USE_PROJECT_COMMANDS=false
+# export CLAUDE_HOOKS_SHELL_USE_PROJECT_COMMANDS=false
+# export CLAUDE_HOOKS_TILT_USE_PROJECT_COMMANDS=false
+
+# ============================================================================
 # PROJECT-SPECIFIC EXAMPLES
 # ============================================================================
 

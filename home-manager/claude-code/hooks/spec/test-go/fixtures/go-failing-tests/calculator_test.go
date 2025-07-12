@@ -7,7 +7,7 @@ import (
 
 func TestCalculatorAdd(t *testing.T) {
 	calc := &Calculator{}
-	
+
 	tests := []struct {
 		name string
 		a, b float64
@@ -30,10 +30,10 @@ func TestCalculatorAdd(t *testing.T) {
 
 func TestCalculatorMultiply(t *testing.T) {
 	calc := &Calculator{}
-	
+
 	got := calc.Multiply(3, 4)
 	want := 12.0
-	
+
 	if got != want {
 		t.Errorf("Multiply(3, 4) = %v; want %v", got, want)
 	}
@@ -41,7 +41,7 @@ func TestCalculatorMultiply(t *testing.T) {
 
 func TestCalculatorDivide(t *testing.T) {
 	calc := &Calculator{}
-	
+
 	t.Run("normal division", func(t *testing.T) {
 		got, err := calc.Divide(10, 2)
 		if err != nil {
@@ -52,7 +52,7 @@ func TestCalculatorDivide(t *testing.T) {
 			t.Errorf("Divide(10, 2) = %v; want %v", got, want)
 		}
 	})
-	
+
 	t.Run("division by zero", func(t *testing.T) {
 		_, err := calc.Divide(10, 0)
 		if err == nil {
@@ -63,7 +63,7 @@ func TestCalculatorDivide(t *testing.T) {
 
 func TestCalculatorPower(t *testing.T) {
 	calc := &Calculator{}
-	
+
 	tests := []struct {
 		name string
 		a, b float64

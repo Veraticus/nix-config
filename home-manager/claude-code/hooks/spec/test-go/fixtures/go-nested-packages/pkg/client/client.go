@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	
+
 	"github.com/test/go-nested-packages/pkg/models"
 )
 
@@ -31,24 +31,24 @@ func (c *Client) Connect() error {
 		return fmt.Errorf("connection failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unhealthy server: status %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
 
 // GetUser fetches a user from the server
 func (c *Client) GetUser(userID int) (*models.User, error) {
 	url := fmt.Sprintf("%s/users/%d", c.baseURL, userID)
-	
+
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// For this example, just return a mock user
 	return &models.User{
 		ID:    userID,

@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
-	
+
 	"github.com/test/go-nested-packages/pkg/models"
 )
 
@@ -16,11 +16,11 @@ type Server struct {
 // New creates a new server instance
 func New(addr string) *Server {
 	mux := http.NewServeMux()
-	
+
 	// Setup routes
 	mux.HandleFunc("/users", handleUsers)
 	mux.HandleFunc("/health", handleHealth)
-	
+
 	return &Server{
 		addr:    addr,
 		handler: mux,
@@ -44,7 +44,7 @@ func handleUsers(w http.ResponseWriter, r *http.Request) {
 		Name:  "Test User",
 		Email: "test@example.com",
 	}
-	
+
 	fmt.Fprintf(w, "User: %+v\n", user)
 }
 

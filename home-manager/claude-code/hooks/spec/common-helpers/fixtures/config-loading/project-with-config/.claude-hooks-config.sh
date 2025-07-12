@@ -1,4 +1,4 @@
-#\!/bin/bash
+#!/bin/bash
 # Claude hooks configuration
 
 # Export custom variables

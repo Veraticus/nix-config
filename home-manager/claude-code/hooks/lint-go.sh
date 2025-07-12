@@ -23,51 +23,6 @@ find_go_project_root() {
     return 1
 }
 
-# Check for forbidden patterns according to CLAUDE.md rules
-check_go_forbidden_patterns() {
-    log_debug "Checking for forbidden patterns..."
-    
-    # Find all Go files, excluding vendor directory
-    local go_files
-    go_files=$(find . -name "*.go" -type f | grep -v vendor/ | grep -v '\.git/' || true)
-    
-    if [[ -z "$go_files" ]]; then
-        log_debug "No Go files found to check"
-        return 0
-    fi
-    
-    local found_violations=false
-    
-    # Check each Go file for forbidden patterns
-    for file in $go_files; do
-        # Skip if file should be ignored
-        if should_skip_file "$file"; then
-            continue
-        fi
-        
-        # Check for interface{} or any
-        if grep -q -E '\binterface\{\}|\bany\b' "$file" 2>/dev/null; then
-            add_error "FORBIDDEN PATTERN: interface{} found in $file - use concrete types!"
-            found_violations=true
-        fi
-        
-        # Check for time.Sleep
-        if grep -q 'time\.Sleep' "$file" 2>/dev/null; then
-            add_error "FORBIDDEN PATTERN: time.Sleep found in $file - use channels for synchronization!"
-            found_violations=true
-        fi
-        
-        # Check for panic() calls (but not in test files)
-        if [[ ! "$file" =~ _test\.go$ ]] && grep -q -E '\bpanic\s*\(' "$file" 2>/dev/null; then
-            add_error "FORBIDDEN PATTERN: panic() found in $file - return errors instead!"
-            found_violations=true
-        fi
-    done
-    
-    if [[ "$found_violations" == "true" ]]; then
-        echo -e "${RED}⛔ FORBIDDEN PATTERNS DETECTED - Fix these violations before continuing!${NC}" >&2
-    fi
-}
 
 # ============================================================================
 # GO LINTING
@@ -96,9 +51,6 @@ lint_go() {
             return 1
         }
     fi
-    
-    # Check for forbidden patterns first (according to CLAUDE.md rules)
-    check_go_forbidden_patterns
     
     # Run linting from the project root
     

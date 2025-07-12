@@ -281,6 +281,121 @@ output_json_response() {
 }
 
 # ============================================================================
+# PROJECT COMMAND DISCOVERY
+# ============================================================================
+
+# Find project command root by looking for Makefile or scripts/ directory
+# Searches upward from the given directory until it finds command files
+# or reaches a project root marker (.git, go.mod, package.json, etc.)
+find_project_command_root() {
+    local start_dir="${1:-$PWD}"
+    local dir="$start_dir"
+    
+    # Convert to absolute path if relative
+    if [[ "$dir" != /* ]]; then
+        dir="$(cd "$dir" && pwd)"
+    fi
+    
+    while [[ "$dir" != "/" ]]; do
+        # Check for Makefile or scripts/ directory
+        if [[ -f "$dir/Makefile" ]] || [[ -d "$dir/scripts" ]]; then
+            echo "$dir"
+            return 0
+        fi
+        
+        # Stop at project root markers - don't search beyond project boundaries
+        if [[ -d "$dir/.git" ]] || [[ -f "$dir/go.mod" ]] || 
+           [[ -f "$dir/package.json" ]] || [[ -f "$dir/Cargo.toml" ]] ||
+           [[ -f "$dir/setup.py" ]] || [[ -f "$dir/pyproject.toml" ]]; then
+            # If we're at project root but no commands found, return failure
+            return 1
+        fi
+        
+        dir="$(dirname "$dir")"
+    done
+    
+    return 1
+}
+
+# Check if a make target exists using dry-run mode
+# Returns 0 if target exists, 1 otherwise
+check_make_target() {
+    local target="$1"
+    local makefile_dir="${2:-.}"
+    
+    # Use make -n (dry-run) to check if target exists
+    # Redirect both stdout and stderr to avoid noise
+    if (cd "$makefile_dir" && make -n "$target" >/dev/null 2>&1); then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Check if a script exists and is executable
+# Looks in the specified scripts directory
+check_script_exists() {
+    local script_name="$1"
+    local scripts_dir="${2:-./scripts}"
+    
+    # Check if the script exists and is executable
+    [[ -x "$scripts_dir/$script_name" ]]
+}
+
+# Calculate relative path from one directory to a file
+# Uses realpath if available, otherwise falls back to simple logic
+calculate_relative_path() {
+    local from_dir="$1"
+    local to_file="$2"
+    
+    # Try using realpath first (most reliable)
+    if command_exists realpath; then
+        realpath --relative-to="$from_dir" "$to_file" 2>/dev/null || echo "$to_file"
+    else
+        # Fallback: simple implementation
+        # Convert both to absolute paths first
+        local abs_from
+        abs_from=$(cd "$from_dir" && pwd)
+        local abs_to
+        abs_to=$(cd "$(dirname "$to_file")" && pwd)/$(basename "$to_file")
+        
+        # Remove common prefix
+        local common_part="$abs_from"
+        local result="${abs_to#"$common_part"/}"
+        
+        # If no common part was removed, paths might be on different branches
+        if [[ "$result" == "$abs_to" ]]; then
+            echo "$to_file"
+        else
+            echo "$result"
+        fi
+    fi
+}
+
+# Get project command configuration for lint or test
+# Returns make targets on first line, script names on second line
+get_project_command_config() {
+    local command_type="$1"  # "lint" or "test"
+    
+    # Check global opt-out first
+    if [[ "${CLAUDE_HOOKS_USE_PROJECT_COMMANDS:-true}" != "true" ]]; then
+        return 1
+    fi
+    
+    # Return configured values based on command type
+    if [[ "$command_type" == "lint" ]]; then
+        echo "${CLAUDE_HOOKS_MAKE_LINT_TARGETS:-lint}"
+        echo "${CLAUDE_HOOKS_SCRIPT_LINT_NAMES:-lint}"
+    elif [[ "$command_type" == "test" ]]; then
+        echo "${CLAUDE_HOOKS_MAKE_TEST_TARGETS:-test}"
+        echo "${CLAUDE_HOOKS_SCRIPT_TEST_NAMES:-test}"
+    else
+        log_error "Unknown command type: $command_type"
+        return 1
+    fi
+}
+
+# ============================================================================
 # PROJECT TYPE DETECTION
 # ============================================================================
 

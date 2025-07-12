@@ -44,8 +44,8 @@ setup_test_with_fixture() {
     
     # Copy fixture if it exists
     if [[ -d "$fixture_path" ]]; then
-        # Use find to copy all files including hidden ones
-        cp -r "$fixture_path"/. "$TEMP_DIR/"
+        # Use find to copy all files including hidden ones, preserving permissions
+        cp -rp "$fixture_path"/. "$TEMP_DIR/"
     else
         echo "Warning: Fixture not found: $fixture_path" >&2
     fi
@@ -187,7 +187,7 @@ create_post_tool_use_json() {
         file_path=$(realpath "$file_path")
     fi
     
-    local json='{"event":"PostToolUse","tool":"'$tool'"'
+    local json='{"hook_event_name":"PostToolUse","tool_name":"'$tool'"'
     
     if [[ -n "$file_path" ]]; then
         json+=',"tool_input":{"file_path":"'$file_path'"'
@@ -208,7 +208,7 @@ create_post_tool_use_json() {
 # Create a non-PostToolUse JSON event
 create_other_json_event() {
     local event="${1:-PreToolUse}"
-    echo '{"event":"'"$event"'","tool":"Edit","tool_input":{"file_path":"test.go"}}'
+    echo '{"hook_event_name":"'"$event"'","tool_name":"Edit","tool_input":{"file_path":"test.go"}}'
 }
 
 # ============================================================================

@@ -192,8 +192,8 @@ if [[ ! -t 0 ]]; then
     
     # Parse JSON input
     if echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
-        EVENT=$(echo "$JSON_INPUT" | jq -r '.event // empty' 2>/dev/null)
-        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool // empty' 2>/dev/null)
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.hook_event_name // empty' 2>/dev/null)
+        TOOL_NAME=$(echo "$JSON_INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
         TOOL_INPUT=$(echo "$JSON_INPUT" | jq -r '.tool_input // "{}"' 2>/dev/null)
         
         # Only process PostToolUse events

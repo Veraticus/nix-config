@@ -15,16 +15,16 @@ func ValidateEmail(email string) bool {
 	if email == "" {
 		return false
 	}
-	
+
 	parts := strings.Split(email, "@")
 	if len(parts) != 2 {
 		return false
 	}
-	
+
 	if parts[0] == "" || parts[1] == "" {
 		return false
 	}
-	
+
 	return strings.Contains(parts[1], ".")
 }
 

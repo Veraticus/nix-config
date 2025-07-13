@@ -41,8 +41,8 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         *)
-            echo "Unknown option: $1" >&2
-            exit 1
+            # Ignore any other arguments
+            shift
             ;;
     esac
 done

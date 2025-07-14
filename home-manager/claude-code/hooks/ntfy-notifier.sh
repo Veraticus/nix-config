@@ -122,23 +122,91 @@ date +%s > "$RATE_LIMIT_FILE"
 # HELPER FUNCTIONS
 # ============================================================================
 
+# Function to clean terminal title
+clean_terminal_title() {
+    local title="$1"
+    # Remove Claude icons and control characters
+    echo "$title" | sed -E 's/[✅🤖⚡✨🔮💫☁️🌟🚀🎯🔍🛡️📝🧠🖨️🔐📤⏳❌⚠️]//g' | sed 's/[[:cntrl:]]//g' | xargs
+}
+
+# Get terminal title with improved detection
+get_terminal_title() {
+    local title=""
+    
+    if [[ "${TERM_PROGRAM:-}" == "tmux" ]] && command -v tmux >/dev/null 2>&1; then
+        # In tmux, get the current pane's info
+        if [[ -n "${TMUX:-}" ]]; then
+            # Get the current pane's window name
+            local window_name
+            window_name=$(tmux display-message -p '#W' 2>/dev/null || echo "")
+            local pane_title
+            pane_title=$(tmux display-message -p '#{pane_title}' 2>/dev/null || echo "")
+            
+            if [[ -n "$window_name" ]]; then
+                title="$window_name"
+                [[ -n "$pane_title" && "$pane_title" != "$window_name" ]] && title="$title - $pane_title"
+            fi
+        else
+            # Not in a tmux session, just get the shell's tty
+            title="tty: $(tty 2>/dev/null | xargs basename)"
+        fi
+    elif [[ "${TERM_PROGRAM:-}" == "kitty" ]] && command -v kitty >/dev/null 2>&1; then
+        # Kitty: Get window title using kitty remote control
+        title=$(kitty @ ls | jq -r '.[] | select(.is_focused) | .tabs[] | select(.is_focused) | .title' 2>/dev/null || echo "")
+        if [[ -z "$title" ]]; then
+            # Fallback: get from environment if remote control is disabled
+            title="${KITTY_WINDOW_TITLE:-Kitty}"
+        fi
+    elif [[ "$(uname)" == "Darwin" ]] && command -v osascript >/dev/null 2>&1; then
+        # macOS: Get Terminal or iTerm2 window title
+        if [[ "${TERM_PROGRAM:-}" == "iTerm.app" ]]; then
+            title=$(osascript -e 'tell application "iTerm2" to name of current window' 2>/dev/null || echo "")
+        elif [[ "${TERM_PROGRAM:-}" == "Apple_Terminal" ]]; then
+            title=$(osascript -e 'tell application "Terminal" to name of front window' 2>/dev/null || echo "")
+        fi
+    elif [[ -n "${DISPLAY:-}" ]] && command -v xprop >/dev/null 2>&1; then
+        # Linux with X11: Get window title
+        local window_id
+        window_id=$(xprop -root _NET_ACTIVE_WINDOW 2>/dev/null | awk '{print $5}')
+        if [[ -n "$window_id" && "$window_id" != "0x0" ]]; then
+            title=$(xprop -id "$window_id" WM_NAME 2>/dev/null | cut -d'"' -f2 || echo "")
+        fi
+    elif [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v swaymsg >/dev/null 2>&1; then
+        # Wayland with Sway: Get focused window title
+        title=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true) | .name' 2>/dev/null || echo "")
+    fi
+    
+    clean_terminal_title "$title"
+}
+
 # Get context information
 get_context() {
     local cwd_basename
     cwd_basename=$(basename "$PWD")
-    echo "Claude Code: $cwd_basename"
+    local term_title
+    term_title=$(get_terminal_title)
+    
+    local context="Claude Code: $cwd_basename"
+    if [[ -n "$term_title" ]]; then
+        context="$context - $term_title"
+    fi
+    echo "$context"
 }
 
 # Function to send notification with retry
 send_notification() {
-    local message="$1"
+    local title="$1"
+    local message="$2"
     local max_retries=2
     local retry_count=0
     
-    log_debug "send_notification called with message: $message"
+    log_debug "send_notification called with title: $title, message: $message"
     
     while [[ $retry_count -lt $max_retries ]]; do
         local curl_args=(-s --max-time 5 -X POST)
+        
+        # Add title header
+        curl_args+=(-H "Title: $title")
         
         # Add authentication if token is configured
         if [[ -n "${CLAUDE_HOOKS_NTFY_TOKEN:-}" ]]; then
@@ -257,12 +325,15 @@ if [[ ! -t 0 ]]; then
         log_debug "Tool input: $TOOL_INPUT"
         log_debug "Tool response: $TOOL_RESPONSE"
         
+        # Get context for all notification types
+        CONTEXT=$(get_context)
+        
         # Process different event types
         if [[ "$EVENT" == "PostToolUse" ]]; then
             # Format notification message
             if MESSAGE=$(format_notification "$TOOL_NAME" "$TOOL_INPUT"); then
                 log_debug "Sending notification: $MESSAGE"
-                send_notification "$MESSAGE"
+                send_notification "$CONTEXT" "$MESSAGE"
             else
                 log_debug "Ignoring tool: $TOOL_NAME"
                 exit 0
@@ -270,13 +341,13 @@ if [[ ! -t 0 ]]; then
         elif [[ "$EVENT" == "Stop" ]] || [[ "$EVENT" == "SubagentStop" ]]; then
             # Handle Stop events
             log_debug "Processing Stop event: $EVENT"
-            MESSAGE="Session stopped"
-            send_notification "$MESSAGE"
+            MESSAGE="Claude finished responding"
+            send_notification "$CONTEXT" "$MESSAGE"
         elif [[ "$EVENT" == "Notification" ]]; then
             # Handle Notification events
             MESSAGE=$(echo "$JSON_INPUT" | jq -r '.message // "Notification"' 2>/dev/null)
             log_debug "Processing Notification event: $MESSAGE"
-            send_notification "$MESSAGE"
+            send_notification "$CONTEXT" "$MESSAGE"
         else
             log_debug "Ignoring unknown event: $EVENT"
             exit 0
@@ -290,9 +361,10 @@ if [[ ! -t 0 ]]; then
     fi
 else
     # CLI mode - send test notification
-    MESSAGE="Test notification"
+    CONTEXT=$(get_context)
+    MESSAGE="Test notification from CLI"
     log_debug "Sending test notification"
-    send_notification "$MESSAGE"
+    send_notification "$CONTEXT" "$MESSAGE"
 fi
 
 # Clean up old rate limit files (older than 1 hour)

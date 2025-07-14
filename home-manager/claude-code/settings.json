@@ -11,10 +11,6 @@
           {
             "type": "command",
             "command": "~/.claude/hooks/smart-test.sh"
-          },
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/ntfy-notifier.sh"
           }
         ]
       }

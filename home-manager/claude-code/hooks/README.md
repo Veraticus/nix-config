@@ -135,9 +135,11 @@ Features:
 
 ### `ntfy-notifier.sh`
 Push notifications via ntfy service for Claude Code events:
-- Sends alerts when Claude finishes tasks
-- Includes terminal context (tmux/Terminal window name) for identification
-- Requires `~/.config/claude-code-ntfy/config.yaml` with topic configuration
+- Enabled by default when installed (opt-out with `CLAUDE_HOOKS_NTFY_DISABLED=true`)
+- Sends alerts when Claude uses tools (Edit, Write, Bash, etc.)
+- Requires configuration via environment variables or config file:
+  - Environment: `CLAUDE_HOOKS_NTFY_URL="https://ntfy.sh/mytopic"`
+  - Config file: `~/.config/claude-code-ntfy/config.yaml`
 
 ## Project Integration
 

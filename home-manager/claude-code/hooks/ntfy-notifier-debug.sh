@@ -11,7 +11,7 @@ LOG_FILE="/tmp/ntfy-notifier-debug.log"
     echo "=== ntfy-notifier-debug.sh called at $(date) ==="
     echo "Arguments: $*"
     echo "Environment:"
-    echo "  CLAUDE_HOOKS_NTFY_ENABLED=${CLAUDE_HOOKS_NTFY_ENABLED:-not set}"
+    echo "  CLAUDE_HOOKS_NTFY_DISABLED=${CLAUDE_HOOKS_NTFY_DISABLED:-not set}"
     echo "  CLAUDE_HOOKS_NTFY_URL=${CLAUDE_HOOKS_NTFY_URL:-not set}"
 } >> "$LOG_FILE"
 
@@ -23,13 +23,11 @@ if [[ ! -t 0 ]]; then
     
     # Pass it to the real script with debug enabled
     export CLAUDE_HOOKS_DEBUG=1
-    export CLAUDE_HOOKS_NTFY_ENABLED=true
     echo "$STDIN_CONTENT" | "$SCRIPT_DIR/ntfy-notifier.sh" "$@" 2>&1 | tee -a "$LOG_FILE"
     EXIT_CODE=${PIPESTATUS[0]}
 else
     echo "No stdin input" >> "$LOG_FILE"
     export CLAUDE_HOOKS_DEBUG=1
-    export CLAUDE_HOOKS_NTFY_ENABLED=true
     "$SCRIPT_DIR/ntfy-notifier.sh" "$@" 2>&1 | tee -a "$LOG_FILE"
     EXIT_CODE=$?
 fi

@@ -10,7 +10,7 @@
 #   Supports both CLI mode for testing and hook mode for actual notifications.
 #
 # CONFIGURATION
-#   CLAUDE_HOOKS_NTFY_ENABLED   Set to "true" to enable notifications
+#   CLAUDE_HOOKS_NTFY_DISABLED  Set to "true" to disable notifications (enabled by default)
 #   CLAUDE_HOOKS_NTFY_URL       Full ntfy URL (e.g., https://ntfy.sh/mytopic)
 #   CLAUDE_HOOKS_NTFY_TOKEN     Optional authentication token
 #
@@ -59,9 +59,9 @@ log_debug() {
     fi
 }
 
-# Check if notifications are enabled (allow easy disable)
-if [[ "${CLAUDE_HOOKS_NTFY_ENABLED:-}" != "true" ]]; then
-    log_debug "ntfy notifications disabled (CLAUDE_HOOKS_NTFY_ENABLED != true)"
+# Check if notifications are disabled (enabled by default)
+if [[ "${CLAUDE_HOOKS_NTFY_DISABLED:-}" == "true" ]]; then
+    log_debug "ntfy notifications disabled (CLAUDE_HOOKS_NTFY_DISABLED == true)"
     exit 0
 fi
 

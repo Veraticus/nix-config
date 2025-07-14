@@ -391,6 +391,88 @@ linters:
         - pattern: '.*Compat$'
           msg: "NO 'Compat' - avoid compatibility layers (CLAUDE.md rule)"
         
+        # Non-production code patterns (excluding test files)
+        - pattern: '.*Impl$'
+          msg: "NO 'Impl' suffix - use descriptive names for production code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Implementation$'
+          msg: "NO 'Implementation' suffix - use descriptive names for production code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Mock.*'
+          msg: "NO 'Mock' in production code - mocks belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Mock.*'
+          msg: "NO 'Mock' prefix in production code - mocks belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Temporary.*'
+          msg: "NO 'Temporary' in production code - write production-ready code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Temporary.*'
+          msg: "NO 'Temporary' prefix in production code - write production-ready code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Temp$'
+          msg: "NO 'Temp' suffix in production code - write production-ready code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Temp[A-Z].*'
+          msg: "NO 'Temp' prefix in production code - write production-ready code"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Stub.*'
+          msg: "NO 'Stub' in production code - stubs belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Stub.*'
+          msg: "NO 'Stub' prefix in production code - stubs belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Fake.*'
+          msg: "NO 'Fake' in production code - fakes belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Fake.*'
+          msg: "NO 'Fake' prefix in production code - fakes belong in test files only"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Dummy.*'
+          msg: "NO 'Dummy' in production code - write meaningful implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Dummy.*'
+          msg: "NO 'Dummy' prefix in production code - write meaningful implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Placeholder.*'
+          msg: "NO 'Placeholder' in production code - implement real functionality"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Placeholder.*'
+          msg: "NO 'Placeholder' prefix in production code - implement real functionality"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Example$'
+          msg: "NO 'Example' suffix in production code - write real implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Example[A-Z].*'
+          msg: "NO 'Example' prefix in production code - write real implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '.*Sample.*'
+          msg: "NO 'Sample' in production code - write real implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        - pattern: '^Sample.*'
+          msg: "NO 'Sample' prefix in production code - write real implementations"
+          exclude-godoc-examples: true
+          exclude-test: true
+        
     # TODO/FIXME detection
     godox:
       keywords:

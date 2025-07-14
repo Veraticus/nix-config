@@ -187,6 +187,7 @@ Describe 'ntfy-notifier.sh'
         It 'handles invalid JSON gracefully'
             When run run_hook_with_json "ntfy-notifier.sh" "not valid json"
             The status should be success
+            The stderr should include "Invalid JSON input received by ntfy-notifier.sh"
         End
         
         It 'handles missing jq gracefully'

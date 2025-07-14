@@ -43,6 +43,11 @@
     executable = true;
   };
   
+  home.file.".claude/hooks/ntfy-notifier-debug.sh" = {
+    source = ./hooks/ntfy-notifier-debug.sh;
+    executable = true;
+  };
+  
   # Language-specific hook files
   home.file.".claude/hooks/lint-go.sh" = {
     source = ./hooks/lint-go.sh;

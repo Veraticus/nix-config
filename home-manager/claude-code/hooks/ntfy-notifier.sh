@@ -283,6 +283,9 @@ if [[ ! -t 0 ]]; then
         fi
     else
         log_debug "Invalid JSON input"
+        # Log the raw input for debugging
+        log_debug "Raw input was: $JSON_INPUT"
+        echo "Invalid JSON input received by ntfy-notifier.sh" >&2
         exit 0
     fi
 else

@@ -74,20 +74,16 @@
 
   # Activation script to ensure golangci-lint is installed
   home.activation.installGolangciLint = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    echo "Installing golangci-lint..."
-    if [ ! -f "$HOME/go/bin/golangci-lint" ]; then
-      export PATH="${pkgs.curl}/bin:${pkgs.coreutils}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:${pkgs.gnused}/bin:${pkgs.gawk}/bin:$PATH"
-      $DRY_RUN_CMD ${pkgs.curl}/bin/curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $HOME/go/bin
-    fi
+    echo "Installing/updating golangci-lint..."
+    export PATH="${pkgs.curl}/bin:${pkgs.coreutils}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:${pkgs.gnused}/bin:${pkgs.gawk}/bin:$PATH"
+    $DRY_RUN_CMD ${pkgs.curl}/bin/curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $HOME/go/bin
   '';
 
   # Activation script to ensure deadcode is installed
   home.activation.installDeadcode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    echo "Installing deadcode..."
-    if [ ! -f "$HOME/go/bin/deadcode" ]; then
-      export PATH="${pkgs.go_1_24}/bin:$PATH"
-      $DRY_RUN_CMD ${pkgs.go_1_24}/bin/go install golang.org/x/tools/cmd/deadcode@latest
-    fi
+    echo "Installing/updating deadcode..."
+    export PATH="${pkgs.go_1_24}/bin:$PATH"
+    $DRY_RUN_CMD ${pkgs.go_1_24}/bin/go install golang.org/x/tools/cmd/deadcode@latest
   '';
 
   # Helpful aliases for Go development

@@ -246,7 +246,6 @@
     }
     
     # Convenient aliases
-    alias uv="ultraviolet"
     alias bd="bluedesert"
   '';
 }

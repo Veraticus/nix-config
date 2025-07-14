@@ -42,39 +42,38 @@
     source = ./hooks/ntfy-notifier.sh;
     executable = true;
   };
-  
+
   home.file.".claude/hooks/ntfy-notifier-debug.sh" = {
     source = ./hooks/ntfy-notifier-debug.sh;
     executable = true;
   };
-  
+
   # Language-specific hook files
   home.file.".claude/hooks/lint-go.sh" = {
     source = ./hooks/lint-go.sh;
     executable = true;
   };
-  
+
   home.file.".claude/hooks/test-go.sh" = {
     source = ./hooks/test-go.sh;
     executable = true;
   };
-  
+
   home.file.".claude/hooks/lint-tilt.sh" = {
     source = ./hooks/lint-tilt.sh;
     executable = true;
   };
-  
+
   home.file.".claude/hooks/test-tilt.sh" = {
     source = ./hooks/test-tilt.sh;
     executable = true;
   };
-  
+
   # Integration helper script
   home.file.".claude/hooks/integrate.sh" = {
     source = ./hooks/integrate.sh;
     executable = true;
   };
-  
   # Copy documentation and examples (not executable)
   home.file.".claude/hooks/README.md".source = ./hooks/README.md;
   home.file.".claude/hooks/INTEGRATION.md".source = ./hooks/INTEGRATION.md;

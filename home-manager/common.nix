@@ -55,6 +55,9 @@
       buildifier
       bazel-buildtools # includes buildozer and unused_deps
 
+      # Kubernetes tools
+      kubernetes-helm
+
       # LSP servers
       lua-language-server
       pyright
@@ -72,6 +75,9 @@
       # Python testing
       python3Packages.pytest
       python3Packages.pyyaml
+
+      # Python package management
+      uv
     ];
   };
 

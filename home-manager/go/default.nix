@@ -1,8 +1,9 @@
-{ inputs
-, lib
-, config
-, pkgs
-, ...
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
 }:
 {
   # Go language configuration
@@ -84,8 +85,8 @@
   home.activation.installDeadcode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     echo "Installing deadcode..."
     if [ ! -f "$HOME/go/bin/deadcode" ]; then
-      export PATH="${pkgs.go_1_23}/bin:$PATH"
-      $DRY_RUN_CMD ${pkgs.go_1_23}/bin/go install golang.org/x/tools/cmd/deadcode@latest
+      export PATH="${pkgs.go_1_24}/bin:$PATH"
+      $DRY_RUN_CMD ${pkgs.go_1_24}/bin/go install golang.org/x/tools/cmd/deadcode@latest
     fi
   '';
 

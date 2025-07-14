@@ -1,4 +1,10 @@
-{ inputs, lib, config, pkgs, ... }:
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
+}:
 {
   # Install Node.js to enable npm
   home.packages = with pkgs; [
@@ -43,11 +49,6 @@
     executable = true;
   };
 
-  home.file.".claude/hooks/ntfy-notifier-debug.sh" = {
-    source = ./hooks/ntfy-notifier-debug.sh;
-    executable = true;
-  };
-
   # Language-specific hook files
   home.file.".claude/hooks/lint-go.sh" = {
     source = ./hooks/lint-go.sh;
@@ -79,7 +80,8 @@
   home.file.".claude/hooks/INTEGRATION.md".source = ./hooks/INTEGRATION.md;
   home.file.".claude/hooks/QUICK_START.md".source = ./hooks/QUICK_START.md;
   home.file.".claude/hooks/example-Makefile".source = ./hooks/example-Makefile;
-  home.file.".claude/hooks/example-claude-hooks-config.sh".source = ./hooks/example-claude-hooks-config.sh;
+  home.file.".claude/hooks/example-claude-hooks-config.sh".source =
+    ./hooks/example-claude-hooks-config.sh;
   home.file.".claude/hooks/example-claude-hooks-ignore".source = ./hooks/example-claude-hooks-ignore;
 
   # Copy command files
@@ -98,7 +100,7 @@
   home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     PATH="${pkgs.nodejs_20}/bin:$PATH"
     export NPM_CONFIG_PREFIX="$HOME/.npm-global"
-    
+
     if ! command -v claude >/dev/null 2>&1; then
       echo "Installing Claude Code..."
       npm install -g @anthropic-ai/claude-code

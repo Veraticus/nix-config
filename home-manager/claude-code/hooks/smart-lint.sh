@@ -805,17 +805,16 @@ try_project_lint_command() {
                     log_debug "Make command failed with exit code: $make_exit_code"
                 fi
                 
-                # Always show what we're running
-                log_info "🔨 Running 'make $target' from $cmd_root"
-                
                 # Output and track errors if it failed
                 if [[ $make_exit_code -ne 0 ]]; then
+                    log_info "🔨 Running 'make $target' from $cmd_root"
                     if [[ -n "$make_output" ]]; then
                         echo "$make_output" >&2
                     fi
                     add_error "make $target found issues"
                 elif [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]] && [[ -n "$make_output" ]]; then
                     # In test mode, show output even on success
+                    log_info "🔨 Running 'make $target' from $cmd_root"
                     echo "$make_output" >&2
                 fi
                 
@@ -843,17 +842,16 @@ try_project_lint_command() {
                     log_debug "Script failed with exit code: $script_exit_code"
                 fi
                 
-                # Always show what we're running
-                log_info "📜 Running 'scripts/$script' from $cmd_root"
-                
                 # Output and track errors if it failed
                 if [[ $script_exit_code -ne 0 ]]; then
+                    log_info "📜 Running 'scripts/$script' from $cmd_root"
                     if [[ -n "$script_output" ]]; then
                         echo "$script_output" >&2
                     fi
                     add_error "scripts/$script found issues"
                 elif [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]] && [[ -n "$script_output" ]]; then
                     # In test mode, show output even on success
+                    log_info "📜 Running 'scripts/$script' from $cmd_root"
                     echo "$script_output" >&2
                 fi
                 
@@ -885,10 +883,12 @@ load_config
 
 # Get project ID for deduplication
 PROJECT_ID=$(get_project_id)
+log_debug "Project ID: $PROJECT_ID"
 
 # Try to acquire lock - if we can't, another instance is already running
 if ! acquire_lock "$PROJECT_ID"; then
     log_debug "Another lint process is already running for this project, skipping"
+    log_info "🔒 Skipping lint - another instance is already running"
     # Exit silently - another instance will handle the linting
     exit 0
 fi

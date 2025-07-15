@@ -726,6 +726,47 @@ main.go:16:2: NO panic() - return errors instead (CLAUDE.md rule) (forbidigo)"
             End
         End
         
+        Describe 'Mixed projects'
+            setup_mixed_makefile() {
+                setup_test_with_fixture "smart-lint" "mixed-project"
+                export CLAUDE_HOOKS_DEBUG=0
+                export CLAUDE_HOOKS_GO_DEADCODE_ENABLED="false"
+                # Initialize error tracking
+                declare -g -i CLAUDE_HOOKS_ERROR_COUNT=0
+                declare -g -a CLAUDE_HOOKS_ERRORS=()
+                # Mock all language tools
+                mock_command "gofmt" 0
+                mock_command "golangci-lint" 0
+                mock_command "black" 0
+                mock_command "flake8" 0
+                mock_command "ruff" 0
+                mock_command "tilt" 0
+                mock_command "buildifier" 0
+            }
+            
+            cleanup_mixed_makefile() {
+                cleanup_test
+            }
+            
+            BeforeEach 'setup_mixed_makefile'
+            AfterEach 'cleanup_mixed_makefile'
+            
+            It 'runs project command only once for mixed projects'
+                mock_jq_for_lint
+                local json
+                json=$(create_post_tool_use_json "Edit" "$TEMP_DIR/main.go")
+                When run run_hook_with_json_test_mode "smart-lint.sh" "$json"
+                The status should equal 2
+                # Should only see the make command once, not multiple times
+                The stderr should include "Running 'make lint'"
+                The stderr should include "Running project lint with FILE=main.go"
+                # Verify it doesn't run multiple times by checking the output doesn't contain duplicates
+                The stderr should not include "Running 'make lint'
+Running project lint with FILE=main.go
+Running 'make lint'"
+            End
+        End
+        
         Describe 'Configuration'
             setup_config() {
                 setup_test_with_fixture "smart-lint" "makefile-project"

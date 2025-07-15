@@ -949,16 +949,21 @@ PROJECT_TYPE=$(detect_project_type_with_tilt)
 
 # Main execution
 main() {
+    local used_project_command=false
+    
     # Handle mixed project types
     if [[ "$PROJECT_TYPE" == mixed:* ]]; then
         local type_string="${PROJECT_TYPE#mixed:}"
         IFS=',' read -ra TYPE_ARRAY <<< "$type_string"
         
         for type in "${TYPE_ARRAY[@]}"; do
-            # Try project command first
-            if try_project_lint_command "$FILE_PATH" "$type"; then
+            # Try project command first (only once for mixed projects)
+            if [[ "$used_project_command" == "false" ]] && try_project_lint_command "$FILE_PATH" "$type"; then
                 log_debug "Used project command for $type linting"
-            else
+                used_project_command=true
+                # Skip all remaining language processing since project command handles everything
+                break
+            elif [[ "$used_project_command" == "false" ]]; then
                 # Fall back to language-specific linters
                 case "$type" in
                     "go") lint_go ;;

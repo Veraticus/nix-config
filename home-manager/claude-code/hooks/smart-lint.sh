@@ -689,16 +689,22 @@ try_project_lint_command() {
                     log_debug "Make command failed with exit code: $make_exit_code"
                 fi
                 
-                # Output information if it failed OR if in test mode
-                if [[ $make_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
-                    log_info "🔨 Running 'make $target' from $cmd_root"
+                # Always show what we're running
+                log_info "🔨 Running 'make $target' from $cmd_root"
+                
+                # Output and track errors if it failed
+                if [[ $make_exit_code -ne 0 ]]; then
                     if [[ -n "$make_output" ]]; then
                         echo "$make_output" >&2
                     fi
+                    add_error "make $target found issues"
+                elif [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]] && [[ -n "$make_output" ]]; then
+                    # In test mode, show output even on success
+                    echo "$make_output" >&2
                 fi
                 
-                # Return make's exit code
-                return $make_exit_code
+                # Return 0 to indicate project command was found and executed
+                return 0
             fi
         done
     fi
@@ -721,16 +727,22 @@ try_project_lint_command() {
                     log_debug "Script failed with exit code: $script_exit_code"
                 fi
                 
-                # Output information if it failed OR if in test mode
-                if [[ $script_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
-                    log_info "📜 Running 'scripts/$script' from $cmd_root"
+                # Always show what we're running
+                log_info "📜 Running 'scripts/$script' from $cmd_root"
+                
+                # Output and track errors if it failed
+                if [[ $script_exit_code -ne 0 ]]; then
                     if [[ -n "$script_output" ]]; then
                         echo "$script_output" >&2
                     fi
+                    add_error "scripts/$script found issues"
+                elif [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]] && [[ -n "$script_output" ]]; then
+                    # In test mode, show output even on success
+                    echo "$script_output" >&2
                 fi
                 
-                # Return script's exit code
-                return $script_exit_code
+                # Return 0 to indicate project command was found and executed
+                return 0
             fi
         done
     fi

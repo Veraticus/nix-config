@@ -555,29 +555,61 @@ get_project_id() {
 acquire_lock() {
     local project_id="$1"
     local lock_file="$LOCK_DIR/lint-${project_id}.lock"
-    local pid_file="$LOCK_DIR/lint-${project_id}.pid"
     local timeout=5  # 5 second timeout
     local elapsed=0
+    local max_lock_age=30  # Consider locks older than 30 seconds as stale
     
     # Try to acquire lock
     while [[ $elapsed -lt $timeout ]]; do
-        if mkdir "$lock_file" 2>/dev/null; then
-            # We got the lock, write our PID
-            echo $$ > "$pid_file"
-            log_debug "Acquired lock for project: $project_id"
-            return 0
-        fi
-        
-        # Check if the process holding the lock is still alive
-        if [[ -f "$pid_file" ]]; then
-            local lock_pid
-            lock_pid=$(cat "$pid_file" 2>/dev/null || echo "0")
-            if ! kill -0 "$lock_pid" 2>/dev/null; then
-                # Process is dead, remove stale lock
-                log_debug "Removing stale lock from dead process: $lock_pid"
-                rm -rf "$lock_file" "$pid_file" 2>/dev/null || true
+        # Check if lock exists and validate it
+        if [[ -f "$lock_file" ]]; then
+            local lock_content
+            lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
+            
+            # Parse lock content (format: "PID:TIMESTAMP")
+            local lock_pid=""
+            local lock_timestamp=""
+            if [[ "$lock_content" =~ ^([0-9]+):([0-9]+)$ ]]; then
+                lock_pid="${BASH_REMATCH[1]}"
+                lock_timestamp="${BASH_REMATCH[2]}"
+            fi
+            
+            # Check if lock is valid
+            local current_time
+            current_time=$(date +%s)
+            local remove_lock=false
+            
+            if [[ -z "$lock_pid" ]] || [[ -z "$lock_timestamp" ]]; then
+                # Invalid lock content, remove it
+                log_debug "Removing lock with invalid content: $lock_content"
+                remove_lock=true
+            elif [[ $((current_time - lock_timestamp)) -gt $max_lock_age ]]; then
+                # Lock is too old, remove it
+                log_debug "Removing stale lock (age: $((current_time - lock_timestamp))s)"
+                remove_lock=true
+            elif ! kill -0 "$lock_pid" 2>/dev/null; then
+                # Process is dead, remove lock
+                log_debug "Removing lock from dead process: $lock_pid"
+                remove_lock=true
+            fi
+            
+            if [[ "$remove_lock" == "true" ]]; then
+                rm -f "$lock_file" 2>/dev/null || true
+                # Try again immediately
                 continue
             fi
+        fi
+        
+        # Try to create lock file atomically
+        local lock_content
+        lock_content="$$:$(date +%s)"
+        if echo "$lock_content" > "${lock_file}.tmp" 2>/dev/null && 
+           mv -n "${lock_file}.tmp" "$lock_file" 2>/dev/null; then
+            log_debug "Acquired lock for project: $project_id (content: $lock_content)"
+            return 0
+        else
+            # Clean up temp file if mv failed
+            rm -f "${lock_file}.tmp" 2>/dev/null || true
         fi
         
         # Wait a bit and try again
@@ -594,12 +626,17 @@ acquire_lock() {
 release_lock() {
     local project_id="$1"
     local lock_file="$LOCK_DIR/lint-${project_id}.lock"
-    local pid_file="$LOCK_DIR/lint-${project_id}.pid"
     
     # Only release if we own the lock
-    if [[ -f "$pid_file" ]] && [[ "$(cat "$pid_file" 2>/dev/null)" == "$$" ]]; then
-        rm -rf "$lock_file" "$pid_file" 2>/dev/null || true
-        log_debug "Released lock for project: $project_id"
+    if [[ -f "$lock_file" ]]; then
+        local lock_content
+        lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
+        
+        # Check if this is our lock
+        if [[ "$lock_content" =~ ^$$: ]]; then
+            rm -f "$lock_file" 2>/dev/null || true
+            log_debug "Released lock for project: $project_id"
+        fi
     fi
 }
 
@@ -942,6 +979,11 @@ main() {
 # Run main function
 main
 exit_code=$?
+
+# Test mode sleep (for deduplication testing)
+if [[ -n "${CLAUDE_HOOKS_TEST_SLEEP:-}" ]]; then
+    sleep "${CLAUDE_HOOKS_TEST_SLEEP}"
+fi
 
 # Final message and exit
 if [[ $exit_code -eq 2 ]]; then

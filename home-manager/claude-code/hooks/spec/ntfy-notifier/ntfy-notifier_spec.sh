@@ -113,6 +113,7 @@ Describe 'ntfy-notifier.sh'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             The output should equal ""
+            The stderr should equal "CLAUDE_HOOKS_NTFY_URL not configured"
         End
         
         It 'exits silently when explicitly disabled'
@@ -121,7 +122,7 @@ Describe 'ntfy-notifier.sh'
             When run run_hook_with_json "ntfy-notifier.sh" "$json"
             The status should be success
             The output should equal ""
-            The stderr should equal ""
+            The stderr should equal "CLAUDE_HOOKS_NTFY_URL not configured"
         End
         
         It 'requires ntfy URL when enabled'

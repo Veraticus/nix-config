@@ -619,7 +619,8 @@ acquire_lock() {
                 else
                     # Active lock from running process
                     log_debug "Active lock from running process $lock_pid"
-                    # Don't remove, just continue trying
+                    # Don't remove, just return failure
+                    return 1
                 fi
             fi
             
@@ -633,6 +634,10 @@ acquire_lock() {
         # Try to create lock file atomically
         local lock_content
         lock_content="$$:$(date +%s)"
+        
+        # Ensure lock directory exists
+        mkdir -p "$LOCK_DIR" 2>/dev/null || true
+        
         if echo "$lock_content" > "${lock_file}.tmp" 2>/dev/null && 
            mv -n "${lock_file}.tmp" "$lock_file" 2>/dev/null; then
             log_debug "Acquired lock for project: $project_id (content: $lock_content)"
@@ -679,6 +684,8 @@ release_lock() {
             fi
         fi
     fi
+    # Always return success - release_lock is meant to be graceful
+    return 0
 }
 
 # Clean up locks on exit

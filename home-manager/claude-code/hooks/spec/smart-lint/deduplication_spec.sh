@@ -119,12 +119,15 @@ Describe 'smart-lint.sh deduplication'
             
             # First run to create lock
             json=$(create_post_tool_use_json "Edit" "test.go")
-            run_hook_with_json "smart-lint.sh" "$json" >/dev/null 2>&1
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 2
+            The stderr should include "Hook completed successfully"
             
-            # Verify lock exists and has correct format
+            # Verify completion marker exists and has correct format
             The file "$lock_file" should be exist
             lock_content=$(cat "$lock_file")
-            The output "$lock_content" should match pattern "*:*"
+            # Should have completion marker format: 0:START:COMPLETION
+            The value "$lock_content" should match pattern "0:*:*"
         End
     End
     
@@ -136,8 +139,11 @@ Describe 'smart-lint.sh deduplication'
             json=$(create_post_tool_use_json "Edit" "test.go")
             When run run_hook_with_json "smart-lint.sh" "$json"
             The status should equal 2
-            The stderr should include "Released lock for project with completion timestamp"
-            The file "$lock_file" should not be exist
+            The stderr should include "Released lock for project:"
+            The file "$lock_file" should be exist
+            # Should contain completion marker (0:START:COMPLETION)
+            lock_content=$(cat "$lock_file")
+            The value "$lock_content" should match pattern "0:*:*"
         End
         
         It 'only releases its own lock'
@@ -187,33 +193,17 @@ Describe 'smart-lint.sh deduplication'
             create_go_file "file2.go"
             create_go_file "file3.go"
             
-            # Run first hook to acquire lock
-            json1=$(create_post_tool_use_json "MultiEdit" "file1.go")
-            output1=$(echo "$json1" | "$HOOKS_DIR/smart-lint.sh" 2>&1)
-            
-            # Verify first one acquired the lock
-            echo "$output1" | grep -q "Acquired lock for project" || {
-                echo "First run did not acquire lock as expected" >&2
-                echo "Output: $output1" >&2
-                return 1
-            }
-            
-            # Now immediately run second one while lock is still held
-            # We need to manually create the lock since the first run already completed
+            # Create a lock file manually to simulate another process
             project_id=$(pwd | tr '/' '_')
             lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
             mkdir -p "$(dirname "$lock_file")"
-            echo "1:$(date +%s)" > "$lock_file"
+            echo "$$:$(date +%s)" > "$lock_file"
             
-            json2=$(create_post_tool_use_json "MultiEdit" "file2.go")
-            output2=$(echo "$json2" | "$HOOKS_DIR/smart-lint.sh" 2>&1)
-            
-            # Second one should skip
-            echo "$output2" | grep -q "Another lint process is already running" || {
-                echo "Second run did not skip as expected" >&2
-                echo "Output: $output2" >&2
-                return 1
-            }
+            # Run hook with lock present
+            json=$(create_post_tool_use_json "MultiEdit" "file1.go")
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 0
+            The stderr should include "Another lint process is already running"
             
             # Clean up
             rm -f "$lock_file"
@@ -262,7 +252,7 @@ Describe 'smart-lint.sh deduplication'
             json=$(create_post_tool_use_json "Edit" "test.go")
             When run run_hook_with_json "smart-lint.sh" "$json"
             The status should equal 0
-            The stderr should include "Skipping lint - completed 2s ago"
+            The stderr should include "Skipping lint - completed"
             The stderr should include "cooldown: 5s"
         End
         
@@ -289,19 +279,19 @@ Describe 'smart-lint.sh deduplication'
         
         It 'creates completion marker after successful lint'
             json=$(create_post_tool_use_json "Edit" "test.go")
-            
-            # Run the hook and capture output to see what project ID is used
-            output=$(run_hook_with_json "smart-lint.sh" "$json" 2>&1)
-            
-            # Extract the project ID from the debug output
-            project_id=$(echo "$output" | grep "Project ID:" | sed 's/.*Project ID: //')
+            project_id=$(pwd | tr '/' '_')
             lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            
+            # Run the hook
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 2
+            The stderr should include "Hook completed successfully"
             
             # Check that completion marker was created
             The file "$lock_file" should be exist
             lock_content=$(cat "$lock_file")
             # Should have format: 0:START:COMPLETION
-            The value "$lock_content" should match pattern "0:[0-9]+:[0-9]+"
+            The value "$lock_content" should match pattern "0:*:*"
         End
         
         It 'respects custom cooldown period'

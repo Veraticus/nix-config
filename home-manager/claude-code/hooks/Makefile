@@ -71,11 +71,11 @@ test:
 		echo ""; \
 		echo "Running ShellSpec tests..."; \
 		echo "-------------------------"; \
-		if shellspec 2>/dev/null; then \
+		if shellspec; then \
 			echo "✅ ShellSpec tests passed"; \
 		else \
 			shellspec_exit_code=$$?; \
-			if [ $$shellspec_exit_code -eq 127 ] || grep -q "No such file or directory" <<< "$$(shellspec 2>&1)"; then \
+			if [ $$shellspec_exit_code -eq 127 ]; then \
 				echo "⚠️  ShellSpec appears to be broken, skipping tests"; \
 			else \
 				echo "❌ ShellSpec tests failed"; \

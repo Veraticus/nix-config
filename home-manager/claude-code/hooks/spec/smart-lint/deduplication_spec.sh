@@ -91,7 +91,7 @@ Describe 'smart-lint.sh deduplication'
             json=$(create_post_tool_use_json "Edit" "test.go")
             When run run_hook_with_json "smart-lint.sh" "$json"
             The status should equal 2
-            The stderr should include "Removing lock with invalid content"
+            The stderr should include "Removing lock with invalid/old format"
             The stderr should include "Acquired lock for project"
             The stderr should include "Hook completed successfully"
         End
@@ -136,7 +136,7 @@ Describe 'smart-lint.sh deduplication'
             json=$(create_post_tool_use_json "Edit" "test.go")
             When run run_hook_with_json "smart-lint.sh" "$json"
             The status should equal 2
-            The stderr should include "Released lock for project"
+            The stderr should include "Released lock for project with completion timestamp"
             The file "$lock_file" should not be exist
         End
         
@@ -239,6 +239,104 @@ Describe 'smart-lint.sh deduplication'
             The status should equal 2
             # Should still work but use pwd-based project ID
             The stderr should include "Acquired lock for project:"
+            The stderr should include "Hook completed successfully"
+        End
+    End
+    
+    Describe 'Cooldown period'
+        It 'skips lint when completed recently (within cooldown)'
+            # Set a short cooldown for testing
+            export CLAUDE_HOOKS_LINT_COOLDOWN=5
+            
+            # Create a completion marker (format: 0:START:COMPLETION)
+            project_id=$(pwd | tr '/' '_')
+            lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            mkdir -p "$(dirname "$lock_file")"
+            
+            # Simulate a lint that completed 2 seconds ago
+            current_time=$(date +%s)
+            start_time=$((current_time - 10))
+            completion_time=$((current_time - 2))
+            echo "0:${start_time}:${completion_time}" > "$lock_file"
+            
+            json=$(create_post_tool_use_json "Edit" "test.go")
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 0
+            The stderr should include "Skipping lint - completed 2s ago"
+            The stderr should include "cooldown: 5s"
+        End
+        
+        It 'runs lint when cooldown has expired'
+            # Set a short cooldown for testing
+            export CLAUDE_HOOKS_LINT_COOLDOWN=3
+            
+            # Create a completion marker for a lint that completed 5 seconds ago
+            project_id=$(pwd | tr '/' '_')
+            lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            mkdir -p "$(dirname "$lock_file")"
+            
+            current_time=$(date +%s)
+            start_time=$((current_time - 15))
+            completion_time=$((current_time - 5))
+            echo "0:${start_time}:${completion_time}" > "$lock_file"
+            
+            json=$(create_post_tool_use_json "Edit" "test.go")
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 2
+            The stderr should include "Cooldown expired"
+            The stderr should include "Hook completed successfully"
+        End
+        
+        It 'creates completion marker after successful lint'
+            json=$(create_post_tool_use_json "Edit" "test.go")
+            
+            # Run the hook and capture output to see what project ID is used
+            output=$(run_hook_with_json "smart-lint.sh" "$json" 2>&1)
+            
+            # Extract the project ID from the debug output
+            project_id=$(echo "$output" | grep "Project ID:" | sed 's/.*Project ID: //')
+            lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            
+            # Check that completion marker was created
+            The file "$lock_file" should be exist
+            lock_content=$(cat "$lock_file")
+            # Should have format: 0:START:COMPLETION
+            The value "$lock_content" should match pattern "0:[0-9]+:[0-9]+"
+        End
+        
+        It 'respects custom cooldown period'
+            # Set a custom cooldown period
+            export CLAUDE_HOOKS_LINT_COOLDOWN=15
+            
+            # Create a completion marker for a lint that completed 8 seconds ago
+            project_id=$(pwd | tr '/' '_')
+            lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            mkdir -p "$(dirname "$lock_file")"
+            
+            current_time=$(date +%s)
+            start_time=$((current_time - 20))
+            completion_time=$((current_time - 8))
+            echo "0:${start_time}:${completion_time}" > "$lock_file"
+            
+            json=$(create_post_tool_use_json "Edit" "test.go")
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 0
+            The stderr should include "cooldown: 15s"
+        End
+        
+        It 'removes old format locks and acquires new lock'
+            # Create an old format lock (any format that's not PID:START or 0:START:COMPLETION)
+            project_id=$(pwd | tr '/' '_')
+            lock_file="/tmp/claude-hooks-lint-locks/lint-${project_id}.lock"
+            mkdir -p "$(dirname "$lock_file")"
+            
+            # Use old format (single timestamp)
+            echo "$(date +%s)" > "$lock_file"
+            
+            json=$(create_post_tool_use_json "Edit" "test.go")
+            When run run_hook_with_json "smart-lint.sh" "$json"
+            The status should equal 2
+            The stderr should include "Removing lock with invalid/old format"
             The stderr should include "Hook completed successfully"
         End
     End

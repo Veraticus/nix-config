@@ -541,6 +541,9 @@ lint_shell() {
 LOCK_DIR="/tmp/claude-hooks-lint-locks"
 mkdir -p "$LOCK_DIR" 2>/dev/null || true
 
+# Cooldown period in seconds (configurable, default 10)
+LINT_COOLDOWN="${CLAUDE_HOOKS_LINT_COOLDOWN:-10}"
+
 # Function to get a project identifier for deduplication
 get_project_id() {
     # Use git root if available, otherwise current directory
@@ -551,7 +554,7 @@ get_project_id() {
     fi
 }
 
-# Function to acquire a lock with timeout
+# Function to acquire a lock with timeout and cooldown check
 acquire_lock() {
     local project_id="$1"
     local lock_file="$LOCK_DIR/lint-${project_id}.lock"
@@ -566,31 +569,58 @@ acquire_lock() {
             local lock_content
             lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
             
-            # Parse lock content (format: "PID:TIMESTAMP")
+            # Parse lock content - only support new format: "PID:START" or "0:START:COMPLETION"
             local lock_pid=""
-            local lock_timestamp=""
-            if [[ "$lock_content" =~ ^([0-9]+):([0-9]+)$ ]]; then
+            local start_timestamp=""
+            local completion_timestamp=""
+            
+            if [[ "$lock_content" =~ ^([0-9]+):([0-9]+):([0-9]+)$ ]]; then
+                # Format: 0:START:COMPLETION (completed run)
                 lock_pid="${BASH_REMATCH[1]}"
-                lock_timestamp="${BASH_REMATCH[2]}"
+                start_timestamp="${BASH_REMATCH[2]}"
+                completion_timestamp="${BASH_REMATCH[3]}"
+            elif [[ "$lock_content" =~ ^([0-9]+):([0-9]+)$ ]]; then
+                # Format: PID:START (running)
+                lock_pid="${BASH_REMATCH[1]}"
+                start_timestamp="${BASH_REMATCH[2]}"
             fi
             
-            # Check if lock is valid
             local current_time
             current_time=$(date +%s)
             local remove_lock=false
             
-            if [[ -z "$lock_pid" ]] || [[ -z "$lock_timestamp" ]]; then
-                # Invalid lock content, remove it
-                log_debug "Removing lock with invalid content: $lock_content"
+            if [[ -z "$lock_pid" ]] || [[ -z "$start_timestamp" ]]; then
+                # Invalid or old format lock content, remove it
+                log_debug "Removing lock with invalid/old format: $lock_content"
                 remove_lock=true
-            elif [[ $((current_time - lock_timestamp)) -gt $max_lock_age ]]; then
-                # Lock is too old, remove it
-                log_debug "Removing stale lock (age: $((current_time - lock_timestamp))s)"
-                remove_lock=true
-            elif ! kill -0 "$lock_pid" 2>/dev/null; then
-                # Process is dead, remove lock
-                log_debug "Removing lock from dead process: $lock_pid"
-                remove_lock=true
+            elif [[ "$lock_pid" == "0" ]] && [[ -n "$completion_timestamp" ]]; then
+                # This is a completed run, check cooldown
+                local time_since_completion=$((current_time - completion_timestamp))
+                if [[ $time_since_completion -lt $LINT_COOLDOWN ]]; then
+                    local remaining=$((LINT_COOLDOWN - time_since_completion))
+                    log_debug "Lint completed ${time_since_completion}s ago, cooldown active for ${remaining}s more"
+                    log_info "🔒 Skipping lint - completed ${time_since_completion}s ago (cooldown: ${LINT_COOLDOWN}s)"
+                    return 1
+                else
+                    # Cooldown expired, remove the completion marker
+                    log_debug "Cooldown expired (${time_since_completion}s > ${LINT_COOLDOWN}s), removing completion marker"
+                    remove_lock=true
+                fi
+            elif [[ "$lock_pid" != "0" ]]; then
+                # This is an active or stale running lock
+                if [[ $((current_time - start_timestamp)) -gt $max_lock_age ]]; then
+                    # Lock is too old, remove it
+                    log_debug "Removing stale lock (age: $((current_time - start_timestamp))s)"
+                    remove_lock=true
+                elif ! kill -0 "$lock_pid" 2>/dev/null; then
+                    # Process is dead, remove lock
+                    log_debug "Removing lock from dead process: $lock_pid"
+                    remove_lock=true
+                else
+                    # Active lock from running process
+                    log_debug "Active lock from running process $lock_pid"
+                    # Don't remove, just continue trying
+                fi
             fi
             
             if [[ "$remove_lock" == "true" ]]; then
@@ -621,7 +651,7 @@ acquire_lock() {
     return 1
 }
 
-# Function to release a lock
+# Function to release a lock and set completion timestamp
 # shellcheck disable=SC2317  # Called indirectly via trap
 release_lock() {
     local project_id="$1"
@@ -632,10 +662,21 @@ release_lock() {
         local lock_content
         lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
         
-        # Check if this is our lock
-        if [[ "$lock_content" =~ ^$$: ]]; then
-            rm -f "$lock_file" 2>/dev/null || true
-            log_debug "Released lock for project: $project_id"
+        # Check if this is our lock (format: PID:START_TIMESTAMP)
+        if [[ "$lock_content" =~ ^$$:([0-9]+)$ ]]; then
+            local start_timestamp="${BASH_REMATCH[1]}"
+            local completion_timestamp
+            completion_timestamp=$(date +%s)
+            
+            # Write completion marker (format: 0:START:COMPLETION)
+            local completion_content="0:${start_timestamp}:${completion_timestamp}"
+            if echo "$completion_content" > "$lock_file" 2>/dev/null; then
+                log_debug "Released lock for project: $project_id with completion timestamp"
+            else
+                # Fallback: remove the lock file entirely
+                rm -f "$lock_file" 2>/dev/null || true
+                log_debug "Released lock for project: $project_id (fallback removal)"
+            fi
         fi
     fi
 }

@@ -534,6 +534,85 @@ lint_shell() {
 }
 
 # ============================================================================
+# DEDUPLICATION FOR MULTIEDIT
+# ============================================================================
+
+# Lock file for preventing duplicate runs
+LOCK_DIR="/tmp/claude-hooks-lint-locks"
+mkdir -p "$LOCK_DIR" 2>/dev/null || true
+
+# Function to get a project identifier for deduplication
+get_project_id() {
+    # Use git root if available, otherwise current directory
+    if command_exists git && git rev-parse --show-toplevel >/dev/null 2>&1; then
+        git rev-parse --show-toplevel 2>/dev/null | tr '/' '_'
+    else
+        pwd | tr '/' '_'
+    fi
+}
+
+# Function to acquire a lock with timeout
+acquire_lock() {
+    local project_id="$1"
+    local lock_file="$LOCK_DIR/lint-${project_id}.lock"
+    local pid_file="$LOCK_DIR/lint-${project_id}.pid"
+    local timeout=5  # 5 second timeout
+    local elapsed=0
+    
+    # Try to acquire lock
+    while [[ $elapsed -lt $timeout ]]; do
+        if mkdir "$lock_file" 2>/dev/null; then
+            # We got the lock, write our PID
+            echo $$ > "$pid_file"
+            log_debug "Acquired lock for project: $project_id"
+            return 0
+        fi
+        
+        # Check if the process holding the lock is still alive
+        if [[ -f "$pid_file" ]]; then
+            local lock_pid
+            lock_pid=$(cat "$pid_file" 2>/dev/null || echo "0")
+            if ! kill -0 "$lock_pid" 2>/dev/null; then
+                # Process is dead, remove stale lock
+                log_debug "Removing stale lock from dead process: $lock_pid"
+                rm -rf "$lock_file" "$pid_file" 2>/dev/null || true
+                continue
+            fi
+        fi
+        
+        # Wait a bit and try again
+        sleep 0.1
+        elapsed=$((elapsed + 1))
+    done
+    
+    log_debug "Failed to acquire lock for project: $project_id (timed out)"
+    return 1
+}
+
+# Function to release a lock
+# shellcheck disable=SC2317  # Called indirectly via trap
+release_lock() {
+    local project_id="$1"
+    local lock_file="$LOCK_DIR/lint-${project_id}.lock"
+    local pid_file="$LOCK_DIR/lint-${project_id}.pid"
+    
+    # Only release if we own the lock
+    if [[ -f "$pid_file" ]] && [[ "$(cat "$pid_file" 2>/dev/null)" == "$$" ]]; then
+        rm -rf "$lock_file" "$pid_file" 2>/dev/null || true
+        log_debug "Released lock for project: $project_id"
+    fi
+}
+
+# Clean up locks on exit
+# shellcheck disable=SC2317  # Called by trap
+cleanup_locks() {
+    if [[ -n "${PROJECT_ID:-}" ]]; then
+        release_lock "$PROJECT_ID"
+    fi
+}
+trap cleanup_locks EXIT
+
+# ============================================================================
 # HOOK INPUT PARSING
 # ============================================================================
 
@@ -766,6 +845,16 @@ fi
 
 # Load configuration
 load_config
+
+# Get project ID for deduplication
+PROJECT_ID=$(get_project_id)
+
+# Try to acquire lock - if we can't, another instance is already running
+if ! acquire_lock "$PROJECT_ID"; then
+    log_debug "Another lint process is already running for this project, skipping"
+    # Exit silently - another instance will handle the linting
+    exit 0
+fi
 
 # Start timing
 START_TIME=$(time_start)

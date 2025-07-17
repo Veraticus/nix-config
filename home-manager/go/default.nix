@@ -86,6 +86,13 @@
     $DRY_RUN_CMD ${pkgs.go_1_24}/bin/go install golang.org/x/tools/cmd/deadcode@latest
   '';
 
+  # Activation script to ensure ko is installed
+  home.activation.installKo = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    echo "Installing/updating ko..."
+    export PATH="${pkgs.go_1_24}/bin:$PATH"
+    $DRY_RUN_CMD ${pkgs.go_1_24}/bin/go install github.com/google/ko@latest
+  '';
+
   # Helpful aliases for Go development
   home.shellAliases = {
     # Testing shortcuts

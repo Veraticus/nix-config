@@ -534,170 +534,6 @@ lint_shell() {
 }
 
 # ============================================================================
-# DEDUPLICATION FOR MULTIEDIT
-# ============================================================================
-
-# Lock file for preventing duplicate runs
-LOCK_DIR="/tmp/claude-hooks-lint-locks"
-mkdir -p "$LOCK_DIR" 2>/dev/null || true
-
-# Cooldown period in seconds (configurable, default 10)
-LINT_COOLDOWN="${CLAUDE_HOOKS_LINT_COOLDOWN:-10}"
-
-# Function to get a project identifier for deduplication
-get_project_id() {
-    # Use git root if available, otherwise current directory
-    if command_exists git && git rev-parse --show-toplevel >/dev/null 2>&1; then
-        git rev-parse --show-toplevel 2>/dev/null | tr '/' '_'
-    else
-        pwd | tr '/' '_'
-    fi
-}
-
-# Function to acquire a lock with timeout and cooldown check
-acquire_lock() {
-    local project_id="$1"
-    local lock_file="$LOCK_DIR/lint-${project_id}.lock"
-    local timeout=5  # 5 second timeout
-    local elapsed=0
-    local max_lock_age=30  # Consider locks older than 30 seconds as stale
-    
-    # Try to acquire lock
-    while [[ $elapsed -lt $timeout ]]; do
-        # Check if lock exists and validate it
-        if [[ -f "$lock_file" ]]; then
-            local lock_content
-            lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
-            
-            # Parse lock content - only support new format: "PID:START" or "0:START:COMPLETION"
-            local lock_pid=""
-            local start_timestamp=""
-            local completion_timestamp=""
-            
-            if [[ "$lock_content" =~ ^([0-9]+):([0-9]+):([0-9]+)$ ]]; then
-                # Format: 0:START:COMPLETION (completed run)
-                lock_pid="${BASH_REMATCH[1]}"
-                start_timestamp="${BASH_REMATCH[2]}"
-                completion_timestamp="${BASH_REMATCH[3]}"
-            elif [[ "$lock_content" =~ ^([0-9]+):([0-9]+)$ ]]; then
-                # Format: PID:START (running)
-                lock_pid="${BASH_REMATCH[1]}"
-                start_timestamp="${BASH_REMATCH[2]}"
-            fi
-            
-            local current_time
-            current_time=$(date +%s)
-            local remove_lock=false
-            
-            if [[ -z "$lock_pid" ]] || [[ -z "$start_timestamp" ]]; then
-                # Invalid or old format lock content, remove it
-                log_debug "Removing lock with invalid/old format: $lock_content"
-                remove_lock=true
-            elif [[ "$lock_pid" == "0" ]] && [[ -n "$completion_timestamp" ]]; then
-                # This is a completed run, check cooldown
-                local time_since_completion=$((current_time - completion_timestamp))
-                if [[ $time_since_completion -lt $LINT_COOLDOWN ]]; then
-                    local remaining=$((LINT_COOLDOWN - time_since_completion))
-                    log_debug "Lint completed ${time_since_completion}s ago, cooldown active for ${remaining}s more"
-                    log_info "🔒 Skipping lint - completed ${time_since_completion}s ago (cooldown: ${LINT_COOLDOWN}s)"
-                    return 1
-                else
-                    # Cooldown expired, remove the completion marker
-                    log_debug "Cooldown expired (${time_since_completion}s > ${LINT_COOLDOWN}s), removing completion marker"
-                    remove_lock=true
-                fi
-            elif [[ "$lock_pid" != "0" ]]; then
-                # This is an active or stale running lock
-                if [[ $((current_time - start_timestamp)) -gt $max_lock_age ]]; then
-                    # Lock is too old, remove it
-                    log_debug "Removing stale lock (age: $((current_time - start_timestamp))s)"
-                    remove_lock=true
-                elif ! kill -0 "$lock_pid" 2>/dev/null; then
-                    # Process is dead, remove lock
-                    log_debug "Removing lock from dead process: $lock_pid"
-                    remove_lock=true
-                else
-                    # Active lock from running process
-                    log_debug "Active lock from running process $lock_pid"
-                    # Don't remove, just return failure
-                    return 1
-                fi
-            fi
-            
-            if [[ "$remove_lock" == "true" ]]; then
-                rm -f "$lock_file" 2>/dev/null || true
-                # Try again immediately
-                continue
-            fi
-        fi
-        
-        # Try to create lock file atomically
-        local lock_content
-        lock_content="$$:$(date +%s)"
-        
-        # Ensure lock directory exists
-        mkdir -p "$LOCK_DIR" 2>/dev/null || true
-        
-        if echo "$lock_content" > "${lock_file}.tmp" 2>/dev/null && 
-           mv -n "${lock_file}.tmp" "$lock_file" 2>/dev/null; then
-            log_debug "Acquired lock for project: $project_id (content: $lock_content)"
-            return 0
-        else
-            # Clean up temp file if mv failed
-            rm -f "${lock_file}.tmp" 2>/dev/null || true
-        fi
-        
-        # Wait a bit and try again
-        sleep 0.1
-        elapsed=$((elapsed + 1))
-    done
-    
-    log_debug "Failed to acquire lock for project: $project_id (timed out)"
-    return 1
-}
-
-# Function to release a lock and set completion timestamp
-# shellcheck disable=SC2317  # Called indirectly via trap
-release_lock() {
-    local project_id="$1"
-    local lock_file="$LOCK_DIR/lint-${project_id}.lock"
-    
-    # Only release if we own the lock
-    if [[ -f "$lock_file" ]]; then
-        local lock_content
-        lock_content=$(cat "$lock_file" 2>/dev/null || echo "")
-        
-        # Check if this is our lock (format: PID:START_TIMESTAMP)
-        if [[ "$lock_content" =~ ^$$:([0-9]+)$ ]]; then
-            local start_timestamp="${BASH_REMATCH[1]}"
-            local completion_timestamp
-            completion_timestamp=$(date +%s)
-            
-            # Write completion marker (format: 0:START:COMPLETION)
-            local completion_content="0:${start_timestamp}:${completion_timestamp}"
-            if echo "$completion_content" > "$lock_file" 2>/dev/null; then
-                log_debug "Released lock for project: $project_id with completion timestamp"
-            else
-                # Fallback: remove the lock file entirely
-                rm -f "$lock_file" 2>/dev/null || true
-                log_debug "Released lock for project: $project_id (fallback removal)"
-            fi
-        fi
-    fi
-    # Always return success - release_lock is meant to be graceful
-    return 0
-}
-
-# Clean up locks on exit
-# shellcheck disable=SC2317  # Called by trap
-cleanup_locks() {
-    if [[ -n "${PROJECT_ID:-}" ]]; then
-        release_lock "$PROJECT_ID"
-    fi
-}
-trap cleanup_locks EXIT
-
-# ============================================================================
 # HOOK INPUT PARSING
 # ============================================================================
 
@@ -929,18 +765,6 @@ fi
 # Load configuration
 load_config
 
-# Get project ID for deduplication
-PROJECT_ID=$(get_project_id)
-log_debug "Project ID: $PROJECT_ID"
-
-# Try to acquire lock - if we can't, another instance is already running
-if ! acquire_lock "$PROJECT_ID"; then
-    log_debug "Another lint process is already running for this project, skipping"
-    log_info "🔒 Skipping lint - another instance is already running"
-    # Exit silently - another instance will handle the linting
-    exit 0
-fi
-
 # Start timing
 START_TIME=$(time_start)
 
@@ -1032,11 +856,6 @@ main() {
 # Run main function
 main
 exit_code=$?
-
-# Test mode sleep (for deduplication testing)
-if [[ -n "${CLAUDE_HOOKS_TEST_SLEEP:-}" ]]; then
-    sleep "${CLAUDE_HOOKS_TEST_SLEEP}"
-fi
 
 # Final message and exit
 if [[ $exit_code -eq 2 ]]; then

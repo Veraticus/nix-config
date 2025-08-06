@@ -59,7 +59,7 @@ in
     extraConfig = ''
       # Use the systemd/launchd managed SSH agent socket
       ${lib.optionalString pkgs.stdenv.isLinux ''
-        IdentityAgent ${sshAgentSocket}
+        IdentityAgent /run/user/1000/ssh-agent.socket
       ''}
       
       # macOS specific: use keychain for persistence

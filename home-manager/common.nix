@@ -16,6 +16,7 @@
     ./git
     ./go
     ./k9s
+    ./ssh-agent
     ./zsh
     ./starship
   ];

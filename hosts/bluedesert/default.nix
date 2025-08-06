@@ -201,9 +201,7 @@ in
       unar
     ];
 
-    loginShellInit = ''
-      eval $(ssh-agent)
-    '';
+    # SSH agent is now managed by systemd user service
   };
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion

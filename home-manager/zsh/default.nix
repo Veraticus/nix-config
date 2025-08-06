@@ -48,12 +48,9 @@
         fi
       fi
 
-      function async-ssh-add {
-        if [ -f "''${HOME}/.ssh/github" ] && ! ssh-add -l >/dev/null; then
-          ssh-add "''${HOME}/.ssh/github"
-        fi
-      }
-      async-ssh-add > /dev/null &!
+      # SSH agent is now managed by systemd (Linux) or launchd (macOS)
+      # Keys are automatically loaded by the ssh-agent service
+      # Use 'ssh-add-git-keys' to manually reload keys if needed
 
       function set-title-precmd() {
         printf "\e]2;%s\a" "''${PWD/#$HOME/~}"
@@ -75,9 +72,11 @@
         source "$(fzf-share)/completion.zsh"
       fi
 
-      if type it &>/dev/null
-      then
-      source $(brew --prefix)/share/zsh/site-functions/_it
+      if type it &>/dev/null; then
+        # Only source brew completions on macOS where brew is available
+        if [[ "$(uname)" == "Darwin" ]] && type brew &>/dev/null; then
+          source $(brew --prefix)/share/zsh/site-functions/_it
+        fi
         eval "$(it wrapper)"
       fi
 

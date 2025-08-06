@@ -232,9 +232,7 @@ in
       chromium
     ];
 
-    loginShellInit = ''
-      eval $(ssh-agent)
-    '';
+    # SSH agent is now managed by systemd user service
   };
 
 

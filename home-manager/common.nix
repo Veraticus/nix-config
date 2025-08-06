@@ -1,8 +1,9 @@
-{ inputs
-, lib
-, config
-, pkgs
-, ...
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
 }:
 {
   # You can import other home-manager modules here
@@ -45,10 +46,12 @@
       wireguard-tools
       k9s
       starlark-lsp
+      terraform
       autossh
       eternal-terminal
       gnumake
       yq
+      gh # GitHub CLI
 
       # Tilt/Starlark tools
       tilt

@@ -876,7 +876,42 @@ try_project_test_command() {
     make_targets=$(echo "$config_output" | head -1)
     script_names=$(echo "$config_output" | tail -1)
     
-    # Try make targets first
+    # Try just recipes first (highest priority)
+    if [[ -f "$cmd_root/justfile" ]] || [[ -f "$cmd_root/.justfile" ]]; then
+        log_debug "Checking just recipes: $make_targets"
+        for target in $make_targets; do
+            if check_just_recipe "$target" "$cmd_root"; then
+                # Run just command with FILE argument
+                local just_output
+                local just_exit_code
+                
+                # Change to command root and run just
+                if just_output=$(cd "$cmd_root" && just "$target" "$rel_path" 2>&1); then
+                    just_exit_code=0
+                    log_debug "Just command succeeded"
+                else
+                    just_exit_code=$?
+                    log_debug "Just command failed with exit code: $just_exit_code"
+                fi
+                
+                # Output information if it failed OR if in test mode
+                if [[ $just_exit_code -ne 0 ]] || [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]]; then
+                    log_info "⚡ Running 'just $target' from $cmd_root"
+                    if [[ -n "$just_output" ]]; then
+                        echo "$just_output" >&2
+                    fi
+                    if [[ $just_exit_code -ne 0 ]]; then
+                        add_error "Tests failed (just $target)"
+                    fi
+                fi
+                
+                # Return 0 to indicate we found and ran the command (even if tests failed)
+                return 0
+            fi
+        done
+    fi
+    
+    # Try make targets second
     if [[ -f "$cmd_root/Makefile" ]]; then
         log_debug "Checking make targets: $make_targets"
         for target in $make_targets; do
@@ -911,7 +946,7 @@ try_project_test_command() {
         done
     fi
     
-    # Try scripts if no make target worked
+    # Try scripts if no make target or just recipe worked
     if [[ -d "$cmd_root/scripts" ]]; then
         log_debug "Checking scripts: $script_names"
         for script in $script_names; do

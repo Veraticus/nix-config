@@ -84,6 +84,12 @@
       source = ./hooks/integrate.sh;
       executable = true;
     };
+
+    # Status line script
+    ".claude/hooks/statusline.sh" = {
+      source = ./hooks/statusline.sh;
+      executable = true;
+    };
     
     # Copy documentation and examples (not executable)
     ".claude/hooks/README.md".source = ./hooks/README.md;

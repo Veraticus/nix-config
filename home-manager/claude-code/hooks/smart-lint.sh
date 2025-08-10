@@ -671,7 +671,44 @@ try_project_lint_command() {
     make_targets=$(echo "$config_output" | head -1)
     script_names=$(echo "$config_output" | tail -1)
     
-    # Try make targets first
+    # Try just recipes first (highest priority)
+    if [[ -f "$cmd_root/justfile" ]] || [[ -f "$cmd_root/.justfile" ]]; then
+        log_debug "Checking just recipes: $make_targets"
+        for target in $make_targets; do
+            if check_just_recipe "$target" "$cmd_root"; then
+                # Run just command with FILE argument
+                local just_output
+                local just_exit_code
+                
+                # Change to command root and run just
+                if just_output=$(cd "$cmd_root" && just "$target" "$rel_path" 2>&1); then
+                    just_exit_code=0
+                    log_debug "Just command succeeded"
+                else
+                    just_exit_code=$?
+                    log_debug "Just command failed with exit code: $just_exit_code"
+                fi
+                
+                # Output and track errors if it failed
+                if [[ $just_exit_code -ne 0 ]]; then
+                    log_info "⚡ Running 'just $target' from $cmd_root"
+                    if [[ -n "$just_output" ]]; then
+                        echo "$just_output" >&2
+                    fi
+                    add_error "just $target found issues"
+                elif [[ "${CLAUDE_HOOKS_TEST_MODE:-0}" == "1" ]] && [[ -n "$just_output" ]]; then
+                    # In test mode, show output even on success
+                    log_info "⚡ Running 'just $target' from $cmd_root"
+                    echo "$just_output" >&2
+                fi
+                
+                # Return 0 to indicate project command was found and executed
+                return 0
+            fi
+        done
+    fi
+    
+    # Try make targets second
     if [[ -f "$cmd_root/Makefile" ]]; then
         log_debug "Checking make targets: $make_targets"
         for target in $make_targets; do
@@ -708,7 +745,7 @@ try_project_lint_command() {
         done
     fi
     
-    # Try scripts if no make target worked
+    # Try scripts if no make target or just recipe worked
     if [[ -d "$cmd_root/scripts" ]]; then
         log_debug "Checking scripts: $script_names"
         for script in $script_names; do

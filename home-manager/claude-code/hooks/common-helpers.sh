@@ -297,8 +297,8 @@ find_project_command_root() {
     fi
     
     while [[ "$dir" != "/" ]]; do
-        # Check for Makefile or scripts/ directory
-        if [[ -f "$dir/Makefile" ]] || [[ -d "$dir/scripts" ]]; then
+        # Check for Makefile, justfile, or scripts/ directory
+        if [[ -f "$dir/Makefile" ]] || [[ -f "$dir/justfile" ]] || [[ -f "$dir/.justfile" ]] || [[ -d "$dir/scripts" ]]; then
             echo "$dir"
             return 0
         fi
@@ -340,6 +340,31 @@ check_script_exists() {
     
     # Check if the script exists and is executable
     [[ -x "$scripts_dir/$script_name" ]]
+}
+
+# Check if a just recipe exists
+# Returns 0 if recipe exists, 1 otherwise
+check_just_recipe() {
+    local recipe="$1"
+    local justfile_dir="${2:-.}"
+    
+    # Check if just command exists
+    if ! command_exists just; then
+        return 1
+    fi
+    
+    # Check if justfile exists in the directory
+    if [[ ! -f "$justfile_dir/justfile" ]] && [[ ! -f "$justfile_dir/.justfile" ]]; then
+        return 1
+    fi
+    
+    # Use just --list to check if recipe exists
+    # just --list shows all available recipes
+    if (cd "$justfile_dir" && just --list 2>/dev/null | grep -q "^[[:space:]]*$recipe"); then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Calculate relative path from one directory to a file

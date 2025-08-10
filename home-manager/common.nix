@@ -52,7 +52,9 @@
       eternal-terminal
       gnumake
       yq
-      gh # GitHub CLI
+      gh
+      parallel
+      just
 
       # Tilt/Starlark tools
       tilt
@@ -61,6 +63,11 @@
 
       # Kubernetes tools
       kubernetes-helm
+      kubectl
+      kustomize
+
+      # AWS tools
+      git-remote-codecommit
 
       # LSP servers
       lua-language-server

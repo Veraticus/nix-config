@@ -62,7 +62,7 @@ in
         IdentityAgent /run/user/1000/ssh-agent.socket
       ''}
       
-      # macOS specific: use keychain for persistence
+      # macOS specific: use 1Password SSH agent
       ${lib.optionalString pkgs.stdenv.isDarwin ''
         UseKeychain yes
         IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"

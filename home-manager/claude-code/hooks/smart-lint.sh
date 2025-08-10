@@ -676,12 +676,12 @@ try_project_lint_command() {
         log_debug "Checking just recipes: $make_targets"
         for target in $make_targets; do
             if check_just_recipe "$target" "$cmd_root"; then
-                # Run just command with FILE argument
+                # Run just command (without file argument - just recipes handle their own file selection)
                 local just_output
                 local just_exit_code
                 
                 # Change to command root and run just
-                if just_output=$(cd "$cmd_root" && just "$target" "$rel_path" 2>&1); then
+                if just_output=$(cd "$cmd_root" && just "$target" 2>&1); then
                     just_exit_code=0
                     log_debug "Just command succeeded"
                 else

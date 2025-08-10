@@ -69,6 +69,11 @@
       # AWS tools
       git-remote-codecommit
 
+      # Python
+      (python3.withPackages (ps: with ps; [
+        pip
+      ]))
+
       # LSP servers
       lua-language-server
       pyright

@@ -1,18 +1,8 @@
 { config, lib, pkgs, ... }:
 
-let
-  # Python with required packages for analysis scripts
-  pythonWithPackages = pkgs.python3.withPackages (ps: with ps; [
-    google-api-python-client
-    google-auth
-    google-auth-oauthlib
-    google-auth-httplib2
-  ]);
-in
 {
   home.packages = [
     pkgs.gmailctl
-    pythonWithPackages
   ];
 
   # Shell aliases for convenience
@@ -35,7 +25,7 @@ in
         exit 1
       fi
       
-      ${pythonWithPackages}/bin/python "$SCRIPT_DIR/deep-analyze.py" "$@"
+      python "$SCRIPT_DIR/deep-analyze.py" "$@"
     '';
   };
 

@@ -72,6 +72,14 @@
       # Python
       (python3.withPackages (ps: with ps; [
         pip
+        pytest
+        pyyaml
+        black
+        # Gmail analysis dependencies
+        google-api-python-client
+        google-auth
+        google-auth-oauthlib
+        google-auth-httplib2
       ]))
 
       # LSP servers
@@ -85,12 +93,7 @@
       stylua
       nixpkgs-fmt
       nodePackages.prettier
-      black
       gofumpt
-
-      # Python testing
-      python3Packages.pytest
-      python3Packages.pyyaml
 
       # Python package management
       uv

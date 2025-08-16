@@ -19,6 +19,19 @@
       jq
       httpie
       websocat # WebSocket client
+      
+      # Development tools
+      awscli2 # AWS CLI for AWS operations
+      kind # Kubernetes in Docker for local K8s clusters
+      kubectl # Kubernetes CLI
+      ctlptl # Controller for Kind clusters with registry
+      postgresql # PostgreSQL client (psql)
+      mongosh # MongoDB shell
+      tcpdump # Packet capture tool
+      lsof # List open files/ports
+      inetutils # Network utilities (includes netstat-like tools)
+      kubernetes-helm
+      ginkgo
     ];
   };
 

@@ -137,7 +137,7 @@ in
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0OvTKlW2Vk5WA11YOQ6SNDS4KsT9I1ffVGomswscZA josh+ultraviolet@joshsymonds.com"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEhL0xP1eFVuYEPAvO6t+Mb9ragHnk4dxeBd/1Tmka41 josh+phone@joshsymonds.com"
     ];
-    extraGroups = [ "wheel" config.users.groups.keys.name ];
+    extraGroups = [ "wheel" config.users.groups.keys.name "podman" "docker" ];
   };
 
 
@@ -192,13 +192,22 @@ in
   services.rpcbind.enable = true;
 
 
+  # Podman for containers
   virtualisation.podman = {
     enable = true;
-    dockerCompat = true;
+    dockerCompat = false;  # Disable compat since we have real Docker
     defaultNetwork.settings.dns_enabled = true;
     # Enable cgroup v2 for better container resource management
     enableNvidia = false; # Set to true if you have NVIDIA GPU
     extraPackages = [ pkgs.podman-compose pkgs.podman-tui ];
+  };
+  
+  # Docker for development tools (Kind, ctlptl, etc)
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = true;
+    # Use a separate storage driver to avoid conflicts
+    storageDriver = "overlay2";
   };
 
   virtualisation.oci-containers = {
@@ -214,6 +223,78 @@ in
       Type = "oneshot";
       RemainAfterExit = true;
       ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.coreutils}/bin/test -d /mnt/video'";
+    };
+  };
+
+  # Clean up old kind and ctlptl clusters
+  systemd.services.cleanup-old-clusters = {
+    description = "Clean up kind and ctlptl clusters older than 1 day";
+    after = [ "docker.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      User = user;
+      Group = "docker";
+      ExecStart = pkgs.writeShellScript "cleanup-old-clusters" ''
+        #!${pkgs.bash}/bin/bash
+        set -euo pipefail
+        
+        # Function to get cluster age in seconds
+        get_cluster_age() {
+          local cluster=$1
+          local created_time=$(${pkgs.docker}/bin/docker inspect "$cluster-control-plane" 2>/dev/null | ${pkgs.jq}/bin/jq -r '.[0].Created // empty')
+          
+          if [ -z "$created_time" ]; then
+            echo "0"
+            return
+          fi
+          
+          local created_epoch=$(${pkgs.coreutils}/bin/date -d "$created_time" +%s 2>/dev/null || echo "0")
+          local current_epoch=$(${pkgs.coreutils}/bin/date +%s)
+          echo $((current_epoch - created_epoch))
+        }
+        
+        # Clean up kind clusters older than 1 day (86400 seconds)
+        if command -v kind &> /dev/null; then
+          echo "Checking kind clusters..."
+          for cluster in $(kind get clusters 2>/dev/null); do
+            age=$(get_cluster_age "$cluster")
+            if [ "$age" -gt 86400 ]; then
+              echo "Deleting old kind cluster: $cluster (age: $((age/3600)) hours)"
+              kind delete cluster --name "$cluster" || true
+            else
+              echo "Keeping kind cluster: $cluster (age: $((age/3600)) hours)"
+            fi
+          done
+        fi
+        
+        # Clean up ctlptl clusters (which are also kind clusters with registry)
+        if command -v ctlptl &> /dev/null; then
+          echo "Checking ctlptl clusters..."
+          # ctlptl uses kind under the hood, so clusters are already handled above
+          # Just clean up any orphaned registries
+          for registry in $(${pkgs.docker}/bin/docker ps -a --filter "label=ctlptl.dev/cluster" --format "{{.Names}}" 2>/dev/null); do
+            cluster_name=$(${pkgs.docker}/bin/docker inspect "$registry" 2>/dev/null | ${pkgs.jq}/bin/jq -r '.[0].Config.Labels["ctlptl.dev/cluster"] // empty')
+            
+            # Check if the associated cluster still exists
+            if [ -n "$cluster_name" ] && ! kind get clusters 2>/dev/null | grep -q "^$cluster_name$"; then
+              echo "Removing orphaned ctlptl registry: $registry"
+              ${pkgs.docker}/bin/docker rm -f "$registry" || true
+            fi
+          done
+        fi
+        
+        echo "Cluster cleanup completed"
+      '';
+    };
+  };
+
+  systemd.timers.cleanup-old-clusters = {
+    description = "Run cluster cleanup every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1h";
+      OnUnitActiveSec = "1h";
+      Persistent = true;
     };
   };
 

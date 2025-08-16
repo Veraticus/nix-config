@@ -538,6 +538,48 @@ in
     };
   };
 
+  # Clean up Podman and Nix store regularly
+  systemd.services.cleanup-podman-and-nix = {
+    description = "Clean up Podman and Nix store";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "cleanup-podman-and-nix" ''
+        #!${pkgs.bash}/bin/bash
+        set -euo pipefail
+        
+        echo "=== Starting cleanup at $(date) ==="
+        
+        # Clean Podman
+        if command -v podman &> /dev/null; then
+          echo "Cleaning Podman system..."
+          ${pkgs.podman}/bin/podman system prune -a --volumes -f || true
+          echo "Podman cleanup completed"
+        fi
+        
+        # Clean old Nix generations (keep last 5)
+        echo "Cleaning old Nix generations..."
+        ${pkgs.nix}/bin/nix-env --delete-generations +5 || true
+        ${pkgs.nix}/bin/nix-collect-garbage || true
+        
+        # Clean Nix store of unreferenced packages
+        echo "Running Nix garbage collection..."
+        ${pkgs.nix}/bin/nix-store --gc || true
+        
+        echo "=== Cleanup completed at $(date) ==="
+      '';
+    };
+  };
+
+  systemd.timers.cleanup-podman-and-nix = {
+    description = "Run Podman and Nix cleanup every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1h";
+      OnUnitActiveSec = "1h";
+      Persistent = true;
+    };
+  };
+
   # Environment
   environment = {
     pathsToLink = [ "/share/zsh" ];

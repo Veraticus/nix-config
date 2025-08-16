@@ -300,6 +300,58 @@ in
     };
   };
 
+  # Clean up Docker and Nix store regularly
+  systemd.services.cleanup-docker-and-nix = {
+    description = "Clean up Docker and Nix store";
+    after = [ "docker.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "cleanup-docker-and-nix" ''
+        #!${pkgs.bash}/bin/bash
+        set -euo pipefail
+        
+        echo "=== Starting cleanup at $(date) ==="
+        
+        # Clean Docker if it's running
+        if systemctl is-active --quiet docker; then
+          echo "Cleaning Docker system..."
+          ${pkgs.docker}/bin/docker system prune -a --volumes -f || true
+          echo "Docker cleanup completed"
+        else
+          echo "Docker is not running, skipping Docker cleanup"
+        fi
+        
+        # Clean Podman
+        if command -v podman &> /dev/null; then
+          echo "Cleaning Podman system..."
+          ${pkgs.podman}/bin/podman system prune -a --volumes -f || true
+          echo "Podman cleanup completed"
+        fi
+        
+        # Clean old Nix generations (keep last 5)
+        echo "Cleaning old Nix generations..."
+        ${pkgs.nix}/bin/nix-env --delete-generations +5 || true
+        ${pkgs.nix}/bin/nix-collect-garbage || true
+        
+        # Clean Nix store of unreferenced packages
+        echo "Running Nix garbage collection..."
+        ${pkgs.nix}/bin/nix-store --gc || true
+        
+        echo "=== Cleanup completed at $(date) ==="
+      '';
+    };
+  };
+
+  systemd.timers.cleanup-docker-and-nix = {
+    description = "Run Docker and Nix cleanup every hour";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "1h";
+      OnUnitActiveSec = "1h";
+      Persistent = true;
+    };
+  };
+
   # Environment
   environment = {
     pathsToLink = [ "/share/zsh" ];

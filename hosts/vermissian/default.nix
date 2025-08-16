@@ -101,7 +101,8 @@ in
       address = "172.31.0.202";
       prefixLength = 24;
     }];
-    interfaces.enp0s20f0u12.useDHCP = false;
+    interfaces.wwp0s20f0u12i8.useDHCP = false;
+    interfaces.wwp0s20f0u12i10.useDHCP = false;
   };
 
   boot = {
@@ -136,6 +137,7 @@ in
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINTWmaNJwRqzDMdfVOXbX6FNjcJ94VRK+aKLI2NqrcWV josh+morningstar@joshsymonds.com"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0OvTKlW2Vk5WA11YOQ6SNDS4KsT9I1ffVGomswscZA josh+ultraviolet@joshsymonds.com"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEhL0xP1eFVuYEPAvO6t+Mb9ragHnk4dxeBd/1Tmka41 josh+phone@joshsymonds.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKORiybEeo8osP58/0d5aSHrYx2/m34hYaFjfKdcpglJ josh+vermissian@joshsymonds.com"
     ];
     extraGroups = [ "wheel" config.users.groups.keys.name "podman" "docker" ];
   };

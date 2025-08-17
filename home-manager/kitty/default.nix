@@ -59,9 +59,11 @@
       "shell_integration" = "enabled";
       "clipboard_control" = "write-clipboard write-primary read-clipboard read-primary";
       "term" = "xterm-kitty";
+      # SSH configuration
+      "ssh_env" = "TERM=xterm-256color";  # Use compatible TERM for SSH
       # SSH clipboard integration
       "share_connections" = true;
-      "remote_kitty" = "yes";
+      "remote_kitty" = "if-needed";
       # macOS clipboard integration
       "copy_on_select" = false; # Don't auto-copy on select
       "paste_actions" = "quote-urls-at-prompt";

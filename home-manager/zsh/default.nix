@@ -40,6 +40,15 @@
     initContent = ''
       [ -d "/opt/homebrew/bin" ] && export PATH=''${PATH}:/opt/homebrew/bin
 
+      # Disable mouse reporting in shell when not in tmux
+      # This prevents raw mouse escape sequences from appearing
+      if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then
+        printf '\e[?1000l'  # Disable mouse tracking
+        printf '\e[?1002l'  # Disable cell motion tracking
+        printf '\e[?1003l'  # Disable all motion tracking
+        printf '\e[?1006l'  # Disable SGR extended mode
+      fi
+
       # Import TMUX_DEVSPACE from tmux environment if we're in tmux
       if [ -n "$TMUX" ]; then
         TMUX_DEVSPACE=$(tmux show-environment TMUX_DEVSPACE 2>/dev/null | cut -d= -f2)

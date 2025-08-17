@@ -55,6 +55,7 @@
       gh
       parallel
       just
+      kitty.terminfo  # Ensure proper terminal handling for SSH sessions
 
       # Tilt/Starlark tools
       tilt

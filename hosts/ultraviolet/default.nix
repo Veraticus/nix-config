@@ -17,6 +17,9 @@ in
 
     # You can also split up your configuration and import pieces of it here:
     # ./users.nix
+    
+    # SABnzbd with Mullvad VPN (migrated from bluedesert)
+    ./sabnzbd-vpn.nix
 
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix
@@ -221,6 +224,72 @@ in
     user = "jellyfin";
   };
 
+  # Jellyfin encoding configuration for better performance with large files
+  systemd.services.jellyfin.preStart = ''
+    mkdir -p /var/lib/jellyfin/config
+    cat > /var/lib/jellyfin/config/encoding.xml <<'EOF'
+    <?xml version="1.0" encoding="utf-8"?>
+    <EncodingOptions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+      <EncodingThreadCount>-1</EncodingThreadCount>
+      <TranscodingTempPath>/var/cache/jellyfin/transcodes</TranscodingTempPath>
+      <FallbackFontPath />
+      <EnableFallbackFont>false</EnableFallbackFont>
+      <EnableAudioVbr>false</EnableAudioVbr>
+      <DownMixAudioBoost>2</DownMixAudioBoost>
+      <DownMixStereoAlgorithm>None</DownMixStereoAlgorithm>
+      <MaxMuxingQueueSize>2048</MaxMuxingQueueSize>
+      <EnableThrottling>false</EnableThrottling>
+      <ThrottleDelaySeconds>180</ThrottleDelaySeconds>
+      <EnableSegmentDeletion>true</EnableSegmentDeletion>
+      <SegmentKeepSeconds>720</SegmentKeepSeconds>
+      <HardwareAccelerationType>qsv</HardwareAccelerationType>
+      <EncoderAppPathDisplay>/nix/store/fvr78yr36anl4h054ph6nz3jpsdm7ank-jellyfin-ffmpeg-7.1.1-6-bin/bin/ffmpeg</EncoderAppPathDisplay>
+      <VaapiDevice>/dev/dri/renderD128</VaapiDevice>
+      <QsvDevice />
+      <EnableTonemapping>false</EnableTonemapping>
+      <EnableVppTonemapping>false</EnableVppTonemapping>
+      <EnableVideoToolboxTonemapping>false</EnableVideoToolboxTonemapping>
+      <TonemappingAlgorithm>bt2390</TonemappingAlgorithm>
+      <TonemappingMode>auto</TonemappingMode>
+      <TonemappingRange>auto</TonemappingRange>
+      <TonemappingDesat>0</TonemappingDesat>
+      <TonemappingPeak>100</TonemappingPeak>
+      <TonemappingParam>0</TonemappingParam>
+      <VppTonemappingBrightness>16</VppTonemappingBrightness>
+      <VppTonemappingContrast>1</VppTonemappingContrast>
+      <H264Crf>23</H264Crf>
+      <H265Crf>28</H265Crf>
+      <EncoderPreset>auto</EncoderPreset>
+      <DeinterlaceDoubleRate>false</DeinterlaceDoubleRate>
+      <DeinterlaceMethod>yadif</DeinterlaceMethod>
+      <EnableDecodingColorDepth10Hevc>true</EnableDecodingColorDepth10Hevc>
+      <EnableDecodingColorDepth10Vp9>true</EnableDecodingColorDepth10Vp9>
+      <EnableDecodingColorDepth10HevcRext>true</EnableDecodingColorDepth10HevcRext>
+      <EnableDecodingColorDepth12HevcRext>false</EnableDecodingColorDepth12HevcRext>
+      <EnableEnhancedNvdecDecoder>true</EnableEnhancedNvdecDecoder>
+      <PreferSystemNativeHwDecoder>true</PreferSystemNativeHwDecoder>
+      <EnableIntelLowPowerH264HwEncoder>false</EnableIntelLowPowerH264HwEncoder>
+      <EnableIntelLowPowerHevcHwEncoder>false</EnableIntelLowPowerHevcHwEncoder>
+      <EnableHardwareEncoding>true</EnableHardwareEncoding>
+      <AllowHevcEncoding>true</AllowHevcEncoding>
+      <AllowAv1Encoding>false</AllowAv1Encoding>
+      <EnableSubtitleExtraction>true</EnableSubtitleExtraction>
+      <HardwareDecodingCodecs>
+        <string>h264</string>
+        <string>hevc</string>
+        <string>mpeg2video</string>
+        <string>mpeg4</string>
+        <string>vc1</string>
+        <string>vp8</string>
+        <string>vp9</string>
+      </HardwareDecodingCodecs>
+      <AllowOnDemandMetadataBasedKeyframeExtractionForExtensions>
+        <string>mkv</string>
+      </AllowOnDemandMetadataBasedKeyframeExtractionForExtensions>
+    </EncodingOptions>
+    EOF
+  '';
+
   # Enable NFS client for better NAS performance
   services.nfs.server.enable = true;
   services.rpcbind.enable = true;
@@ -233,6 +302,398 @@ in
   services.radarr = {
     enable = true;
     package = pkgs.radarr;
+  };
+  
+  # Configure Radarr with optimal quality settings after it starts
+  systemd.services.radarr-configure = {
+    description = "Configure Radarr quality profiles for optimal HEVC 4K streaming";
+    after = [ "radarr.service" ];
+    wants = [ "radarr.service" ];
+    wantedBy = [ "multi-user.target" ];
+    
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      # Wait for Radarr to be fully ready
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'until ${pkgs.curl}/bin/curl -s http://localhost:7878/api/v3/system/status -H \"X-Api-Key: $(${pkgs.sudo}/bin/sudo cat /var/lib/radarr/.config/Radarr/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP \"(?<=<ApiKey>)[^<]+\" || echo waiting)\" 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q version; do echo \"Waiting for Radarr...\"; sleep 5; done'";
+      ExecStart = let
+        configureScript = pkgs.writeScriptBin "configure-arr-optimal" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+
+          # Configure Radarr and Sonarr for optimal quality on ultraviolet
+          # Optimized for Intel i5-10500TE with UHD 630 (supports 4K HEVC hardware decode)
+
+          # Get API keys from filesystem
+          RADARR_API_KEY=$(${pkgs.sudo}/bin/sudo cat /var/lib/radarr/.config/Radarr/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP '(?<=<ApiKey>)[^<]+' || echo "")
+          RADARR_URL="http://localhost:7878"
+
+          SONARR_API_KEY=$(${pkgs.sudo}/bin/sudo cat /var/lib/sonarr/.config/Sonarr/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP '(?<=<ApiKey>)[^<]+' || echo "")
+          SONARR_URL="http://localhost:8989"
+
+          if [ -z "$RADARR_API_KEY" ]; then
+              echo "Error: Could not find Radarr API key in /var/lib/radarr/.config/Radarr/config.xml"
+              exit 1
+          fi
+
+          echo "=== Configuring Radarr for optimal quality ==="
+          echo "Target: 4K HEVC when available, 1080p HEVC fallback"
+          echo ""
+
+          # Clean up duplicate custom formats first
+          cleanup_duplicate_formats() {
+              echo "Cleaning up duplicate custom formats..."
+              
+              # Get all custom formats
+              formats=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY")
+              
+              # Delete old duplicates (keep the newer ones with better names)
+              # Delete "x264" if "x264/H.264" exists
+              x264_old_id=$(echo "$formats" | ${pkgs.jq}/bin/jq '.[] | select(.name == "x264") | .id')
+              x264_new_id=$(echo "$formats" | ${pkgs.jq}/bin/jq '.[] | select(.name == "x264/H.264") | .id')
+              
+              if [ -n "$x264_old_id" ] && [ -n "$x264_new_id" ] && [ "$x264_old_id" != "null" ] && [ "$x264_new_id" != "null" ]; then
+                  echo "  Removing duplicate: x264 (keeping x264/H.264)"
+                  ${pkgs.curl}/bin/curl -X DELETE "$RADARR_URL/api/v3/customformat/$x264_old_id" -H "X-Api-Key: $RADARR_API_KEY" > /dev/null 2>&1
+              fi
+              
+              # Delete "Large File Size" as we're using bitrate limits instead
+              large_id=$(echo "$formats" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Large File Size") | .id')
+              if [ -n "$large_id" ] && [ "$large_id" != "null" ]; then
+                  echo "  Removing obsolete: Large File Size (using bitrate limits instead)"
+                  ${pkgs.curl}/bin/curl -X DELETE "$RADARR_URL/api/v3/customformat/$large_id" -H "X-Api-Key: $RADARR_API_KEY" > /dev/null 2>&1
+              fi
+              
+              echo "  Cleanup complete"
+          }
+
+          # Function to create or update custom format
+          create_or_update_format() {
+              local name="$1"
+              local spec_json="$2"
+              
+              # Check if format exists
+              existing_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq --arg name "$name" '.[] | select(.name == $name) | .id')
+              
+              if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
+                  echo "  Updating existing format: $name (ID: $existing_id)"
+                  ${pkgs.curl}/bin/curl -X PUT "$RADARR_URL/api/v3/customformat/$existing_id" \
+                      -H "X-Api-Key: $RADARR_API_KEY" \
+                      -H "Content-Type: application/json" \
+                      -d "$spec_json" > /dev/null 2>&1
+              else
+                  echo "  Creating new format: $name"
+                  ${pkgs.curl}/bin/curl -X POST "$RADARR_URL/api/v3/customformat" \
+                      -H "X-Api-Key: $RADARR_API_KEY" \
+                      -H "Content-Type: application/json" \
+                      -d "$spec_json" > /dev/null 2>&1
+              fi
+          }
+
+          # Clean up duplicates first
+          cleanup_duplicate_formats
+
+          # Create custom formats
+          echo "Creating/updating custom formats..."
+
+          # HEVC/x265 format (strongly preferred for 4K)
+          create_or_update_format "x265/HEVC" '{
+              "name": "x265/HEVC",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "x265/HEVC",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(x265|h265|hevc)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # x264 format (okay for 1080p, bad for 4K)
+          create_or_update_format "x264/H.264" '{
+              "name": "x264/H.264",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "x264/H.264",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(x264|h264|avc)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # 4K resolution format (bonus points when HEVC)
+          create_or_update_format "4K/2160p" '{
+              "name": "4K/2160p",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "4K Resolution",
+                      "implementation": "ResolutionSpecification",
+                      "implementationName": "Resolution",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": 2160
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # Remove the old absolute size format if it exists
+          echo "  Removing old Excessive Size format (replacing with bitrate-based)..."
+          old_excessive_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Excessive Size") | .id')
+          if [ -n "$old_excessive_id" ] && [ "$old_excessive_id" != "null" ]; then
+              ${pkgs.curl}/bin/curl -X DELETE "$RADARR_URL/api/v3/customformat/$old_excessive_id" -H "X-Api-Key: $RADARR_API_KEY" > /dev/null 2>&1
+          fi
+
+          # Remux format (these are unnecessarily large)
+          create_or_update_format "Remux" '{
+              "name": "Remux",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "Remux",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(remux)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # Foreign Film format
+          create_or_update_format "Foreign Film" '{
+              "name": "Foreign Film",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "Foreign Indicators",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(japanese|korean|chinese|french|german|italian|spanish|russian|swedish|danish|norwegian|finnish|polish|hindi|thai)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          echo ""
+          echo "Configuring quality definitions (bitrate limits)..."
+
+          # Configure quality definitions with sensible bitrate limits (MB/minute)
+          # These ensure TV episodes don't grab unnecessarily large files
+          ${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/qualitydefinition" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq -c '.[]' | while read -r def; do
+              quality_name=$(echo "$def" | ${pkgs.jq}/bin/jq -r '.quality.name')
+              def_id=$(echo "$def" | ${pkgs.jq}/bin/jq '.id')
+              
+              case "$quality_name" in
+                  "HDTV-720p"|"WEBDL-720p"|"Bluray-720p")
+                      # 720p: Target ~3-5 Mbps (22-38 MB/min)
+                      updated=$(echo "$def" | ${pkgs.jq}/bin/jq '.minSize = 15 | .maxSize = 45 | .preferredSize = 30')
+                      ;;
+                  "HDTV-1080p"|"WEBDL-1080p"|"Bluray-1080p")
+                      # 1080p: Target ~8-12 Mbps (60-90 MB/min)
+                      updated=$(echo "$def" | ${pkgs.jq}/bin/jq '.minSize = 40 | .maxSize = 100 | .preferredSize = 70')
+                      ;;
+                  "HDTV-2160p"|"WEBDL-2160p"|"Bluray-2160p")
+                      # 4K: Target ~20-35 Mbps HEVC (150-260 MB/min)
+                      updated=$(echo "$def" | ${pkgs.jq}/bin/jq '.minSize = 100 | .maxSize = 300 | .preferredSize = 200')
+                      ;;
+                  "Remux-1080p")
+                      # 1080p Remux: ~25-35 Mbps (190-260 MB/min) - discouraged
+                      updated=$(echo "$def" | ${pkgs.jq}/bin/jq '.minSize = 150 | .maxSize = 300 | .preferredSize = 200')
+                      ;;
+                  "Remux-2160p")
+                      # 4K Remux: ~50-80 Mbps (375-600 MB/min) - strongly discouraged
+                      updated=$(echo "$def" | ${pkgs.jq}/bin/jq '.minSize = 300 | .maxSize = 700 | .preferredSize = 400')
+                      ;;
+                  *)
+                      # Keep existing for others
+                      continue
+                      ;;
+              esac
+              
+              echo "  Setting $quality_name bitrate limits..."
+              ${pkgs.curl}/bin/curl -X PUT "$RADARR_URL/api/v3/qualitydefinition/$def_id" \
+                  -H "X-Api-Key: $RADARR_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "$updated" > /dev/null 2>&1
+          done
+
+          echo ""
+          echo "Getting custom format IDs..."
+
+          # Get all format IDs
+          hevc_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "x265/HEVC") | .id')
+          x264_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "x264/H.264") | .id')
+          fourk_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "4K/2160p") | .id')
+          remux_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Remux") | .id')
+          foreign_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Foreign Film") | .id')
+
+          echo "Updating quality profiles with optimal scoring..."
+
+          # Update all quality profiles with the new scoring
+          ${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/qualityprofile" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq -c '.[]' | while read -r profile; do
+              profile_id=$(echo "$profile" | ${pkgs.jq}/bin/jq '.id')
+              profile_name=$(echo "$profile" | ${pkgs.jq}/bin/jq -r '.name')
+              
+              echo "  Updating profile: $profile_name"
+              
+              # Build format items with scores optimized for 4K HEVC
+              format_items="["
+              [ -n "$hevc_id" ] && [ "$hevc_id" != "null" ] && format_items+="{\"format\": $hevc_id, \"name\": \"x265/HEVC\", \"score\": 150},"
+              [ -n "$fourk_id" ] && [ "$fourk_id" != "null" ] && format_items+="{\"format\": $fourk_id, \"name\": \"4K/2160p\", \"score\": 50},"
+              [ -n "$foreign_id" ] && [ "$foreign_id" != "null" ] && format_items+="{\"format\": $foreign_id, \"name\": \"Foreign Film\", \"score\": 30},"
+              [ -n "$x264_id" ] && [ "$x264_id" != "null" ] && format_items+="{\"format\": $x264_id, \"name\": \"x264/H.264\", \"score\": -30},"
+              [ -n "$remux_id" ] && [ "$remux_id" != "null" ] && format_items+="{\"format\": $remux_id, \"name\": \"Remux\", \"score\": -200},"
+              format_items="''${format_items%,}]"
+              
+              # Update profile with new scoring and settings
+              updated_profile=$(echo "$profile" | ${pkgs.jq}/bin/jq \
+                  --argjson items "$format_items" \
+                  '.formatItems = $items |
+                   .minFormatScore = -150 |
+                   .cutoffFormatScore = 100 |
+                   .upgradeAllowed = true |
+                   .cutoff = 9 |
+                   (.items[]? | select(.quality.name? and (.quality.name | test("2160p")))).allowed = true |
+                   (.items[]? | select(.quality.name? and (.quality.name | test("1080p")))).allowed = true |
+                   (.items[]? | select(.quality.name? and (.quality.name | test("720p")))).allowed = true |
+                   (.items[]? | select(.quality.name? and (.quality.name | test("Remux")))).allowed = false |
+                   (.items[]? | select(.quality.name? and ((.quality.name | test("480p")) or (.quality.name | test("DVD")) or (.quality.name | test("SDTV"))))).allowed = false'
+              )
+              
+              ${pkgs.curl}/bin/curl -X PUT "$RADARR_URL/api/v3/qualityprofile/$profile_id" \
+                  -H "X-Api-Key: $RADARR_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "$updated_profile" > /dev/null 2>&1
+          done
+
+          echo ""
+          echo "Setting HD - 720p/1080p as default profile for all movies..."
+
+          # Set profile 6 (HD - 720p/1080p) as default for all movies
+          movie_ids=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/movie" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq -r '[.[].id] | @csv' | tr -d '"')
+          movie_count=$(echo "$movie_ids" | tr ',' '\n' | ${pkgs.coreutils}/bin/wc -l)
+
+          if [ -n "$movie_ids" ]; then
+              bulk_edit="{\"movieIds\": [$movie_ids], \"qualityProfileId\": 6, \"moveFiles\": false}"
+              
+              ${pkgs.curl}/bin/curl -X PUT "$RADARR_URL/api/v3/movie/editor" \
+                  -H "X-Api-Key: $RADARR_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "$bulk_edit" > /dev/null 2>&1
+              
+              echo "  Updated $movie_count movies to use optimized profile"
+          fi
+
+          # Configure Sonarr if available
+          if [ -n "$SONARR_API_KEY" ]; then
+              echo ""
+              echo "=== Configuring Sonarr ==="
+              
+              # Create release profile for HEVC preference
+              existing=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/releaseprofile" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Prefer HEVC")')
+              
+              if [ -z "$existing" ]; then
+                  echo "  Creating HEVC release profile..."
+                  ${pkgs.curl}/bin/curl -X POST "$SONARR_URL/api/v3/releaseprofile" \
+                      -H "X-Api-Key: $SONARR_API_KEY" \
+                      -H "Content-Type: application/json" \
+                      -d '{
+                          "name": "Prefer HEVC",
+                          "enabled": true,
+                          "required": [],
+                          "ignored": [],
+                          "preferred": [
+                              {
+                                  "key": "/\\b(x265|h265|hevc)\\b/i",
+                                  "value": 100
+                              },
+                              {
+                                  "key": "/\\b(2160p|4K|UHD)\\b/i",
+                                  "value": 50
+                              },
+                              {
+                                  "key": "/\\bremux\\b/i",
+                                  "value": -200
+                              }
+                          ],
+                          "includePreferredWhenRenaming": false,
+                          "indexerId": 0,
+                          "tags": []
+                      }' > /dev/null 2>&1
+                  echo "  HEVC release profile created"
+              else
+                  echo "  HEVC release profile already exists"
+              fi
+          fi
+
+          echo ""
+          echo "✅ Configuration complete!"
+          echo ""
+          echo "Optimized for Intel UHD 630 with 4K HEVC hardware decode:"
+          echo ""
+          echo "Format scoring:"
+          echo "  • x265/HEVC: +150 points (essential for 4K content)"
+          echo "  • 4K/2160p: +50 points (your hardware handles this well with HEVC)"
+          echo "  • Foreign films: +30 points (for international content)"
+          echo "  • x264/H.264: -30 points (mild penalty, still grabbable)"
+          echo "  • Remux: -200 points (unnecessarily large, uncompressed)"
+          echo ""
+          echo "Bitrate limits (prevents oversized TV episodes):"
+          echo "  • 720p: 3-5 Mbps (2-4 GB per movie, 200-400 MB per TV episode)"
+          echo "  • 1080p: 8-12 Mbps (5-9 GB per movie, 500-900 MB per TV episode)"
+          echo "  • 4K HEVC: 20-35 Mbps (15-26 GB per movie, 1.5-2.6 GB per TV episode)"
+          echo ""
+          echo "Your system can easily handle 4K HEVC at these bitrates!"
+          echo "TV episodes won't exceed reasonable sizes for their runtime."
+        '';
+      in "${configureScript}/bin/configure-arr-optimal";
+      StandardOutput = "journal";
+      StandardError = "journal";
+      User = "root";  # Needs sudo to read API keys
+    };
+    
+    # Run 30 seconds after Radarr starts to ensure it's fully initialized
+    startLimitIntervalSec = 60;
+    startLimitBurst = 3;
   };
 
   services.readarr = {
@@ -279,7 +740,7 @@ in
     };
     virtualHosts."sabnzbd.home.husbuddies.gay" = {
       extraConfig = ''
-        reverse_proxy /* 172.31.0.201:8080
+        reverse_proxy /* localhost:8080
         import cloudflare
       '';
     };
@@ -425,7 +886,7 @@ in
             description: Usenet client
             widget:
               type: sabnzbd
-              url: http://172.31.0.201:8080
+              url: http://127.0.0.1:8080
               key: {{HOMEPAGE_FILE_SABNZBD_API_KEY}}
       - Network:
         - NextDNS:

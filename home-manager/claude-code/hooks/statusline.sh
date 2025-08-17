@@ -53,6 +53,7 @@ AWS_ICON="  "
 K8S_ICON=" ☸ "
 DEVSPACE_ICON=""  # Will be set based on devspace name
 HOSTNAME_ICON="  " 
+CONTEXT_ICON=" "
 MODEL_ICONS="󰚩󱚝󱚟󱚡󱚣󱚥"
 
 # Context bar characters - customize these for the progress bar appearance
@@ -79,6 +80,64 @@ RANDOM_INDEX=$((RANDOM % ICON_COUNT))
 MODEL_ICON="${MODEL_ICONS:$RANDOM_INDEX:1} "
 CURRENT_DIR=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "~"')
 TRANSCRIPT_PATH=$(echo "$input" | jq -r '.transcript_path // ""')
+
+# Try to find transcript if not provided (for first invocation)
+if [[ -z "$TRANSCRIPT_PATH" ]] || [[ "$TRANSCRIPT_PATH" == "null" ]]; then
+    # Look for most recent transcript in Claude project directory
+    # Convert current directory to the sanitized project path format
+    PROJECT_PATH="${CURRENT_DIR}"
+    # Handle home directory
+    PROJECT_PATH="${PROJECT_PATH/#$HOME/-Users-$(whoami)}"
+    # Replace slashes with dashes
+    PROJECT_PATH="${PROJECT_PATH//\//-}"
+    
+    # Look in ~/.claude/projects/ for this project
+    CLAUDE_PROJECT_DIR="${HOME}/.claude/projects/${PROJECT_PATH}"
+    
+    if [[ -d "$CLAUDE_PROJECT_DIR" ]]; then
+        # Find the most recent .jsonl file
+        # Use a while loop to handle filenames with spaces/special chars
+        TRANSCRIPT_PATH=""
+        NEWEST_TIME=0
+        while IFS= read -r -d '' file; do
+            # Get file modification time
+            # Use explicit path for macOS stat to avoid conflicts
+            if [[ -x /usr/bin/stat ]]; then
+                # macOS stat
+                FILE_MTIME=$(/usr/bin/stat -f "%m" "$file" 2>/dev/null || echo 0)
+            elif command -v stat >/dev/null 2>&1; then
+                # Linux stat
+                FILE_MTIME=$(stat -c %Y "$file" 2>/dev/null || echo 0)
+            else
+                FILE_MTIME=0
+            fi
+            
+            # Ensure FILE_MTIME is numeric
+            if [[ "$FILE_MTIME" =~ ^[0-9]+$ ]] && [[ $FILE_MTIME -gt $NEWEST_TIME ]]; then
+                NEWEST_TIME=$FILE_MTIME
+                TRANSCRIPT_PATH="$file"
+            fi
+        done < <(find "$CLAUDE_PROJECT_DIR" -maxdepth 1 -name "*.jsonl" -type f -print0 2>/dev/null)
+        
+        # If we found a transcript, validate it's recent (within last hour)
+        if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
+            # Check if file was modified in the last hour
+            CURRENT_TIME=$(date +%s)
+            # Use explicit path for macOS stat to avoid conflicts
+            if [[ -x /usr/bin/stat ]]; then
+                FILE_TIME=$(/usr/bin/stat -f "%m" "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
+            else
+                FILE_TIME=$(stat -c %Y "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
+            fi
+            TIME_DIFF=$((CURRENT_TIME - FILE_TIME))
+            
+            # If file is older than 1 hour (3600 seconds), ignore it
+            if [[ $TIME_DIFF -gt 3600 ]]; then
+                TRANSCRIPT_PATH=""
+            fi
+        fi
+    fi
+fi
 
 # Format directory path (similar to starship truncation)
 format_path() {
@@ -217,9 +276,7 @@ format_tokens() {
 # Create context usage bar
 create_context_bar() {
     local context_length=$1
-    local term_width=$2
-    local left_length=$3
-    local right_length=$4
+    local bar_width=$2  # This is now the exact width for the bar
     
     # Calculate percentage using auto-compact threshold (160k = 80% of 200k)
     local percentage=0
@@ -231,8 +288,8 @@ create_context_bar() {
         fi
     fi
     
-    # Calculate available width for the bar (with 5 spaces padding on each side)
-    local available_width=$((term_width - left_length - right_length - 10))
+    # Use the passed width directly
+    local available_width=$bar_width
     
     # Minimum bar width (for "Context: XX.X%")
     local min_width=20
@@ -243,9 +300,13 @@ create_context_bar() {
     fi
     
     # Bar components
-    local label="Context: "
+    local label="${CONTEXT_ICON}Context "
     local percent_text=" ${percentage}%"  # Space before percentage
-    local text_length=$((${#label} + ${#percent_text} + 1))  # +1 for space after percent
+    # Use wc -m for proper Unicode character width counting
+    local label_length percent_length
+    label_length=$(echo -n "$label" | wc -m | tr -d ' ')
+    percent_length=$(echo -n "$percent_text" | wc -m | tr -d ' ')
+    local text_length=$((label_length + percent_length + 1))  # +1 for space after percent
     
     # Calculate bar fill width (minus curves and text)
     local bar_width=$((available_width - text_length - 2))  # -2 for curves
@@ -409,35 +470,16 @@ get_terminal_width() {
 # Get terminal width - we'll adjust it later based on context percentage
 RAW_TERM_WIDTH=$(get_terminal_width)
 
+# If we can't detect width, use a reasonable default
+if [[ $RAW_TERM_WIDTH -eq 0 ]]; then
+    RAW_TERM_WIDTH=130  # Reasonable default that won't wrap on most terminals
+fi
+
 # Get token metrics early so we can use context percentage for width calculation
 IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH <<< "$(get_token_metrics "$TRANSCRIPT_PATH")"
 
-# Calculate adjusted terminal width based on context percentage (full-until-compact mode)
+# Store raw terminal width for later calculations
 TERM_WIDTH=$RAW_TERM_WIDTH
-if [[ $RAW_TERM_WIDTH -gt 0 ]]; then
-    # Calculate context percentage using auto-compact threshold (160k = 80% of 200k)
-    if [[ $CONTEXT_LENGTH -gt 0 ]]; then
-        CONTEXT_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
-        # If context is above 60% of the auto-compact threshold, start reserving space
-        if (( $(echo "$CONTEXT_PERCENTAGE >= 60" | bc -l) )); then
-            # Reserve 42 characters for auto-compact message when context is high
-            # (41 for message + 1 for the space we add after right curve)
-            if [[ $RAW_TERM_WIDTH -gt 42 ]]; then
-                TERM_WIDTH=$((RAW_TERM_WIDTH - 42))
-            fi
-        else
-            # Use full width minus small padding when context is low
-            if [[ $RAW_TERM_WIDTH -gt 4 ]]; then
-                TERM_WIDTH=$((RAW_TERM_WIDTH - 4))
-            fi
-        fi
-    else
-        # No context data, use full width minus small padding
-        if [[ $RAW_TERM_WIDTH -gt 4 ]]; then
-            TERM_WIDTH=$((RAW_TERM_WIDTH - 4))
-        fi
-    fi
-fi
 
 # Function to calculate visible length (excluding ANSI codes)
 strip_ansi() {
@@ -569,6 +611,34 @@ for component in "${COMPONENTS[@]}"; do
     PREV_COLOR="$COLOR"
 done
 
+# Calculate if we're in compact mode FIRST (before adding right curve)
+IN_COMPACT_MODE=0
+if [[ $CONTEXT_LENGTH -gt 0 ]]; then
+    CONTEXT_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
+    if (( $(echo "$CONTEXT_PERCENTAGE >= 70" | bc -l) )); then
+        IN_COMPACT_MODE=1
+    fi
+fi
+
+# Add right curve at the end, including space for compact mode
+if [[ -n "$RIGHT_SIDE" ]]; then
+    # Get the last color used from components
+    if [[ -n "$PREV_COLOR" ]]; then
+        case $PREV_COLOR in
+            mauve) RIGHT_SIDE="${RIGHT_SIDE}${MAUVE_FG}${RIGHT_CURVE}${NC}" ;;
+            rosewater) RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_FG}${RIGHT_CURVE}${NC}" ;;
+            sky) RIGHT_SIDE="${RIGHT_SIDE}${SKY_FG}${RIGHT_CURVE}${NC}" ;;
+            peach) RIGHT_SIDE="${RIGHT_SIDE}${PEACH_FG}${RIGHT_CURVE}${NC}" ;;
+            teal) RIGHT_SIDE="${RIGHT_SIDE}${TEAL_FG}${RIGHT_CURVE}${NC}" ;;
+        esac
+    fi
+    
+    # Add space after curve for compact mode NOW (before measuring)
+    if [[ $IN_COMPACT_MODE -eq 1 ]]; then
+        RIGHT_SIDE="${RIGHT_SIDE} "
+    fi
+fi
+
 # Calculate spacing to push right side to the right
 # Use printf %b to interpret the escape sequences, then strip them
 # Calculate visible length for spacing - properly handle multi-byte UTF-8 characters
@@ -579,59 +649,69 @@ RIGHT_VISIBLE=$(printf '%b' "${RIGHT_SIDE}" | sed 's/\x1b\[[0-9;:]*m//g')
 LEFT_LENGTH=$(echo -n "$LEFT_VISIBLE" | wc -m | tr -d ' ')
 RIGHT_LENGTH=$(echo -n "$RIGHT_VISIBLE" | wc -m | tr -d ' ')
 
-# Create context bar if we have enough space and context data
-CONTEXT_BAR=""
-if [[ $TERM_WIDTH -gt 0 ]] && [[ $CONTEXT_LENGTH -gt 0 ]]; then
-    CONTEXT_BAR=$(create_context_bar "$CONTEXT_LENGTH" "$TERM_WIDTH" "$LEFT_LENGTH" "$RIGHT_LENGTH")
+# Calculate the exact width we need to work with
+# Account for newline character at the end AND Claude Code's padding
+RESERVED_END_CHARS=1  # Just the newline
+CLAUDE_CODE_PADDING=4  # Claude Code adds 2 spaces on each side
+if [[ $IN_COMPACT_MODE -eq 1 ]]; then
+    # Reserve space for the auto-compact message (space is already in RIGHT_LENGTH)
+    COMPACT_MESSAGE_WIDTH=41  # 41 chars for the message itself
+else
+    COMPACT_MESSAGE_WIDTH=0
+fi
+
+# Calculate total available width for our statusline
+AVAILABLE_WIDTH=$((TERM_WIDTH - RESERVED_END_CHARS - COMPACT_MESSAGE_WIDTH - CLAUDE_CODE_PADDING))
+
+# Debug output when requested
+if [[ "${STATUSLINE_DEBUG:-}" == "1" ]]; then
+    >&2 echo "DEBUG: TERM_WIDTH=$TERM_WIDTH, LEFT_LENGTH=$LEFT_LENGTH, RIGHT_LENGTH=$RIGHT_LENGTH"
+    >&2 echo "DEBUG: RESERVED_END_CHARS=$RESERVED_END_CHARS, COMPACT_MESSAGE_WIDTH=$COMPACT_MESSAGE_WIDTH"
+    >&2 echo "DEBUG: AVAILABLE_WIDTH=$AVAILABLE_WIDTH"
 fi
 
 # Calculate middle section (context bar or spacing)
-if [[ -n "$CONTEXT_BAR" ]]; then
-    # Use context bar as the middle section with small padding
-    MIDDLE_SECTION="     ${CONTEXT_BAR}     "
+if [[ $CONTEXT_LENGTH -gt 0 ]]; then
+    # We have a context bar - calculate how much space we have for it
+    # The context bar needs to fit between left and right sides
+    SPACE_FOR_MIDDLE=$((AVAILABLE_WIDTH - LEFT_LENGTH - RIGHT_LENGTH))
+    
+    if [[ $SPACE_FOR_MIDDLE -gt 10 ]]; then
+        # We have enough space for a context bar with some padding
+        # Reserve some space for padding around the bar (minimum 2 on each side)
+        PADDING_TOTAL=10  # 5 spaces on each side
+        BAR_WIDTH=$((SPACE_FOR_MIDDLE - PADDING_TOTAL))
+        
+        if [[ $BAR_WIDTH -lt 20 ]]; then
+            # Bar would be too small, use all available space with minimal padding
+            PADDING_TOTAL=4  # 2 on each side
+            BAR_WIDTH=$((SPACE_FOR_MIDDLE - PADDING_TOTAL))
+        fi
+        
+        if [[ $BAR_WIDTH -gt 0 ]]; then
+            CONTEXT_BAR=$(create_context_bar "$CONTEXT_LENGTH" "$BAR_WIDTH")
+            # Distribute padding evenly
+            LEFT_PAD=$((PADDING_TOTAL / 2))
+            RIGHT_PAD=$((PADDING_TOTAL - LEFT_PAD))
+            MIDDLE_SECTION=$(printf '%*s%s%*s' $LEFT_PAD '' "$CONTEXT_BAR" $RIGHT_PAD '')
+        else
+            # Not enough space for a bar, just use spacing
+            MIDDLE_SECTION=$(printf '%*s' $SPACE_FOR_MIDDLE '')
+        fi
+    else
+        # Not enough space for context bar, just use minimal spacing
+        MIDDLE_SECTION=$(printf '%*s' $SPACE_FOR_MIDDLE '')
+    fi
 else
-    # No context bar, calculate regular spacing
-    TOTAL_LENGTH=$((LEFT_LENGTH + RIGHT_LENGTH))
-    SPACES=2  # Minimum spacing
-    if [[ $TERM_WIDTH -gt 0 ]] && [[ $TOTAL_LENGTH -lt $TERM_WIDTH ]]; then
-        # Calculate available space
-        AVAILABLE=$((TERM_WIDTH - TOTAL_LENGTH - 1))  # -1 for the newline
-        if [[ $AVAILABLE -gt 2 ]]; then
-            SPACES=$AVAILABLE
-        fi
+    # No context bar, calculate exact spacing needed
+    SPACE_FOR_MIDDLE=$((AVAILABLE_WIDTH - LEFT_LENGTH - RIGHT_LENGTH))
+    if [[ $SPACE_FOR_MIDDLE -lt 2 ]]; then
+        SPACE_FOR_MIDDLE=2  # Minimum spacing
     fi
-    MIDDLE_SECTION=$(printf '%*s' $SPACES '')
-fi
-
-# Add right curve at the end
-if [[ -n "$RIGHT_SIDE" ]]; then
-    # Get the last color used
-    if [[ -n "$PREV_COLOR" ]]; then
-        # Check if we're in compact mode (context >= 60% of auto-compact threshold)
-        IN_COMPACT_MODE=0
-        if [[ $CONTEXT_LENGTH -gt 0 ]]; then
-            COMPACT_CHECK_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
-            if (( $(echo "$COMPACT_CHECK_PERCENTAGE >= 60" | bc -l) )); then
-                IN_COMPACT_MODE=1
-            fi
-        fi
-        
-        # Add right curve with optional space for compact mode
-        CURVE_SUFFIX=""
-        if [[ $IN_COMPACT_MODE -eq 1 ]]; then
-            CURVE_SUFFIX=" "  # Add space in compact mode for auto-compact message
-        fi
-        
-        case $PREV_COLOR in
-            mauve) RIGHT_SIDE="${RIGHT_SIDE}${MAUVE_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
-            rosewater) RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
-            sky) RIGHT_SIDE="${RIGHT_SIDE}${SKY_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
-            peach) RIGHT_SIDE="${RIGHT_SIDE}${PEACH_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
-            teal) RIGHT_SIDE="${RIGHT_SIDE}${TEAL_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
-        esac
-    fi
+    MIDDLE_SECTION=$(printf '%*s' $SPACE_FOR_MIDDLE '')
 fi
 
 # Combine left and right with middle section (context bar or spacing)
 # Use printf to properly output ANSI escape sequences
 printf '%b\n' "${STATUS_LINE}${MIDDLE_SECTION}${RIGHT_SIDE}"
+

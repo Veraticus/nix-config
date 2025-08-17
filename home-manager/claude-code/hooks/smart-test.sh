@@ -242,15 +242,7 @@ format_test_output() {
 # Source language-specific testing functions
 # Use SCRIPT_DIR which was already set correctly at the top of the script
 
-# Source Go testing if available
-if [[ -f "${SCRIPT_DIR}/test-go.sh" ]]; then
-    source "${SCRIPT_DIR}/test-go.sh"
-fi
-
-# Source Tilt testing if available
-if [[ -f "${SCRIPT_DIR}/test-tilt.sh" ]]; then
-    source "${SCRIPT_DIR}/test-tilt.sh"
-fi
+# Language-specific test runners are sourced below when needed
 
 
 run_python_tests() {

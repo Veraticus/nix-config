@@ -1,4 +1,11 @@
-{ inputs, lib, config, pkgs, ... }: {
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
+}:
+{
   programs.starship = {
     package = pkgs.starship;
     enable = true;
@@ -42,13 +49,15 @@
 
       aws = {
         style = "bg:peach fg:base";
-        format = "[ $profile ]($style)";
+        format = "[  $profile ]($style)";
         force_display = true;
       };
 
       hostname = {
         style = "bg:rosewater fg:base";
-        format = "[ $hostname ]($style)";
+        format = "[ 󰒋 $hostname ]($style)";
+        ssh_only = true;
+        ssh_symbol = "";
       };
 
       "git_branch" = {
@@ -63,8 +72,9 @@
 
       kubernetes = {
         disabled = false;
-        format = "[ $symbol$context ]($style)";
+        format = "[ ☸ $context ]($style)";
         style = "bg:teal fg:base";
+        symbol = "";
       };
 
       custom = {

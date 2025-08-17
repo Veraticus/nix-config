@@ -22,6 +22,7 @@ TRANSCRIPT=""
 SHOW_BORDER=false
 QUIET=false
 SHOW_TOKENS=false
+CONTEXT_PERCENTAGE=""
 
 # Function to show usage
 usage() {
@@ -34,6 +35,7 @@ OPTIONS:
     -m MODEL      Set model name (default: Opus)
     -d DIR        Set current directory (default: ~/Personal/nix-config)
     -t            Show token usage (enables mock transcript)
+    -p PERCENT    Set context percentage (25, 50, 75, 100) when using -t
     -a PROFILE    Set AWS_PROFILE environment variable
     -k CONTEXT    Mock kubectl context
     -w WIDTH      Set terminal width (default: auto-detect)
@@ -45,28 +47,35 @@ EXAMPLES:
     # Basic test
     $0
 
-    # Test with tokens
-    $0 -t
+    # Test with tokens at different percentages
+    $0 -t -p 25   # Green bar (25%)
+    $0 -t -p 50   # Yellow bar (50%)
+    $0 -t -p 75   # Peach bar (75%)
+    $0 -t -p 100  # Peach bar (100%)
 
     # Test with AWS and K8s
     $0 -a dev-account -k production-cluster
 
     # Test everything with border
-    $0 -t -a staging -k eks-us-west-2 -b
+    $0 -t -p 75 -a staging -k eks-us-west-2 -b
 
     # Just the statusline output (for piping)
     $0 -t -q
+    
+    # Show all percentages
+    for p in 25 50 75 100; do echo "=== \$p% ==="; $0 -t -p \$p -q; done
 
 EOF
     exit 0
 }
 
 # Parse command line arguments
-while getopts "m:d:ta:k:w:bqh" opt; do
+while getopts "m:d:tp:a:k:w:bqh" opt; do
     case $opt in
         m) MODEL="$OPTARG" ;;
         d) CWD="$OPTARG" ;;
         t) SHOW_TOKENS=true ;;
+        p) CONTEXT_PERCENTAGE="$OPTARG" ;;
         a) export AWS_PROFILE="$OPTARG" ;;
         k) K8S_CONTEXT="$OPTARG" ;;
         w) export COLUMNS="$OPTARG" ;;
@@ -80,10 +89,18 @@ done
 # Create a mock transcript file if tokens are requested
 if [[ "$SHOW_TOKENS" == true ]]; then
     TRANSCRIPT=$(mktemp /tmp/claude-transcript-XXXXXX.jsonl)
-    cat > "$TRANSCRIPT" << 'EOF'
-{"message": {"usage": {"input_tokens": 5234, "output_tokens": 1892, "cache_read_input_tokens": 2100}}}
-{"message": {"usage": {"input_tokens": 3421, "output_tokens": 2156, "cache_read_input_tokens": 1500}}}
-{"message": {"usage": {"input_tokens": 1823, "output_tokens": 987, "cache_read_input_tokens": 800}}}
+    
+    # Calculate tokens based on percentage if provided
+    if [[ -n "$CONTEXT_PERCENTAGE" ]]; then
+        # Use specific percentage (160k is the auto-compact threshold)
+        TOKENS=$((160000 * CONTEXT_PERCENTAGE / 100))
+    else
+        # Default to showing high usage
+        TOKENS=160000
+    fi
+    
+    cat > "$TRANSCRIPT" << EOF
+{"timestamp": "2024-01-01T10:00:00Z", "message": {"usage": {"input_tokens": $TOKENS, "output_tokens": 5000, "cache_read_input_tokens": 0}}}
 EOF
     trap 'rm -f "$TRANSCRIPT"' EXIT
 fi

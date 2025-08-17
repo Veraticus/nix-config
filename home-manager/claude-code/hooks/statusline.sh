@@ -24,11 +24,22 @@ ROSEWATER_BG="\033[48;2;245;224;220m"  # #f5e0dc
 ROSEWATER_FG="\033[38;2;245;224;220m"
 SKY_BG="\033[48;2;137;220;235m"        # #89dceb
 SKY_FG="\033[38;2;137;220;235m"
+YELLOW_BG="\033[48;2;249;226;175m"      # #f9e2af (Catppuccin Mocha yellow)
+YELLOW_FG="\033[38;2;249;226;175m"
 PEACH_BG="\033[48;2;250;179;135m"      # #fab387
 PEACH_FG="\033[38;2;250;179;135m"
 TEAL_BG="\033[48;2;148;226;213m"       # #94e2d5
 TEAL_FG="\033[38;2;148;226;213m"
+RED_BG="\033[48;2;243;139;168m"        # #f38ba8 (Catppuccin Mocha red)
+RED_FG="\033[38;2;243;139;168m"
 BASE_FG="\033[38;2;30;30;46m"          # #1e1e2e (dark text on colored backgrounds)
+BASE_BG="\033[48;2;88;91;112m"         # #585b70 (surface2 - space gray for progress bar background)
+
+# Lighter background variants for progress bar empty sections (Catppuccin Mocha surface colors)
+GREEN_LIGHT_BG="\033[48;2;108;112;134m"   # #6c7086 (overlay0 - muted green background)
+YELLOW_LIGHT_BG="\033[48;2;127;132;156m"  # #7f849c (overlay1 - muted yellow background)  
+PEACH_LIGHT_BG="\033[48;2;147;153;178m"   # #9399b2 (overlay2 - muted peach background)
+RED_LIGHT_BG="\033[48;2;166;173;200m"     # #a6adc8 (subtext0 - muted red background)
 
 # Powerline characters
 LEFT_CHEVRON=""
@@ -43,6 +54,14 @@ K8S_ICON=" ☸ "
 DEVSPACE_ICON=""  # Will be set based on devspace name
 HOSTNAME_ICON="  " 
 MODEL_ICONS="󰚩󱚝󱚟󱚡󱚣󱚥"
+
+# Context bar characters - customize these for the progress bar appearance
+PROGRESS_LEFT_EMPTY=""
+PROGRESS_MID_EMPTY=""
+PROGRESS_RIGHT_EMPTY=""
+PROGRESS_LEFT_FULL=""
+PROGRESS_MID_FULL=""
+PROGRESS_RIGHT_FULL=""
 
 # ============================================================================
 # MAIN LOGIC
@@ -137,17 +156,23 @@ IFS='|' read -r GIT_BRANCH GIT_STATUS <<< "$(get_git_info)"
 get_token_metrics() {
     local transcript="$1"
     if [[ -z "$transcript" ]] || [[ ! -f "$transcript" ]]; then
-        echo "0|0|0"
+        echo "0|0|0|0"
         return
     fi
     
     local input_tokens=0
     local output_tokens=0
     local cached_tokens=0
+    local context_length=0
+    local most_recent_usage=""
     
     # Parse JSONL transcript for token usage
     while IFS= read -r line; do
         if [[ -n "$line" ]]; then
+            # Check if this is NOT a sidechain entry
+            local is_sidechain
+            is_sidechain=$(echo "$line" | jq -r '.isSidechain // false' 2>/dev/null)
+            
             # Extract token counts from usage field
             local usage
             usage=$(echo "$line" | jq -r '.message.usage // empty' 2>/dev/null)
@@ -156,11 +181,25 @@ get_token_metrics() {
                 output_tokens=$((output_tokens + $(echo "$usage" | jq -r '.output_tokens // 0')))
                 # Add cache tokens
                 cached_tokens=$((cached_tokens + $(echo "$usage" | jq -r '.cache_read_input_tokens // 0')))
+                
+                # Track most recent main chain entry for context length
+                if [[ "$is_sidechain" != "true" ]]; then
+                    most_recent_usage="$usage"
+                fi
             fi
         fi
     done < "$transcript"
     
-    echo "${input_tokens}|${output_tokens}|${cached_tokens}"
+    # Calculate context length from most recent main chain message
+    if [[ -n "$most_recent_usage" ]]; then
+        local input cache_read cache_creation
+        input=$(echo "$most_recent_usage" | jq -r '.input_tokens // 0')
+        cache_read=$(echo "$most_recent_usage" | jq -r '.cache_read_input_tokens // 0')
+        cache_creation=$(echo "$most_recent_usage" | jq -r '.cache_creation_input_tokens // 0')
+        context_length=$((input + cache_read + cache_creation))
+    fi
+    
+    echo "${input_tokens}|${output_tokens}|${cached_tokens}|${context_length}"
 }
 
 # Format token count for display
@@ -175,8 +214,134 @@ format_tokens() {
     fi
 }
 
-# Get token metrics
-IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ <<< "$(get_token_metrics "$TRANSCRIPT_PATH")"
+# Create context usage bar
+create_context_bar() {
+    local context_length=$1
+    local term_width=$2
+    local left_length=$3
+    local right_length=$4
+    
+    # Calculate percentage using auto-compact threshold (160k = 80% of 200k)
+    local percentage=0
+    if [[ $context_length -gt 0 ]]; then
+        percentage=$(echo "scale=1; $context_length * 100 / 160000" | bc)
+        # Cap at 125% (200k/160k) for display
+        if (( $(echo "$percentage > 125" | bc -l) )); then
+            percentage="125.0"
+        fi
+    fi
+    
+    # Calculate available width for the bar (with 5 spaces padding on each side)
+    local available_width=$((term_width - left_length - right_length - 10))
+    
+    # Minimum bar width (for "Context: XX.X%")
+    local min_width=20
+    if [[ $available_width -lt $min_width ]]; then
+        # Not enough space for bar
+        echo ""
+        return
+    fi
+    
+    # Bar components
+    local label="Context: "
+    local percent_text=" ${percentage}%"  # Space before percentage
+    local text_length=$((${#label} + ${#percent_text} + 1))  # +1 for space after percent
+    
+    # Calculate bar fill width (minus curves and text)
+    local bar_width=$((available_width - text_length - 2))  # -2 for curves
+    if [[ $bar_width -lt 4 ]]; then
+        # Too small for a meaningful bar
+        echo ""
+        return
+    fi
+    
+    # Calculate filled portion (cap at 100% for display)
+    local display_percentage=$percentage
+    if (( $(echo "$display_percentage > 100" | bc -l) )); then
+        display_percentage=100
+    fi
+    local filled_width
+    filled_width=$(echo "scale=0; $bar_width * $display_percentage / 100" | bc)
+    filled_width=${filled_width%.*}  # Remove decimal part
+    
+    # Choose colors based on percentage
+    local bg_color fg_color fg_light_bg
+    if (( $(echo "$percentage < 50" | bc -l) )); then
+        # Green - plenty of space
+        bg_color="${GREEN_BG}"
+        fg_color="${GREEN_FG}"
+        fg_light_bg="${GREEN_LIGHT_BG}"
+    elif (( $(echo "$percentage < 75" | bc -l) )); then
+        # Yellow - getting full
+        bg_color="${YELLOW_BG}"
+        fg_color="${YELLOW_FG}"
+        fg_light_bg="${YELLOW_LIGHT_BG}"
+    elif (( $(echo "$percentage < 100" | bc -l) )); then
+        # Peach - approaching auto-compact
+        bg_color="${PEACH_BG}"
+        fg_color="${PEACH_FG}"
+        fg_light_bg="${PEACH_LIGHT_BG}"
+    else
+        # Red - auto-compact imminent or triggered
+        bg_color="${RED_BG}"
+        fg_color="${RED_FG}"
+        fg_light_bg="${RED_LIGHT_BG}"
+    fi
+    
+    # Create bar with Nerd Font progress characters
+    # Filled sections: progress color foreground on space gray background
+    # Unfilled sections: progress color foreground on muted progress color background
+    local bar=""
+    local i
+    for ((i=0; i<bar_width; i++)); do
+        local char=""
+        local section=""
+        
+        # Determine which character to use based on position and fill status
+        if [[ $i -eq 0 ]]; then
+            # Left edge
+            if [[ $i -lt $filled_width ]]; then
+                char="${PROGRESS_LEFT_FULL}"
+                # Filled: fg color on space gray bg
+                section="${BASE_BG}${fg_color}${char}${NC}"
+            else
+                char="${PROGRESS_LEFT_EMPTY}"
+                # Unfilled: fg color on muted bg
+                section="${fg_light_bg}${fg_color}${char}${NC}"
+            fi
+        elif [[ $i -eq $((bar_width - 1)) ]]; then
+            # Right edge
+            if [[ $i -lt $filled_width ]]; then
+                char="${PROGRESS_RIGHT_FULL}"
+                # Filled: fg color on space gray bg
+                section="${BASE_BG}${fg_color}${char}${NC}"
+            else
+                char="${PROGRESS_RIGHT_EMPTY}"
+                # Unfilled: fg color on muted bg
+                section="${fg_light_bg}${fg_color}${char}${NC}"
+            fi
+        else
+            # Middle sections
+            if [[ $i -lt $filled_width ]]; then
+                char="${PROGRESS_MID_FULL}"
+                # Filled: fg color on space gray bg
+                section="${BASE_BG}${fg_color}${char}${NC}"
+            else
+                char="${PROGRESS_MID_EMPTY}"
+                # Unfilled: fg color on muted bg
+                section="${fg_light_bg}${fg_color}${char}${NC}"
+            fi
+        fi
+        
+        bar="${bar}${section}"
+    done
+    
+    # Build the complete bar:
+    # Left cap and label: progress color bg, space gray fg
+    # Progress bar: as built above
+    # Right cap and percentage: progress color bg, space gray fg
+    echo "${fg_color}${LEFT_CURVE}${NC}${bg_color}${BASE_FG}${label}${NC}${bar}${bg_color}${BASE_FG}${percent_text} ${NC}${fg_color}${RIGHT_CURVE}${NC}"
+}
 
 # Use full model name (no shortening)
 
@@ -241,13 +406,36 @@ get_terminal_width() {
     echo "$width"
 }
 
-# Get terminal width and subtract 40 for auto-compact message
+# Get terminal width - we'll adjust it later based on context percentage
 RAW_TERM_WIDTH=$(get_terminal_width)
-# Reserve 40 characters for "Context left until auto-compact: X%" message
-if [[ $RAW_TERM_WIDTH -gt 40 ]]; then
-    TERM_WIDTH=$((RAW_TERM_WIDTH - 40))
-else
-    TERM_WIDTH=$RAW_TERM_WIDTH
+
+# Get token metrics early so we can use context percentage for width calculation
+IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH <<< "$(get_token_metrics "$TRANSCRIPT_PATH")"
+
+# Calculate adjusted terminal width based on context percentage (full-until-compact mode)
+TERM_WIDTH=$RAW_TERM_WIDTH
+if [[ $RAW_TERM_WIDTH -gt 0 ]]; then
+    # Calculate context percentage using auto-compact threshold (160k = 80% of 200k)
+    if [[ $CONTEXT_LENGTH -gt 0 ]]; then
+        CONTEXT_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
+        # If context is above 60% of the auto-compact threshold, start reserving space
+        if (( $(echo "$CONTEXT_PERCENTAGE >= 60" | bc -l) )); then
+            # Reserve 41 characters for auto-compact message when context is high
+            if [[ $RAW_TERM_WIDTH -gt 41 ]]; then
+                TERM_WIDTH=$((RAW_TERM_WIDTH - 41))
+            fi
+        else
+            # Use full width minus small padding when context is low
+            if [[ $RAW_TERM_WIDTH -gt 4 ]]; then
+                TERM_WIDTH=$((RAW_TERM_WIDTH - 4))
+            fi
+        fi
+    else
+        # No context data, use full width minus small padding
+        if [[ $RAW_TERM_WIDTH -gt 4 ]]; then
+            TERM_WIDTH=$((RAW_TERM_WIDTH - 4))
+        fi
+    fi
 fi
 
 # Function to calculate visible length (excluding ANSI codes)
@@ -264,8 +452,8 @@ STATUS_LINE=""
 # Then build the status line with left curve and directory with lavender background
 STATUS_LINE="${NC}${LAVENDER_FG}${LEFT_CURVE}${LAVENDER_BG}${BASE_FG} ${DIR_PATH} ${NC}"
 
-# Add model/tokens section with green background
-STATUS_LINE="${STATUS_LINE}${GREEN_BG}${LAVENDER_FG}${LEFT_CHEVRON}${NC}"
+# Add model/tokens section with blue background for better contrast with green context bar
+STATUS_LINE="${STATUS_LINE}${SKY_BG}${LAVENDER_FG}${LEFT_CHEVRON}${NC}"
 
 # Show model name and token usage
 TOKEN_INFO=""
@@ -274,10 +462,10 @@ if [[ $INPUT_TOKENS -gt 0 ]] || [[ $OUTPUT_TOKENS -gt 0 ]]; then
 else
     TOKEN_INFO=" ${MODEL_ICON:-}${MODEL_DISPLAY}"
 fi
-STATUS_LINE="${STATUS_LINE}${GREEN_BG}${BASE_FG}${TOKEN_INFO} ${NC}"
+STATUS_LINE="${STATUS_LINE}${SKY_BG}${BASE_FG}${TOKEN_INFO} ${NC}"
 
 # End the left section
-STATUS_LINE="${STATUS_LINE}${GREEN_FG}${LEFT_CHEVRON}${NC}"
+STATUS_LINE="${STATUS_LINE}${SKY_FG}${LEFT_CHEVRON}${NC}"
 
 # Build right side with powerline progression
 RIGHT_SIDE=""
@@ -335,26 +523,27 @@ for component in "${COMPONENTS[@]}"; do
     IFS='|' read -r COLOR TEXT <<< "$component"
     
     # Add separator from previous color
+    # For right side, chevron should have: BG of previous section, FG of next section
     if [[ -n "$PREV_COLOR" ]]; then
         case $PREV_COLOR in
-            mauve) RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_BG}${MAUVE_FG}${RIGHT_CHEVRON}${NC}" ;;
+            mauve) RIGHT_SIDE="${RIGHT_SIDE}${MAUVE_BG}${ROSEWATER_FG}${RIGHT_CHEVRON}${NC}" ;;
             rosewater) 
                 if [[ "$COLOR" == "sky" ]]; then
-                    RIGHT_SIDE="${RIGHT_SIDE}${SKY_BG}${ROSEWATER_FG}${RIGHT_CHEVRON}${NC}"
+                    RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_BG}${SKY_FG}${RIGHT_CHEVRON}${NC}"
                 elif [[ "$COLOR" == "peach" ]]; then
-                    RIGHT_SIDE="${RIGHT_SIDE}${PEACH_BG}${ROSEWATER_FG}${RIGHT_CHEVRON}${NC}"
+                    RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_BG}${PEACH_FG}${RIGHT_CHEVRON}${NC}"
                 elif [[ "$COLOR" == "teal" ]]; then
-                    RIGHT_SIDE="${RIGHT_SIDE}${TEAL_BG}${ROSEWATER_FG}${RIGHT_CHEVRON}${NC}"
+                    RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_BG}${TEAL_FG}${RIGHT_CHEVRON}${NC}"
                 fi
                 ;;
             sky) 
                 if [[ "$COLOR" == "peach" ]]; then
-                    RIGHT_SIDE="${RIGHT_SIDE}${PEACH_BG}${SKY_FG}${RIGHT_CHEVRON}${NC}"
+                    RIGHT_SIDE="${RIGHT_SIDE}${SKY_BG}${PEACH_FG}${RIGHT_CHEVRON}${NC}"
                 elif [[ "$COLOR" == "teal" ]]; then
-                    RIGHT_SIDE="${RIGHT_SIDE}${TEAL_BG}${SKY_FG}${RIGHT_CHEVRON}${NC}"
+                    RIGHT_SIDE="${RIGHT_SIDE}${SKY_BG}${TEAL_FG}${RIGHT_CHEVRON}${NC}"
                 fi
                 ;;
-            peach) RIGHT_SIDE="${RIGHT_SIDE}${TEAL_BG}${PEACH_FG}${RIGHT_CHEVRON}${NC}" ;;
+            peach) RIGHT_SIDE="${RIGHT_SIDE}${PEACH_BG}${TEAL_FG}${RIGHT_CHEVRON}${NC}" ;;
         esac
     else
         # First component - add the appropriate chevron
@@ -381,23 +570,37 @@ done
 
 # Calculate spacing to push right side to the right
 # Use printf %b to interpret the escape sequences, then strip them
-LEFT_VISIBLE=$(printf '%b' "${STATUS_LINE}" | sed $'s/\033\\[[0-9;:]*m//g' | sed $'s/[\uE0B0-\uE0B7]//g')
-RIGHT_VISIBLE=$(printf '%b' "${RIGHT_SIDE}" | sed $'s/\033\\[[0-9;:]*m//g' | sed $'s/[\uE0B0-\uE0B7]//g')
-LEFT_LENGTH=${#LEFT_VISIBLE}
-RIGHT_LENGTH=${#RIGHT_VISIBLE}
-TOTAL_LENGTH=$((LEFT_LENGTH + RIGHT_LENGTH))
+# Calculate visible length for spacing - properly handle multi-byte UTF-8 characters
+# Use wc -m to count display width instead of byte length  
+LEFT_VISIBLE=$(printf '%b' "${STATUS_LINE}" | sed 's/\x1b\[[0-9;:]*m//g')
+RIGHT_VISIBLE=$(printf '%b' "${RIGHT_SIDE}" | sed 's/\x1b\[[0-9;:]*m//g')
+# Use wc -m for character count (not byte count)
+LEFT_LENGTH=$(echo -n "$LEFT_VISIBLE" | wc -m | tr -d ' ')
+RIGHT_LENGTH=$(echo -n "$RIGHT_VISIBLE" | wc -m | tr -d ' ')
 
-# Add spacing between left and right
-# Always use at least 2 spaces, expand if terminal is wider
-SPACES=2  # Minimum spacing
-if [[ $TERM_WIDTH -gt 0 ]] && [[ $TOTAL_LENGTH -lt $TERM_WIDTH ]]; then
-    # Calculate available space
-    AVAILABLE=$((TERM_WIDTH - TOTAL_LENGTH - 1))  # -1 for the newline
-    if [[ $AVAILABLE -gt 2 ]]; then
-        SPACES=$AVAILABLE
-    fi
+# Create context bar if we have enough space and context data
+CONTEXT_BAR=""
+if [[ $TERM_WIDTH -gt 0 ]] && [[ $CONTEXT_LENGTH -gt 0 ]]; then
+    CONTEXT_BAR=$(create_context_bar "$CONTEXT_LENGTH" "$TERM_WIDTH" "$LEFT_LENGTH" "$RIGHT_LENGTH")
 fi
-SPACING=$(printf '%*s' $SPACES '')
+
+# Calculate middle section (context bar or spacing)
+if [[ -n "$CONTEXT_BAR" ]]; then
+    # Use context bar as the middle section with small padding
+    MIDDLE_SECTION="     ${CONTEXT_BAR}     "
+else
+    # No context bar, calculate regular spacing
+    TOTAL_LENGTH=$((LEFT_LENGTH + RIGHT_LENGTH))
+    SPACES=2  # Minimum spacing
+    if [[ $TERM_WIDTH -gt 0 ]] && [[ $TOTAL_LENGTH -lt $TERM_WIDTH ]]; then
+        # Calculate available space
+        AVAILABLE=$((TERM_WIDTH - TOTAL_LENGTH - 1))  # -1 for the newline
+        if [[ $AVAILABLE -gt 2 ]]; then
+            SPACES=$AVAILABLE
+        fi
+    fi
+    MIDDLE_SECTION=$(printf '%*s' $SPACES '')
+fi
 
 # Add right curve at the end
 if [[ -n "$RIGHT_SIDE" ]]; then
@@ -413,6 +616,6 @@ if [[ -n "$RIGHT_SIDE" ]]; then
     fi
 fi
 
-# Combine left and right with spacing
+# Combine left and right with middle section (context bar or spacing)
 # Use printf to properly output ANSI escape sequences
-printf '%b\n' "${STATUS_LINE}${SPACING}${RIGHT_SIDE}"
+printf '%b\n' "${STATUS_LINE}${MIDDLE_SECTION}${RIGHT_SIDE}"

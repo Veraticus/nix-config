@@ -35,11 +35,11 @@ RED_FG="\033[38;2;243;139;168m"
 BASE_FG="\033[38;2;30;30;46m"          # #1e1e2e (dark text on colored backgrounds)
 BASE_BG="\033[48;2;88;91;112m"         # #585b70 (surface2 - space gray for progress bar background)
 
-# Lighter background variants for progress bar empty sections (Catppuccin Mocha surface colors)
-GREEN_LIGHT_BG="\033[48;2;108;112;134m"   # #6c7086 (overlay0 - muted green background)
-YELLOW_LIGHT_BG="\033[48;2;127;132;156m"  # #7f849c (overlay1 - muted yellow background)  
-PEACH_LIGHT_BG="\033[48;2;147;153;178m"   # #9399b2 (overlay2 - muted peach background)
-RED_LIGHT_BG="\033[48;2;166;173;200m"     # #a6adc8 (subtext0 - muted red background)
+# Lighter background variants for progress bar empty sections (muted versions of each color)
+GREEN_LIGHT_BG="\033[48;2;86;127;81m"     # Muted green (darker version of #a6e3a1)
+YELLOW_LIGHT_BG="\033[48;2;149;136;95m"   # Muted yellow (darker version of #f9e2af)  
+PEACH_LIGHT_BG="\033[48;2;150;107;81m"    # Muted peach (darker version of #fab387)
+RED_LIGHT_BG="\033[48;2;146;83;100m"      # Muted red (darker version of #f38ba8)
 
 # Powerline characters
 LEFT_CHEVRON=""
@@ -420,9 +420,10 @@ if [[ $RAW_TERM_WIDTH -gt 0 ]]; then
         CONTEXT_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
         # If context is above 60% of the auto-compact threshold, start reserving space
         if (( $(echo "$CONTEXT_PERCENTAGE >= 60" | bc -l) )); then
-            # Reserve 41 characters for auto-compact message when context is high
-            if [[ $RAW_TERM_WIDTH -gt 41 ]]; then
-                TERM_WIDTH=$((RAW_TERM_WIDTH - 41))
+            # Reserve 42 characters for auto-compact message when context is high
+            # (41 for message + 1 for the space we add after right curve)
+            if [[ $RAW_TERM_WIDTH -gt 42 ]]; then
+                TERM_WIDTH=$((RAW_TERM_WIDTH - 42))
             fi
         else
             # Use full width minus small padding when context is low
@@ -606,12 +607,27 @@ fi
 if [[ -n "$RIGHT_SIDE" ]]; then
     # Get the last color used
     if [[ -n "$PREV_COLOR" ]]; then
+        # Check if we're in compact mode (context >= 60% of auto-compact threshold)
+        IN_COMPACT_MODE=0
+        if [[ $CONTEXT_LENGTH -gt 0 ]]; then
+            COMPACT_CHECK_PERCENTAGE=$(echo "scale=1; $CONTEXT_LENGTH * 100 / 160000" | bc)
+            if (( $(echo "$COMPACT_CHECK_PERCENTAGE >= 60" | bc -l) )); then
+                IN_COMPACT_MODE=1
+            fi
+        fi
+        
+        # Add right curve with optional space for compact mode
+        CURVE_SUFFIX=""
+        if [[ $IN_COMPACT_MODE -eq 1 ]]; then
+            CURVE_SUFFIX=" "  # Add space in compact mode for auto-compact message
+        fi
+        
         case $PREV_COLOR in
-            mauve) RIGHT_SIDE="${RIGHT_SIDE}${MAUVE_FG}${RIGHT_CURVE}${NC}" ;;
-            rosewater) RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_FG}${RIGHT_CURVE}${NC}" ;;
-            sky) RIGHT_SIDE="${RIGHT_SIDE}${SKY_FG}${RIGHT_CURVE}${NC}" ;;
-            peach) RIGHT_SIDE="${RIGHT_SIDE}${PEACH_FG}${RIGHT_CURVE}${NC}" ;;
-            teal) RIGHT_SIDE="${RIGHT_SIDE}${TEAL_FG}${RIGHT_CURVE}${NC}" ;;
+            mauve) RIGHT_SIDE="${RIGHT_SIDE}${MAUVE_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
+            rosewater) RIGHT_SIDE="${RIGHT_SIDE}${ROSEWATER_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
+            sky) RIGHT_SIDE="${RIGHT_SIDE}${SKY_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
+            peach) RIGHT_SIDE="${RIGHT_SIDE}${PEACH_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
+            teal) RIGHT_SIDE="${RIGHT_SIDE}${TEAL_FG}${RIGHT_CURVE}${NC}${CURVE_SUFFIX}" ;;
         esac
     fi
 fi

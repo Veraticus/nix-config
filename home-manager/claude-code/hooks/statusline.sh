@@ -11,7 +11,7 @@
 if [[ "${DEBUG_TIMING:-}" == "1" ]]; then
   exec 3>&2  # Save stderr
   TIMING_LOG="/tmp/statusline_timing_$$"
-  > "$TIMING_LOG"
+  : > "$TIMING_LOG"
   
   time_point() {
     local label="$1"
@@ -50,6 +50,7 @@ if [[ -f "$CACHE_FILE" ]]; then
   if [[ $age -lt 5 ]]; then
     time_point "cache_hit"
     # Load cached data
+    # shellcheck source=/dev/null
     source "$CACHE_FILE"
     USE_CACHE=1
   fi
@@ -90,6 +91,7 @@ TEAL_FG="\033[38;2;148;226;213m"
 RED_BG="\033[48;2;243;139;168m" # #f38ba8 (Catppuccin Mocha red)
 RED_FG="\033[38;2;243;139;168m"
 BASE_FG="\033[38;2;30;30;46m" # #1e1e2e (dark text on colored backgrounds)
+# shellcheck disable=SC2034
 BASE_BG="\033[48;2;30;30;46m" # #1e1e2e (same dark color as BASE_FG for progress bar)
 
 # Lighter background variants for progress bar empty sections (muted versions of each color)
@@ -114,6 +116,7 @@ CONTEXT_ICON=" "
 MODEL_ICONS="󰚩󱚝󱚟󱚡󱚣󱚥"
 
 # Context bar characters - customize these for the progress bar appearance
+# shellcheck disable=SC2034  # Some are unused but kept for future customization
 PROGRESS_LEFT_EMPTY=""
 PROGRESS_MID_EMPTY=""
 PROGRESS_RIGHT_EMPTY=""
@@ -348,7 +351,7 @@ get_cached() {
   local cache_file="$1"
   local max_age="$2"
   shift 2
-  local command="$@"
+  local command="$*"
   
   if cache_valid "$cache_file" "$max_age"; then
     cat "$cache_file"
@@ -429,9 +432,9 @@ if [[ $USE_CACHE -eq 0 ]]; then
   mkdir -p "$TMP_DIR"
   # Add cleanup to existing trap if timing is enabled
   if [[ "${DEBUG_TIMING:-}" == "1" ]]; then
-    trap "rm -rf $TMP_DIR; finish_timing" EXIT
+    trap 'rm -rf '"$TMP_DIR"'; finish_timing' EXIT
   else
-    trap "rm -rf $TMP_DIR" EXIT
+    trap 'rm -rf '"$TMP_DIR" EXIT
   fi
 
   # Start all expensive operations in parallel
@@ -847,6 +850,7 @@ done
 IN_COMPACT_MODE=0
 if [[ $CONTEXT_LENGTH -gt 0 ]]; then
   # Calculate percentage based on 160k (auto-compact threshold)
+  # shellcheck disable=SC2034
   CONTEXT_PERCENTAGE=$(awk "BEGIN {printf \"%.1f\", $CONTEXT_LENGTH * 100 / 160000}")
   # Trigger compact mode at 80% of 160k (128k tokens)
   if [[ $CONTEXT_LENGTH -ge 128000 ]]; then
@@ -885,7 +889,7 @@ RIGHT_LENGTH=$(echo -n "$RIGHT_VISIBLE" | wc -m | tr -d ' ')
 
 # Calculate the exact width we need to work with
 # Account for newline and a larger safety margin to prevent overflow on first render
-RESERVED_END_CHARS=2 # Newline + 1 char safety margin
+RESERVED_END_CHARS=4 # Newline + 3 char safety margin to prevent overflow
 if [[ $IN_COMPACT_MODE -eq 1 ]]; then
   # Reserve space for the auto-compact message (space is already in RIGHT_LENGTH)
   COMPACT_MESSAGE_WIDTH=41 # 41 chars for the message itself

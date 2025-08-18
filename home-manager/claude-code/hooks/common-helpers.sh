@@ -182,6 +182,22 @@ should_skip_file() {
     local project_root
     project_root=$(find_project_root)
     
+    # Built-in patterns to always skip
+    case "$file" in
+        */vendor/* | */node_modules/* | */build/* | */.git/* | */dist/* | */__pycache__/* | */.cache/*)
+            log_debug "Skipping $file due to built-in ignore pattern"
+            return 0
+            ;;
+        *_test.go | *_test.py | *.test.js | *.test.ts | *.spec.js | *.spec.ts)
+            log_debug "Skipping $file as it's a test file"
+            return 0
+            ;;
+        *.generated.go | *.pb.go | *.gen.go)
+            log_debug "Skipping $file as it's generated code"
+            return 0
+            ;;
+    esac
+    
     # Check .claude-hooks-ignore if it exists in project root
     if [[ -f "$project_root/.claude-hooks-ignore" ]]; then
         # Make file path relative to project root for pattern matching

@@ -1,2 +1,0 @@
-# Simple Tiltfile for mixed project testing
-print("Testing mixed project")

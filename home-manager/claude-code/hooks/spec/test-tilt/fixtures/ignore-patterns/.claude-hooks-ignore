@@ -1,7 +1,0 @@
-# Ignore patterns for test-tilt hook
-vendor/
-node_modules/
-build/
-*.backup
-*.tmp
-temp_*

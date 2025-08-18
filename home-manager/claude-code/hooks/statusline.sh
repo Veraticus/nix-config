@@ -9,15 +9,15 @@
 
 # Enable timing if DEBUG_TIMING is set
 if [[ "${DEBUG_TIMING:-}" == "1" ]]; then
-  exec 3>&2  # Save stderr
+  exec 3>&2 # Save stderr
   TIMING_LOG="/tmp/statusline_timing_$$"
-  : > "$TIMING_LOG"
-  
+  : >"$TIMING_LOG"
+
   time_point() {
     local label="$1"
-    echo "$(date +%s%3N) $label" >> "$TIMING_LOG"
+    echo "$(date +%s%3N) $label" >>"$TIMING_LOG"
   }
-  
+
   finish_timing() {
     if [[ -f "$TIMING_LOG" ]]; then
       awk 'NR==1{start=$1} {printf "[%4dms] %s\n", $1-start, substr($0, index($0, $2))}' "$TIMING_LOG" >&3
@@ -111,7 +111,7 @@ GIT_ICON="  "
 AWS_ICON="  "
 K8S_ICON=" ☸ "
 DEVSPACE_ICON="" # Will be set based on devspace name
-HOSTNAME_ICON="  "
+HOSTNAME_ICON=" "
 CONTEXT_ICON=" "
 MODEL_ICONS="󰚩󱚝󱚟󱚡󱚣󱚥"
 
@@ -225,6 +225,7 @@ get_token_metrics() {
   # Read the full transcript for accurate token counts
   # Only takes ~7ms even for large files, worth it for accuracy
   local result
+  # shellcheck disable=SC2016  # Single quotes are correct for jq script
   result=$(timeout 0.2s jq -s -r '
             map(select(.message.usage != null)) |
             if length == 0 then
@@ -302,7 +303,7 @@ if [[ -z "${HOSTNAME:-}" ]]; then
 fi
 time_point "after_hostname"
 
-# Check if we're in tmux and get devspace - will be cached later if needed  
+# Check if we're in tmux and get devspace - will be cached later if needed
 time_point "before_devspace"
 DEVSPACE=""
 DEVSPACE_SYMBOL=""
@@ -336,12 +337,12 @@ fi
 # Function to check cache validity
 cache_valid() {
   local cache_file="$1"
-  local max_age="${2:-5}"  # Default 5 seconds
-  
+  local max_age="${2:-5}" # Default 5 seconds
+
   if [[ ! -f "$cache_file" ]]; then
     return 1
   fi
-  
+
   local age=$(($(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0)))
   [[ $age -lt $max_age ]]
 }
@@ -352,21 +353,21 @@ get_cached() {
   local max_age="$2"
   shift 2
   local command="$*"
-  
+
   if cache_valid "$cache_file" "$max_age"; then
     cat "$cache_file"
   else
     # Run command and cache result
     local result
     result=$(eval "$command" 2>/dev/null)
-    echo "$result" > "$cache_file"
+    echo "$result" >"$cache_file"
     echo "$result"
   fi
 }
 
 # Skip expensive operations if we have cached data
 if [[ $USE_CACHE -eq 0 ]]; then
-  
+
   # Find transcript if not in cache and not disabled
   if [[ "${CLAUDE_STATUSLINE_NO_TOKENS:-}" != "1" ]]; then
     if [[ -z "$TRANSCRIPT_PATH" ]] || [[ "$TRANSCRIPT_PATH" == "null" ]]; then
@@ -383,10 +384,10 @@ if [[ $USE_CACHE -eq 0 ]]; then
       fi
       # Replace slashes with dashes
       PROJECT_PATH="${PROJECT_PATH//\//-}"
-      
+
       # Look in ~/.claude/projects/ for this project
       CLAUDE_PROJECT_DIR="${HOME}/.claude/projects/${PROJECT_PATH}"
-      
+
       if [[ -d "$CLAUDE_PROJECT_DIR" ]]; then
         # Cache transcript path for 5 seconds - changes when new conversation starts
         time_point "before_transcript_search"
@@ -398,11 +399,11 @@ if [[ $USE_CACHE -eq 0 ]]; then
           # Get the most recent .jsonl file (ls -t sorts by modification time)
           TRANSCRIPT_PATH=$(timeout 0.1s ls -t "$CLAUDE_PROJECT_DIR"/*.jsonl 2>/dev/null | head -n1)
           if [[ -n "$TRANSCRIPT_PATH" ]]; then
-            echo "$TRANSCRIPT_PATH" > "$TRANSCRIPT_CACHE"
+            echo "$TRANSCRIPT_PATH" >"$TRANSCRIPT_CACHE"
           fi
         fi
         time_point "after_transcript_search"
-        
+
         # If we found a transcript, validate it's recent (within last hour)
         if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
           # Check if file was modified in the last hour
@@ -414,7 +415,7 @@ if [[ $USE_CACHE -eq 0 ]]; then
             FILE_TIME=$(stat -c %Y "$TRANSCRIPT_PATH" 2>/dev/null || echo 0)
           fi
           TIME_DIFF=$((CURRENT_TIME - FILE_TIME))
-          
+
           # If file is older than 1 hour (3600 seconds), ignore it
           if [[ $TIME_DIFF -gt 3600 ]]; then
             TRANSCRIPT_PATH=""
@@ -446,7 +447,7 @@ if [[ $USE_CACHE -eq 0 ]]; then
       cat "$GIT_CACHE"
     else
       get_git_info | tee "$GIT_CACHE"
-    fi > "$TMP_DIR/git_info" 2>/dev/null
+    fi >"$TMP_DIR/git_info" 2>/dev/null
   ) &
   GIT_PID=$!
 
@@ -458,7 +459,7 @@ if [[ $USE_CACHE -eq 0 ]]; then
       cat "$TERM_CACHE"
     else
       get_terminal_width | tee "$TERM_CACHE"
-    fi > "$TMP_DIR/term_width" 2>/dev/null
+    fi >"$TMP_DIR/term_width" 2>/dev/null
   ) &
   TERM_PID=$!
 
@@ -471,7 +472,7 @@ if [[ $USE_CACHE -eq 0 ]]; then
       else
         timeout 0.1s kubectl config current-context 2>/dev/null | tee "$K8S_CACHE"
       fi
-    fi > "$TMP_DIR/k8s_context" 2>/dev/null
+    fi >"$TMP_DIR/k8s_context" 2>/dev/null
   ) &
   K8S_PID=$!
 
@@ -487,54 +488,58 @@ if [[ $USE_CACHE -eq 0 ]]; then
       else
         result=$(get_token_metrics "$TRANSCRIPT_PATH")
         echo "$result" | tee "$TOKEN_CACHE"
-      fi > "$TMP_DIR/token_metrics"
+      fi >"$TMP_DIR/token_metrics"
     ) &
     TOKEN_PID=$!
   fi
 
   # Wait for all background processes to complete
-  wait $GIT_PID $TERM_PID $K8S_PID ${TOKEN_PID:-}
-  
+  if [[ -n "${TOKEN_PID:-}" ]]; then
+    wait "$GIT_PID" "$TERM_PID" "$K8S_PID" "$TOKEN_PID"
+  else
+    wait "$GIT_PID" "$TERM_PID" "$K8S_PID"
+  fi
+
   time_point "after_parallel_ops"
 
   # Read results from temp files
   time_point "before_read_results"
-  
+
   # Git information
   if [[ -f "$TMP_DIR/git_info" ]]; then
-    IFS='|' read -r GIT_BRANCH GIT_STATUS < "$TMP_DIR/git_info"
+    IFS='|' read -r GIT_BRANCH GIT_STATUS <"$TMP_DIR/git_info"
   else
     GIT_BRANCH=""
     GIT_STATUS=""
   fi
-  
+
   # Terminal width
   if [[ -f "$TMP_DIR/term_width" ]]; then
     RAW_TERM_WIDTH=$(cat "$TMP_DIR/term_width")
   else
     RAW_TERM_WIDTH=160
   fi
-  
+
   # Kubernetes context
   if [[ -f "$TMP_DIR/k8s_context" ]]; then
     K8S_CONTEXT=$(cat "$TMP_DIR/k8s_context")
   else
     K8S_CONTEXT=""
   fi
-  
+
   # Token metrics
   if [[ -f "$TMP_DIR/token_metrics" ]]; then
-    IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH < "$TMP_DIR/token_metrics"
+    IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH <"$TMP_DIR/token_metrics"
   else
     INPUT_TOKENS=0
     OUTPUT_TOKENS=0
     CONTEXT_LENGTH=0
   fi
-  
+
   time_point "after_read_results"
-  
+
   # Save all data to cache file
-  cat > "$CACHE_FILE" <<EOF
+  cat >"$CACHE_FILE" <<EOF
 # Cached statusline data
 GIT_BRANCH="$GIT_BRANCH"
 GIT_STATUS="$GIT_STATUS"
@@ -549,7 +554,7 @@ DEVSPACE_SYMBOL="$DEVSPACE_SYMBOL"
 TRANSCRIPT_PATH="$TRANSCRIPT_PATH"
 EOF
 
-fi  # End of cache miss block
+fi # End of cache miss block
 
 # Format token count for display
 format_tokens() {

@@ -19,6 +19,19 @@ This is a flake-based Nix configuration managing multiple systems:
 
 **IMPORTANT**: After making changes to any Nix configuration files (including hooks), you MUST run `update` to apply the changes to the current system. Changes won't take effect until the system is rebuilt!
 
+### Claude Code Hooks Overview
+
+This project includes smart hooks that automatically run lint and test commands when files are edited:
+
+- **smart-lint.sh** - Finds and runs project lint commands (`make lint`, `npm run lint`, etc.)
+- **smart-test.sh** - Finds and runs project test commands (`make test`, `npm run test`, etc.)
+
+Key features:
+- **Automatic discovery** - Walks up directory tree to find project commands
+- **PID-based locking** - Prevents concurrent runs in same workspace
+- **Configurable cooldown** - Default 2 seconds between runs
+- **Smart output** - Shows success messages or blocks on failures
+
 ### Hook Development Workflow
 When working on Claude Code hooks (`home-manager/claude-code/hooks/`):
 

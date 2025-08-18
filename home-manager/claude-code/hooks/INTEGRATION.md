@@ -1,283 +1,284 @@
-# Claude Code Hooks - Project Integration Guide
+# Integration Guide
 
-This guide shows how to integrate your project with Claude Code's smart-lint and smart-test hooks by implementing `make lint` and `make test` targets.
+This guide explains how to integrate Claude Code hooks with your projects for automatic code quality checks.
 
-## 🚀 Automated Integration
+## Overview
 
-The easiest way to integrate hooks into your project:
+The Claude Code hooks work with your **existing** project commands. There's no complex setup required - if you already have `make lint` or `npm test`, the hooks will find and use them automatically.
 
-```bash
-cd /path/to/your/project
-~/.claude/hooks/integrate.sh
-```
+## How It Works
 
-This will analyze your project and generate a custom integration prompt for Claude!
+### 1. Automatic Discovery
+When Claude edits a file, the hooks:
+- Start from the edited file's directory
+- Walk up the directory tree looking for project markers
+- Stop when they find a command to run or reach the project root
 
-## For Claude: Quick Summary
+### 2. Project Markers
+The hooks recognize these as project roots:
+- `.git/` directory
+- `go.mod` (Go projects)
+- `package.json` (Node.js projects)
+- `Cargo.toml` (Rust projects)
+- `setup.py` or `pyproject.toml` (Python projects)
 
-When you edit files, these hooks automatically run. To integrate a project:
-1. Check if `make lint` and `make test` exist
-2. If not, create them using the examples below
-3. The hooks pass `FILE=relative/path/to/edited/file.ext`
-4. Exit 0 = success, Exit 1+ = failure (blocks further edits)
+### 3. Command Search Order
+For **linting**, the hooks look for (in order):
+1. `make lint` (Makefile)
+2. `just lint` (Justfile)
+3. `npm/yarn/pnpm run lint` (package.json)
+4. `./scripts/lint` (executable script)
+5. `cargo clippy` (Rust projects)
+6. `ruff`, `flake8`, or `pylint` (Python projects)
 
-## Manual Integration
+For **testing**, the hooks look for:
+1. `make test` (Makefile)
+2. `just test` (Justfile)
+3. `npm/yarn/pnpm run test` (package.json)
+4. `./scripts/test` (executable script)
+5. `cargo test` (Rust projects)
+6. `pytest` (Python projects)
 
-### 1. Create a Makefile
+## Standard Setup (Recommended)
 
-Add these targets to your project's Makefile:
-
+### For Make-based Projects
 ```makefile
-# Lint target - receives FILE= argument with relative path to edited file
+# Makefile
+.PHONY: lint test
+
 lint:
-	@if [ -n "$(FILE)" ]; then \
-		echo "Linting specific file: $(FILE)"; \
-		# Your file-specific linting command here \
-	else \
-		echo "Linting all files"; \
-		# Your project-wide linting command here \
-	fi
-
-# Test target - receives FILE= argument with relative path to edited file  
-test:
-	@if [ -n "$(FILE)" ]; then \
-		echo "Testing specific file: $(FILE)"; \
-		# Your file-specific testing command here \
-	else \
-		echo "Testing all files"; \
-		# Your project-wide testing command here \
-	fi
-```
-
-### 2. How It Works
-
-When Claude edits a file, the hooks will:
-1. Search upward from the edited file for a Makefile
-2. If found, run `make lint FILE=relative/path/to/file.ext`
-3. Pass the relative path from the Makefile's directory to the edited file
-4. Use the exit code to determine if the operation should be blocked
-
-## Examples by Language
-
-### Go Project
-
-```makefile
-lint:
-	@if [ -n "$(FILE)" ]; then \
-		golangci-lint run $(FILE); \
-		gofmt -w $(FILE); \
-	else \
-		golangci-lint run ./...; \
-		gofmt -w .; \
-	fi
+	@echo "Running lints..."
+	golangci-lint run ./...
 
 test:
-	@if [ -n "$(FILE)" ]; then \
-		go test -v -race $(dir $(FILE)); \
-	else \
-		go test -v -race ./...; \
-	fi
+	@echo "Running tests..."
+	go test ./...
 ```
 
-### Python Project
+### For Node.js Projects
+```json
+{
+  "scripts": {
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "test": "jest"
+  }
+}
+```
 
-```makefile
+### For Just-based Projects
+```just
+# justfile
 lint:
-	@if [ -n "$(FILE)" ]; then \
-		black $(FILE); \
-		ruff check --fix $(FILE); \
-		mypy $(FILE); \
-	else \
-		black .; \
-		ruff check --fix .; \
-		mypy .; \
-	fi
+    @echo "Running lints..."
+    cargo clippy -- -D warnings
 
 test:
-	@if [ -n "$(FILE)" ]; then \
-		pytest -xvs $(FILE) || pytest -xvs $(dir $(FILE)); \
-	else \
-		pytest -xvs; \
-	fi
+    @echo "Running tests..."
+    cargo test
 ```
 
-### TypeScript/JavaScript Project
-
-```makefile
-lint:
-	@if [ -n "$(FILE)" ]; then \
-		npx eslint --fix $(FILE); \
-		npx prettier --write $(FILE); \
-	else \
-		npm run lint; \
-		npm run format; \
-	fi
-
-test:
-	@if [ -n "$(FILE)" ]; then \
-		npx jest $(FILE); \
-	else \
-		npm test; \
-	fi
-```
-
-### Mixed-Language Project
-
-```makefile
-# Detect file type and run appropriate linter
-lint:
-	@if [ -n "$(FILE)" ]; then \
-		case "$(FILE)" in \
-			*.go) golangci-lint run $(FILE) ;; \
-			*.py) black $(FILE) && ruff check $(FILE) ;; \
-			*.ts|*.js) npx eslint --fix $(FILE) ;; \
-			*.sh) shellcheck $(FILE) ;; \
-			*) echo "No linter for $(FILE)" ;; \
-		esac \
-	else \
-		$(MAKE) lint-all; \
-	fi
-
-lint-all:
-	@golangci-lint run ./...
-	@black .
-	@npm run lint
-	@shellcheck **/*.sh
-
-test:
-	@if [ -n "$(FILE)" ]; then \
-		case "$(FILE)" in \
-			*.go) go test -v $(dir $(FILE)) ;; \
-			*.py) pytest -xvs $(FILE) ;; \
-			*.spec.ts|*.test.js) npx jest $(FILE) ;; \
-			*) echo "No tests for $(FILE)" ;; \
-		esac \
-	else \
-		$(MAKE) test-all; \
-	fi
-
-test-all:
-	@go test -v ./...
-	@pytest
-	@npm test
-```
-
-## Alternative: Shell Scripts
-
-If you prefer shell scripts over Makefiles, create a `scripts/` directory:
-
+### For Script-based Projects
 ```bash
 #!/usr/bin/env bash
 # scripts/lint
+set -e
+echo "Running lints..."
+pylint src/
 
-FILE="$1"
-
-if [ -n "$FILE" ]; then
-    echo "Linting specific file: $FILE"
-    # Your file-specific linting commands
-else
-    echo "Linting all files"
-    # Your project-wide linting commands
-fi
+# scripts/test
+set -e
+echo "Running tests..."
+pytest tests/
 ```
 
-Make the script executable:
-```bash
-chmod +x scripts/lint scripts/test
+## Monorepo Support
+
+The hooks work seamlessly with monorepos because they walk up from the edited file:
+
+```
+monorepo/
+├── Makefile           # Root-level commands
+├── services/
+│   ├── api/
+│   │   ├── Makefile   # Service-specific commands
+│   │   └── main.go
+│   └── web/
+│       ├── package.json
+│       └── index.js
+└── libs/
+    └── shared/
+        ├── Makefile
+        └── utils.go
 ```
 
-## Key Requirements
+When editing `services/api/main.go`:
+1. First checks `services/api/` for commands
+2. Then checks `services/` 
+3. Finally checks the monorepo root
 
-### Exit Codes
-- **Exit 0**: Linting/testing passed, Claude can continue
-- **Exit 1+**: Linting/testing failed, Claude must fix issues before continuing
+## Configuration Options
 
-### Output
-- Send all linting/testing output to stdout/stderr
-- The hooks will capture and display this to the user
-- Be specific about what failed and why
-
-### Working Directory
-- The make command is run from the directory containing the Makefile
-- The `$(FILE)` argument is relative to that directory
-- Use `$(realpath $(FILE))` if you need an absolute path
-
-## Configuration
-
-### Disable Project Commands
-
-To disable project command integration and use language tools directly:
+### Project-Level Config
+Create `.claude-hooks-config.sh` in your project root:
 
 ```bash
-# In .claude-hooks-config.sh
-export CLAUDE_HOOKS_USE_PROJECT_COMMANDS=false
+# Use different make targets
+export CLAUDE_HOOKS_MAKE_LINT_TARGETS="check lint:all"
+export CLAUDE_HOOKS_MAKE_TEST_TARGETS="test:unit test:integration"
 
-# Or disable for specific languages
-export CLAUDE_HOOKS_GO_USE_PROJECT_COMMANDS=false
-export CLAUDE_HOOKS_PYTHON_USE_PROJECT_COMMANDS=false
+# Use different script names
+export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="check.sh validate.sh"
+export CLAUDE_HOOKS_SCRIPT_TEST_NAMES="test.sh run-tests.sh"
+
+# Disable hooks for this project
+export CLAUDE_HOOKS_LINT_ENABLED=false
+export CLAUDE_HOOKS_TEST_ENABLED=false
 ```
 
-### Custom Target Names
+### Ignore Patterns
+Create `.claude-hooks-ignore` in your project root:
 
-If your project uses different target names:
+```
+# Ignore generated files
+*.pb.go
+*_gen.go
+generated/
 
-```bash
-# In .claude-hooks-config.sh
-export CLAUDE_HOOKS_MAKE_LINT_TARGETS="check validate lint"
-export CLAUDE_HOOKS_MAKE_TEST_TARGETS="test test-unit test-all"
+# Ignore vendored code
+vendor/
+node_modules/
+
+# Ignore test files
+*_test.go
+*.test.js
 ```
 
-### Custom Script Names
+### Inline Ignore
+Add to the top of any file to skip hooks:
+```go
+// claude-hooks-disable
+package main
+```
 
-For shell script discovery:
+## Concurrency Control
 
+The hooks use PID-based locking to prevent issues:
+
+- **No duplicate runs**: If a lint is already running, new requests exit immediately
+- **Cooldown period**: After completion, waits 2 seconds before allowing another run
+- **Per-workspace locks**: Different projects can run simultaneously
+
+Configure cooldown:
 ```bash
-# In .claude-hooks-config.sh
-export CLAUDE_HOOKS_SCRIPT_LINT_NAMES="check.sh validate.sh lint"
-export CLAUDE_HOOKS_SCRIPT_TEST_NAMES="test.sh run-tests"
+export CLAUDE_HOOKS_LINT_COOLDOWN=5  # 5 seconds between lint runs
+export CLAUDE_HOOKS_TEST_COOLDOWN=3  # 3 seconds between test runs
+```
+
+## Performance Tips
+
+### 1. Keep Commands Fast
+The hooks have a 10-second timeout by default. Keep your commands quick:
+
+```makefile
+# Good: Fast, focused checks
+lint:
+	golangci-lint run --fast ./...
+
+# Bad: Slow, comprehensive checks
+lint:
+	golangci-lint run --enable-all ./...
+	go mod tidy
+	go generate ./...
+```
+
+### 2. Use Incremental Checks
+Only check what changed:
+
+```makefile
+lint:
+	@if [ -n "$${CHANGED_FILES}" ]; then \
+		golangci-lint run $${CHANGED_FILES}; \
+	else \
+		golangci-lint run ./...; \
+	fi
+```
+
+### 3. Configure Timeouts
+Adjust for slower commands:
+```bash
+export CLAUDE_HOOKS_LINT_TIMEOUT=30  # 30 seconds for lint
+export CLAUDE_HOOKS_TEST_TIMEOUT=60  # 60 seconds for tests
+```
+
+## Debugging
+
+Enable debug output to see what the hooks are doing:
+```bash
+export CLAUDE_HOOKS_DEBUG=1
+```
+
+This shows:
+- Which directories are being searched
+- Which commands are found
+- Why files are skipped
+- Lock file operations
+
+## Common Issues
+
+### Commands Not Found
+**Problem**: Hooks exit silently, no lint/test runs
+
+**Solution**: Ensure you have standard command names:
+- `make lint` not `make check`
+- `npm run lint` not `npm run validate`
+
+Or configure custom names in `.claude-hooks-config.sh`
+
+### Commands Run Too Often
+**Problem**: Every edit triggers a run
+
+**Solution**: Increase cooldown period:
+```bash
+export CLAUDE_HOOKS_LINT_COOLDOWN=10
+```
+
+### Commands Take Too Long
+**Problem**: Hooks timeout before completion
+
+**Solution**: Increase timeout or optimize commands:
+```bash
+export CLAUDE_HOOKS_LINT_TIMEOUT=30
 ```
 
 ## Best Practices
 
-1. **Fast Feedback**: When `FILE` is provided, run only the relevant checks for that file
-2. **Clear Output**: Make errors obvious with clear messages about what failed
-3. **Idempotent**: Running lint should fix issues when possible (formatters, auto-fixers)
-4. **Graceful Fallback**: Handle missing tools gracefully with helpful error messages
-5. **Respect .gitignore**: Don't lint/test files that are gitignored
+1. **Use standard names**: `lint` and `test` are automatically found
+2. **Keep it fast**: Under 5 seconds is ideal
+3. **Clear output**: Make errors obvious and actionable
+4. **Project config**: Use `.claude-hooks-config.sh` for project-specific settings
+5. **Test locally**: Run `make lint` yourself to ensure it works
 
-## Testing Your Integration
-
-Test your Makefile targets manually:
+## Example Integration Session
 
 ```bash
-# Test file-specific linting
-make lint FILE=src/main.go
+# 1. Check your project has commands
+$ make lint
+golangci-lint run ./...
 
-# Test project-wide linting
-make lint
+$ make test  
+go test ./...
 
-# Test with nested paths
-make lint FILE=internal/service/handler.go
+# 2. Tell Claude to use hooks
+"Please enable hooks for this project and use them to validate all changes"
+
+# 3. Claude edits a file
+# Hooks automatically run make lint
+# If it fails, Claude sees the error and fixes it
+# If it passes, work continues
+
+# 4. Monitor with debug if needed
+$ export CLAUDE_HOOKS_DEBUG=1
+$ tail -f ~/.claude/logs/hooks.log
 ```
 
-## Troubleshooting
-
-### Hooks Not Finding Your Makefile
-- Ensure the Makefile is in a parent directory of edited files
-- Check that the directory is within a project root (has .git, go.mod, package.json, etc.)
-
-### FILE Argument Not Working
-- The `$(FILE)` variable is passed by the hooks
-- Ensure you're using `$(FILE)` not `${FILE}` in Makefiles
-- For debugging, add `@echo "FILE=$(FILE)"` to your target
-
-### Commands Not Found
-- The hooks run in a minimal environment
-- Use full paths or ensure tools are in standard locations
-- Consider using `command -v` to check for tools first
-
-## Common Questions
-
-- **Multiple Makefiles?** The hooks use the nearest Makefile (searching upward from the edited file)
-- **Disable hooks?** Set `CLAUDE_HOOKS_ENABLED=false` in `.claude-hooks-config.sh`
-- **Different file types?** Use case statements in your Makefile (see Mixed-Language example)
+That's it! The hooks handle the rest automatically.

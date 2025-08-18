@@ -26,8 +26,7 @@ in
         intel-vaapi-driver
         vaapiVdpau
         intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
-        vpl-gpu-rt # QSV on 11th gen or newer
-        intel-media-sdk # QSV up to 11th gen
+        vpl-gpu-rt # QSV for all Intel GPU generations
       ];
     };
     enableAllFirmware = true;
@@ -83,6 +82,11 @@ in
   networking = {
     useDHCP = false;
     hostName = "vermissian";
+    extraHosts = ''
+      172.31.0.200 ultraviolet
+      172.31.0.201 bluedesert
+      172.31.0.203 echelon
+    '';
     firewall = {
       enable = true;
       checkReversePath = "loose";

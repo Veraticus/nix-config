@@ -21,6 +21,22 @@
 # Don't use set -e as we need to control exit codes
 set -uo pipefail
 
+# Set up a safety timeout using a background process (10 seconds for tests)
+# This prevents hanging test suites from blocking Claude Code
+{
+    sleep 10
+    # If we're still running after 10s, kill our process group
+    kill -TERM -$$ 2>/dev/null
+} &
+TIMEOUT_PID=$!
+
+# Clean up timeout process on exit
+cleanup_timeout() {
+    kill "$TIMEOUT_PID" 2>/dev/null
+    wait "$TIMEOUT_PID" 2>/dev/null
+}
+trap cleanup_timeout EXIT
+
 # Debug trap (disabled)
 # trap 'echo "DEBUG: Error on line $LINENO" >&2' ERR
 

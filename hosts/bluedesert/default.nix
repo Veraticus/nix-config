@@ -26,8 +26,7 @@ in
         intel-vaapi-driver
         vaapiVdpau
         intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
-        vpl-gpu-rt # QSV on 11th gen or newer
-        intel-media-sdk # QSV up to 11th gen
+        vpl-gpu-rt # Modern Intel Media SDK replacement with QSV support
       ];
     };
     enableAllFirmware = true;

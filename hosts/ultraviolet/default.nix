@@ -222,6 +222,9 @@ in
     openFirewall = true;
     user = "jellyfin";
   };
+  
+  # Add jellyfin user to video and render groups for GPU hardware acceleration
+  users.users.jellyfin.extraGroups = [ "video" "render" ];
 
   # Jellyfin encoding configuration for better performance with large files
   systemd.services.jellyfin.preStart = ''
@@ -241,7 +244,7 @@ in
       <ThrottleDelaySeconds>180</ThrottleDelaySeconds>
       <EnableSegmentDeletion>true</EnableSegmentDeletion>
       <SegmentKeepSeconds>720</SegmentKeepSeconds>
-      <HardwareAccelerationType>qsv</HardwareAccelerationType>
+      <HardwareAccelerationType>vaapi</HardwareAccelerationType>
       <EncoderAppPathDisplay>/nix/store/fvr78yr36anl4h054ph6nz3jpsdm7ank-jellyfin-ffmpeg-7.1.1-6-bin/bin/ffmpeg</EncoderAppPathDisplay>
       <VaapiDevice>/dev/dri/renderD128</VaapiDevice>
       <QsvDevice />
@@ -923,7 +926,7 @@ in
         extraOptions = [ "--network=host" ];
       };
       jellyseerr = {
-        image = "fallenbagel/jellyseerr:2.5.2";
+        image = "fallenbagel/jellyseerr:2.7.3";
         ports = [
           "5055:5055"
         ];

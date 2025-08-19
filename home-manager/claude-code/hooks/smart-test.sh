@@ -49,56 +49,15 @@ if [[ "${CLAUDE_HOOKS_TEST_ENABLED:-true}" != "true" ]]; then
     exit 0
 fi
 
-# Get workspace directory (current working directory)
-WORKSPACE_DIR="$(pwd)"
-# Create a safe lock file name based on workspace path
-LOCK_FILE_NAME="claude-hook-test-$(echo "$WORKSPACE_DIR" | sha256sum | cut -d' ' -f1).lock"
-LOCK_FILE="/tmp/$LOCK_FILE_NAME"
-
 # Configure cooldown period (seconds after completion before allowing new runs)
 COOLDOWN_SECONDS="${CLAUDE_HOOKS_TEST_COOLDOWN:-2}"
 
-# Check if another instance is running or recently completed
-if [[ -f "$LOCK_FILE" ]]; then
-    # Read PID from first line
-    LOCK_PID=$(head -n1 "$LOCK_FILE" 2>/dev/null || echo "")
-    
-    # Check if PID is still running
-    if [[ -n "$LOCK_PID" ]] && kill -0 "$LOCK_PID" 2>/dev/null; then
-        log_debug "smart-test.sh is already running in workspace $WORKSPACE_DIR (PID: $LOCK_PID), exiting"
-        exit 0
-    fi
-    
-    # Check completion timestamp from second line
-    COMPLETION_TIME=$(tail -n1 "$LOCK_FILE" 2>/dev/null || echo "0")
-    if [[ "$COMPLETION_TIME" =~ ^[0-9]+$ ]]; then
-        CURRENT_TIME=$(date +%s)
-        TIME_SINCE_COMPLETION=$((CURRENT_TIME - COMPLETION_TIME))
-        
-        if [[ $TIME_SINCE_COMPLETION -lt $COOLDOWN_SECONDS ]]; then
-            log_debug "smart-test.sh completed ${TIME_SINCE_COMPLETION}s ago in workspace $WORKSPACE_DIR (cooldown: ${COOLDOWN_SECONDS}s), exiting"
-            exit 0
-        fi
-    fi
-fi
-
-# Write our PID to lock file (first line only)
-echo "$$" > "$LOCK_FILE"
-
-# Update lock file on exit with completion timestamp
-cleanup() {
-    # Clear PID and write completion timestamp
-    {
-        echo ""  # Empty first line (no PID)
-        date +%s  # Second line: completion timestamp
-    } > "$LOCK_FILE" 2>/dev/null
-    cleanup_timeout
-}
-trap cleanup EXIT
-
 # Read and parse JSON input
-if ! read -r -t 1 json_input; then
-    log_debug "No input received on stdin"
+# Check if we have input on stdin (not a terminal)
+if [ ! -t 0 ]; then
+    json_input=$(cat)
+else
+    # No stdin available - exit silently
     exit 0
 fi
 
@@ -160,6 +119,49 @@ cd "$file_dir" || exit 0
 
 log_debug "Changed to directory: $file_dir"
 
+# NOW set up workspace directory and lock file based on the actual project directory
+WORKSPACE_DIR="$(pwd)"
+LOCK_FILE_NAME="claude-hook-test-$(echo "$WORKSPACE_DIR" | sha256sum | cut -d' ' -f1).lock"
+LOCK_FILE="/tmp/$LOCK_FILE_NAME"
+
+# Check if another instance is running or recently completed
+if [[ -f "$LOCK_FILE" ]]; then
+    # Read PID from first line
+    LOCK_PID=$(head -n1 "$LOCK_FILE" 2>/dev/null || echo "")
+    
+    # Check if PID is still running
+    if [[ -n "$LOCK_PID" ]] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        log_debug "smart-test.sh is already running in workspace $WORKSPACE_DIR (PID: $LOCK_PID), exiting"
+        exit 0
+    fi
+    
+    # Check completion timestamp from second line
+    COMPLETION_TIME=$(tail -n1 "$LOCK_FILE" 2>/dev/null || echo "0")
+    if [[ "$COMPLETION_TIME" =~ ^[0-9]+$ ]]; then
+        CURRENT_TIME=$(date +%s)
+        TIME_SINCE_COMPLETION=$((CURRENT_TIME - COMPLETION_TIME))
+        
+        if [[ $TIME_SINCE_COMPLETION -lt $COOLDOWN_SECONDS ]]; then
+            log_debug "smart-test.sh completed ${TIME_SINCE_COMPLETION}s ago in workspace $WORKSPACE_DIR (cooldown: ${COOLDOWN_SECONDS}s), exiting"
+            exit 0
+        fi
+    fi
+fi
+
+# Write our PID to lock file (first line only)
+echo "$$" > "$LOCK_FILE"
+
+# Update lock file on exit with completion timestamp
+cleanup() {
+    # Clear PID and write completion timestamp
+    {
+        echo ""  # Empty first line (no PID)
+        date +%s  # Second line: completion timestamp
+    } > "$LOCK_FILE" 2>/dev/null
+    cleanup_timeout
+}
+trap cleanup EXIT
+
 # Function to check if a make target exists
 check_make_target() {
     local makefile="$1"
@@ -203,9 +205,8 @@ find_and_run_test() {
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Tests failed${NC}" >&2
-                    make test 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && make test' to fix test failures${NC}" >&2
                     return 2  # Tests failed
                 fi
             fi
@@ -224,9 +225,8 @@ find_and_run_test() {
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Tests failed${NC}" >&2
-                    just test 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && just test' to fix test failures${NC}" >&2
                     return 2  # Tests failed
                 fi
             fi
@@ -250,9 +250,8 @@ find_and_run_test() {
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Tests failed${NC}" >&2
-                    $pm run test 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && $pm run test' to fix test failures${NC}" >&2
                     return 2  # Tests failed
                 fi
             fi
@@ -268,9 +267,8 @@ find_and_run_test() {
                 log_debug "Tests passed"
                 return 1  # Tests passed
             else
-                # Re-run to show output on failure
-                echo -e "${RED}❌ Tests failed${NC}" >&2
-                ./scripts/test 2>&1
+                # Don't show output - force LLM to run command manually
+                echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && ./scripts/test' to fix test failures${NC}" >&2
                 return 2  # Tests failed
             fi
         fi
@@ -285,9 +283,8 @@ find_and_run_test() {
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Tests failed${NC}" >&2
-                    cargo test 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && cargo test' to fix test failures${NC}" >&2
                     return 2  # Tests failed
                 fi
             fi
@@ -301,16 +298,14 @@ find_and_run_test() {
                 # Check if the first word of the command exists
                 local cmd_check="${tester%% *}"
                 if command -v "$cmd_check" &>/dev/null; then
-                    log_info "🧪 Running '$tester' from $current_dir"
                     cd "$current_dir" || return 2
                     
                     if $tester >/dev/null 2>&1; then
                         log_debug "Tests passed"
                         return 1  # Tests passed
                     else
-                        # Re-run to show output on failure
-                        echo -e "${RED}❌ Tests failed${NC}" >&2
-                        $tester 2>&1
+                        # Don't show output - force LLM to run command manually
+                        echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && $tester' to fix test failures${NC}" >&2
                         return 2  # Tests failed
                     fi
                     # shellcheck disable=SC2317  # This IS reachable when command exists
@@ -344,8 +339,7 @@ case $exit_code in
         exit 2
         ;;
     2)
-        # Tests failed - show blocking message and exit 2
-        echo -e "${RED}⛔ BLOCKING: Must fix ALL test failures above before continuing${NC}" >&2
+        # Tests failed - exit 2 (message already shown by find_and_run_test)
         exit 2
         ;;
 esac

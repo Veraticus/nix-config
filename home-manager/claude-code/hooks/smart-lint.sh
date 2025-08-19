@@ -49,56 +49,15 @@ if [[ "${CLAUDE_HOOKS_LINT_ENABLED:-true}" != "true" ]]; then
     exit 0
 fi
 
-# Get workspace directory (current working directory)
-WORKSPACE_DIR="$(pwd)"
-# Create a safe lock file name based on workspace path
-LOCK_FILE_NAME="claude-hook-lint-$(echo "$WORKSPACE_DIR" | sha256sum | cut -d' ' -f1).lock"
-LOCK_FILE="/tmp/$LOCK_FILE_NAME"
-
 # Configure cooldown period (seconds after completion before allowing new runs)
 COOLDOWN_SECONDS="${CLAUDE_HOOKS_LINT_COOLDOWN:-2}"
 
-# Check if another instance is running or recently completed
-if [[ -f "$LOCK_FILE" ]]; then
-    # Read PID from first line
-    LOCK_PID=$(head -n1 "$LOCK_FILE" 2>/dev/null || echo "")
-    
-    # Check if PID is still running
-    if [[ -n "$LOCK_PID" ]] && kill -0 "$LOCK_PID" 2>/dev/null; then
-        log_debug "smart-lint.sh is already running in workspace $WORKSPACE_DIR (PID: $LOCK_PID), exiting"
-        exit 0
-    fi
-    
-    # Check completion timestamp from second line
-    COMPLETION_TIME=$(tail -n1 "$LOCK_FILE" 2>/dev/null || echo "0")
-    if [[ "$COMPLETION_TIME" =~ ^[0-9]+$ ]]; then
-        CURRENT_TIME=$(date +%s)
-        TIME_SINCE_COMPLETION=$((CURRENT_TIME - COMPLETION_TIME))
-        
-        if [[ $TIME_SINCE_COMPLETION -lt $COOLDOWN_SECONDS ]]; then
-            log_debug "smart-lint.sh completed ${TIME_SINCE_COMPLETION}s ago in workspace $WORKSPACE_DIR (cooldown: ${COOLDOWN_SECONDS}s), exiting"
-            exit 0
-        fi
-    fi
-fi
-
-# Write our PID to lock file (first line only)
-echo "$$" > "$LOCK_FILE"
-
-# Update lock file on exit with completion timestamp
-cleanup() {
-    # Clear PID and write completion timestamp
-    {
-        echo ""  # Empty first line (no PID)
-        date +%s  # Second line: completion timestamp
-    } > "$LOCK_FILE" 2>/dev/null
-    cleanup_timeout
-}
-trap cleanup EXIT
-
 # Read and parse JSON input
-if ! read -r -t 1 json_input; then
-    log_debug "No input received on stdin"
+# Check if we have input on stdin (not a terminal)
+if [ ! -t 0 ]; then
+    json_input=$(cat)
+else
+    # No stdin available - exit silently
     exit 0
 fi
 
@@ -160,6 +119,49 @@ cd "$file_dir" || exit 0
 
 log_debug "Changed to directory: $file_dir"
 
+# NOW set up workspace directory and lock file based on the actual project directory
+WORKSPACE_DIR="$(pwd)"
+LOCK_FILE_NAME="claude-hook-lint-$(echo "$WORKSPACE_DIR" | sha256sum | cut -d' ' -f1).lock"
+LOCK_FILE="/tmp/$LOCK_FILE_NAME"
+
+# Check if another instance is running or recently completed
+if [[ -f "$LOCK_FILE" ]]; then
+    # Read PID from first line
+    LOCK_PID=$(head -n1 "$LOCK_FILE" 2>/dev/null || echo "")
+    
+    # Check if PID is still running
+    if [[ -n "$LOCK_PID" ]] && kill -0 "$LOCK_PID" 2>/dev/null; then
+        log_debug "smart-lint.sh is already running in workspace $WORKSPACE_DIR (PID: $LOCK_PID), exiting"
+        exit 0
+    fi
+    
+    # Check completion timestamp from second line
+    COMPLETION_TIME=$(tail -n1 "$LOCK_FILE" 2>/dev/null || echo "0")
+    if [[ "$COMPLETION_TIME" =~ ^[0-9]+$ ]]; then
+        CURRENT_TIME=$(date +%s)
+        TIME_SINCE_COMPLETION=$((CURRENT_TIME - COMPLETION_TIME))
+        
+        if [[ $TIME_SINCE_COMPLETION -lt $COOLDOWN_SECONDS ]]; then
+            log_debug "smart-lint.sh completed ${TIME_SINCE_COMPLETION}s ago in workspace $WORKSPACE_DIR (cooldown: ${COOLDOWN_SECONDS}s), exiting"
+            exit 0
+        fi
+    fi
+fi
+
+# Write our PID to lock file (first line only)
+echo "$$" > "$LOCK_FILE"
+
+# Update lock file on exit with completion timestamp
+cleanup() {
+    # Clear PID and write completion timestamp
+    {
+        echo ""  # Empty first line (no PID)
+        date +%s  # Second line: completion timestamp
+    } > "$LOCK_FILE" 2>/dev/null
+    cleanup_timeout
+}
+trap cleanup EXIT
+
 # Function to check if a make target exists
 check_make_target() {
     local makefile="$1"
@@ -196,16 +198,14 @@ find_and_run_lint() {
             [[ ! -f "$makefile" ]] && makefile="$current_dir/makefile"
             
             if check_make_target "$makefile" "lint"; then
-                log_info "🔍 Running 'make lint' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if make lint >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Linting failed${NC}" >&2
-                    make lint 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && make lint' to fix lint failures${NC}" >&2
                     return 2  # Lint failed
                 fi
             fi
@@ -217,16 +217,14 @@ find_and_run_lint() {
             [[ ! -f "$justfile" ]] && justfile="$current_dir/Justfile"
             
             if check_just_recipe "$justfile" "lint"; then
-                log_info "🔍 Running 'just lint' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if just lint >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Linting failed${NC}" >&2
-                    just lint 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && just lint' to fix lint failures${NC}" >&2
                     return 2  # Lint failed
                 fi
             fi
@@ -235,7 +233,6 @@ find_and_run_lint() {
         # Check for package.json (npm/yarn/pnpm)
         if [[ -f "$current_dir/package.json" ]]; then
             if check_npm_script "$current_dir/package.json" "lint"; then
-                log_info "🔍 Running npm/yarn lint from $current_dir"
                 cd "$current_dir" || return 2
                 
                 # Detect package manager
@@ -250,9 +247,8 @@ find_and_run_lint() {
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Linting failed${NC}" >&2
-                    $pm run lint 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && $pm run lint' to fix lint failures${NC}" >&2
                     return 2  # Lint failed
                 fi
             fi
@@ -260,16 +256,14 @@ find_and_run_lint() {
         
         # Check for scripts/lint
         if [[ -x "$current_dir/scripts/lint" ]]; then
-            log_info "🔍 Running scripts/lint from $current_dir"
             cd "$current_dir" || return 2
             
             if ./scripts/lint >/dev/null 2>&1; then
                 log_debug "Linting passed"
                 return 1  # Lint passed
             else
-                # Re-run to show output on failure
-                echo -e "${RED}❌ Linting failed${NC}" >&2
-                ./scripts/lint 2>&1
+                # Don't show output - force LLM to run command manually
+                echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && ./scripts/lint' to fix lint failures${NC}" >&2
                 return 2  # Lint failed
             fi
         fi
@@ -277,16 +271,14 @@ find_and_run_lint() {
         # Check for Cargo.toml (Rust)
         if [[ -f "$current_dir/Cargo.toml" ]]; then
             if command -v cargo &>/dev/null; then
-                log_info "🔍 Running 'cargo clippy' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if cargo clippy -- -D warnings >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
-                    # Re-run to show output on failure
-                    echo -e "${RED}❌ Linting failed${NC}" >&2
-                    cargo clippy -- -D warnings 2>&1
+                    # Don't show output - force LLM to run command manually
+                    echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && cargo clippy -- -D warnings' to fix lint failures${NC}" >&2
                     return 2  # Lint failed
                 fi
             fi
@@ -298,7 +290,6 @@ find_and_run_lint() {
             local python_linters=("ruff" "flake8" "pylint")
             for linter in "${python_linters[@]}"; do
                 if command -v "$linter" &>/dev/null; then
-                    log_info "🔍 Running '$linter' from $current_dir"
                     cd "$current_dir" || return 1
                     
                     case "$linter" in
@@ -307,9 +298,8 @@ find_and_run_lint() {
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else
-                                # Re-run to show output on failure
-                                echo -e "${RED}❌ Linting failed${NC}" >&2
-                                ruff check . 2>&1
+                                # Don't show output - force LLM to run command manually
+                                echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && ruff check .' to fix lint failures${NC}" >&2
                                 return 2  # Lint failed
                             fi
                             ;;
@@ -318,9 +308,8 @@ find_and_run_lint() {
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else
-                                # Re-run to show output on failure
-                                echo -e "${RED}❌ Linting failed${NC}" >&2
-                                flake8 . 2>&1
+                                # Don't show output - force LLM to run command manually
+                                echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && flake8 .' to fix lint failures${NC}" >&2
                                 return 2  # Lint failed
                             fi
                             ;;
@@ -329,9 +318,8 @@ find_and_run_lint() {
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else
-                                # Re-run to show output on failure
-                                echo -e "${RED}❌ Linting failed${NC}" >&2
-                                pylint . 2>&1
+                                # Don't show output - force LLM to run command manually
+                                echo -e "${RED}⛔ BLOCKING: Run 'cd $current_dir && pylint .' to fix lint failures${NC}" >&2
                                 return 2  # Lint failed
                             fi
                             ;;
@@ -366,8 +354,7 @@ case $exit_code in
         exit 2
         ;;
     2)
-        # Lint failed - show blocking message and exit 2
-        echo -e "${RED}⛔ BLOCKING: Must fix ALL lint failures above before continuing${NC}" >&2
+        # Lint failed - exit 2 (message already shown by find_and_run_lint)
         exit 2
         ;;
 esac

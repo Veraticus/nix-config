@@ -45,7 +45,7 @@ Describe 'smart-test.sh (simplified)'
             
             cd src/handlers || return
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/api.go")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Tests pass"
         End
         
@@ -56,7 +56,7 @@ Describe 'smart-test.sh (simplified)'
             
             cd app/src/utils || return
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/helper.js")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Tests pass"
         End
         
@@ -69,7 +69,7 @@ Describe 'smart-test.sh (simplified)'
             
             cd lib/internal || return
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/core.py")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Tests pass"
         End
         
@@ -90,7 +90,7 @@ Describe 'smart-test.sh (simplified)'
             touch test.go
             
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/test.go")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Tests pass. Continue with your task."
             The stderr should not include "Test output that should be hidden"
         End
@@ -101,10 +101,10 @@ Describe 'smart-test.sh (simplified)'
             
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/calculator.go")"
             The status should equal 2
-            The stderr should include "❌ Tests failed"
-            The stdout should include "FAIL: TestAdd"
-            The stdout should include "expected 4, got 5"
-            The stderr should include "⛔ BLOCKING: Must fix ALL test failures"
+            The stderr should include "⛔ BLOCKING: Run"
+            The stderr should include "make test"
+            The stderr should include "to fix test failures"
+            The stdout should not include "FAIL: TestAdd"  # We don't show output anymore
         End
         
         It 're-runs test command to show output on failure'
@@ -114,8 +114,9 @@ Describe 'smart-test.sh (simplified)'
             
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/code.py")"
             The status should equal 2
-            The stdout should include "Test failed with details"
-            The stderr should include "⛔ BLOCKING"
+            The stderr should include "⛔ BLOCKING: Run"
+            The stderr should include "make test"
+            The stdout should not include "Test failed with details"  # We don't show output anymore
         End
     End
     
@@ -126,7 +127,7 @@ Describe 'smart-test.sh (simplified)'
             touch file.go
             
             When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/file.go")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Tests pass"
         End
         
@@ -140,7 +141,7 @@ EOF
             # Skip if just is not installed
             if command -v just &>/dev/null; then
                 When run run_hook_with_json "smart-test.sh" "$(create_post_tool_use_json "Edit" "$PWD/main.rs")"
-                The status should equal 0
+                The status should equal 2
                 The stderr should include "👉 Tests pass"
             else
                 Skip "just command not available"

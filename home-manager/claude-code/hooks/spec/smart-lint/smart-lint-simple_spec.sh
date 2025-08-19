@@ -46,7 +46,7 @@ Describe 'smart-lint.sh (simplified)'
             
             cd src/nested/deep || return
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/file.go")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Lints pass"
         End
         
@@ -57,7 +57,7 @@ Describe 'smart-lint.sh (simplified)'
             
             cd client/src/components || return
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/App.tsx")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Lints pass"
         End
         
@@ -78,7 +78,7 @@ Describe 'smart-lint.sh (simplified)'
             touch test.go
             
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/test.go")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Lints pass. Continue with your task."
             The stderr should not include "Linting..."  # Output should be suppressed
         End
@@ -89,9 +89,9 @@ Describe 'smart-lint.sh (simplified)'
             
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/test.go")"
             The status should equal 2
-            The stderr should include "❌ Linting failed"
-            The stdout should include "Error: undefined variable"
-            The stderr should include "⛔ BLOCKING: Must fix ALL lint failures"
+            The stderr should include "⛔ BLOCKING: Run"
+            The stderr should include "make lint"
+            The stderr should include "to fix lint failures"
         End
     End
     
@@ -105,7 +105,7 @@ Describe 'smart-lint.sh (simplified)'
             touch index.js
             
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/index.js")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Lints pass"
         End
         
@@ -118,7 +118,7 @@ Describe 'smart-lint.sh (simplified)'
             touch index.js
             
             When run run_hook_with_json "smart-lint.sh" "$(create_post_tool_use_json "Edit" "$PWD/index.js")"
-            The status should equal 0
+            The status should equal 2
             The stderr should include "👉 Lints pass"
         End
     End

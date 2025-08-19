@@ -198,7 +198,7 @@ find_and_run_test() {
             [[ ! -f "$makefile" ]] && makefile="$current_dir/makefile"
             
             if check_make_target "$makefile" "test"; then
-                log_info "🧪 Running 'make test' from $current_dir"
+                log_debug "🧪 Running 'make test' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if make test >/dev/null 2>&1; then
@@ -218,7 +218,7 @@ find_and_run_test() {
             [[ ! -f "$justfile" ]] && justfile="$current_dir/Justfile"
             
             if check_just_recipe "$justfile" "test"; then
-                log_info "🧪 Running 'just test' from $current_dir"
+                log_debug "🧪 Running 'just test' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if just test >/dev/null 2>&1; then
@@ -235,7 +235,7 @@ find_and_run_test() {
         # Check for package.json (npm/yarn/pnpm)
         if [[ -f "$current_dir/package.json" ]]; then
             if check_npm_script "$current_dir/package.json" "test"; then
-                log_info "🧪 Running npm/yarn test from $current_dir"
+                log_debug "🧪 Running npm/yarn test from $current_dir"
                 cd "$current_dir" || return 2
                 
                 # Detect package manager
@@ -259,7 +259,7 @@ find_and_run_test() {
         
         # Check for scripts/test
         if [[ -x "$current_dir/scripts/test" ]]; then
-            log_info "🧪 Running scripts/test from $current_dir"
+            log_debug "🧪 Running scripts/test from $current_dir"
             cd "$current_dir" || return 2
             
             # shellcheck disable=SC2065  # False positive - this is a script execution, not a comparison
@@ -276,7 +276,7 @@ find_and_run_test() {
         # Check for Cargo.toml (Rust)
         if [[ -f "$current_dir/Cargo.toml" ]]; then
             if command -v cargo &>/dev/null; then
-                log_info "🧪 Running 'cargo test' from $current_dir"
+                log_debug "🧪 Running 'cargo test' from $current_dir"
                 cd "$current_dir" || return 2
                 
                 if cargo test >/dev/null 2>&1; then

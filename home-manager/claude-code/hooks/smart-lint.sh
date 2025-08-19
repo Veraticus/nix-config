@@ -50,7 +50,7 @@ if [[ "${CLAUDE_HOOKS_LINT_ENABLED:-true}" != "true" ]]; then
 fi
 
 # Configure cooldown period (seconds after completion before allowing new runs)
-COOLDOWN_SECONDS="${CLAUDE_HOOKS_LINT_COOLDOWN:-2}"
+COOLDOWN_SECONDS="${CLAUDE_HOOKS_LINT_COOLDOWN:-120}"
 
 # Read and parse JSON input
 # Check if we have input on stdin (not a terminal)

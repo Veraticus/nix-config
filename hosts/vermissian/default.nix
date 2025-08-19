@@ -234,8 +234,14 @@ in
 
   # Clean up old kind and ctlptl clusters
   systemd.services.cleanup-old-clusters = {
-    description = "Clean up kind and ctlptl clusters older than 1 day";
+    description = "Clean up kind and ctlptl clusters older than configured timeout";
     after = [ "docker.service" ];
+    path = [ pkgs.kind pkgs.ctlptl ];
+    environment = {
+      # Configurable timeout in seconds (default: 1 hour)
+      # Can be overridden for testing or different requirements
+      CLUSTER_MAX_AGE_SECONDS = "3600";  # 1 hour for production
+    };
     serviceConfig = {
       Type = "oneshot";
       User = user;
@@ -243,6 +249,10 @@ in
       ExecStart = pkgs.writeShellScript "cleanup-old-clusters" ''
         #!${pkgs.bash}/bin/bash
         set -euo pipefail
+        
+        # Get timeout from environment or use default (1 hour)
+        MAX_AGE_SECONDS=${"$"}{CLUSTER_MAX_AGE_SECONDS:-3600}
+        echo "Using cluster max age: $MAX_AGE_SECONDS seconds"
         
         # Function to get cluster age in seconds
         get_cluster_age() {
@@ -259,34 +269,39 @@ in
           echo $((current_epoch - created_epoch))
         }
         
-        # Clean up kind clusters older than 1 day (86400 seconds)
-        if command -v kind &> /dev/null; then
+        # Clean up kind clusters older than configured timeout
+        if ${pkgs.kind}/bin/kind version &> /dev/null; then
           echo "Checking kind clusters..."
-          for cluster in $(kind get clusters 2>/dev/null); do
+          for cluster in $(${pkgs.kind}/bin/kind get clusters 2>/dev/null); do
             age=$(get_cluster_age "$cluster")
-            if [ "$age" -gt 86400 ]; then
-              echo "Deleting old kind cluster: $cluster (age: $((age/3600)) hours)"
-              kind delete cluster --name "$cluster" || true
+            if [ "$age" -gt "$MAX_AGE_SECONDS" ]; then
+              echo "Deleting old kind cluster: $cluster (age: $((age/60)) minutes, max: $((MAX_AGE_SECONDS/60)) minutes)"
+              ${pkgs.kind}/bin/kind delete cluster --name "$cluster" || true
             else
-              echo "Keeping kind cluster: $cluster (age: $((age/3600)) hours)"
+              echo "Keeping kind cluster: $cluster (age: $((age/60)) minutes, max: $((MAX_AGE_SECONDS/60)) minutes)"
             fi
           done
+        else
+          echo "Kind not available, skipping kind cluster cleanup"
         fi
         
-        # Clean up ctlptl clusters (which are also kind clusters with registry)
-        if command -v ctlptl &> /dev/null; then
-          echo "Checking ctlptl clusters..."
-          # ctlptl uses kind under the hood, so clusters are already handled above
-          # Just clean up any orphaned registries
-          for registry in $(${pkgs.docker}/bin/docker ps -a --filter "label=ctlptl.dev/cluster" --format "{{.Names}}" 2>/dev/null); do
-            cluster_name=$(${pkgs.docker}/bin/docker inspect "$registry" 2>/dev/null | ${pkgs.jq}/bin/jq -r '.[0].Config.Labels["ctlptl.dev/cluster"] // empty')
-            
-            # Check if the associated cluster still exists
-            if [ -n "$cluster_name" ] && ! kind get clusters 2>/dev/null | grep -q "^$cluster_name$"; then
-              echo "Removing orphaned ctlptl registry: $registry"
-              ${pkgs.docker}/bin/docker rm -f "$registry" || true
+        # Clean up ctlptl registries
+        if ${pkgs.ctlptl}/bin/ctlptl version &> /dev/null; then
+          echo "Checking ctlptl registries..."
+          # Get all ctlptl registries and delete those associated with deleted clusters
+          for registry in $(${pkgs.ctlptl}/bin/ctlptl get registries -o json 2>/dev/null | ${pkgs.jq}/bin/jq -r '.items[].metadata.name // empty'); do
+            # Check if registry starts with "kind-" (associated with a kind cluster)
+            if [[ "$registry" == kind-* ]]; then
+              cluster_name=${"$"}{registry#kind-}
+              # Check if the associated cluster still exists
+              if ! ${pkgs.kind}/bin/kind get clusters 2>/dev/null | grep -q "^$cluster_name$"; then
+                echo "Removing orphaned ctlptl registry: $registry"
+                ${pkgs.ctlptl}/bin/ctlptl delete registry "$registry" || true
+              fi
             fi
           done
+        else
+          echo "Ctlptl not available, skipping registry cleanup"
         fi
         
         echo "Cluster cleanup completed"

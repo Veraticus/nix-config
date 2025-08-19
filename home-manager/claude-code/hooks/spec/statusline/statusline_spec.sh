@@ -10,15 +10,13 @@ Describe 'statusline.sh'
         # Create temp directory for test
         TEMP_DIR=$(create_test_dir)
         cd "$TEMP_DIR" || return
-        # Mock hostname
-        hostname() { echo "test-host"; }
-        export -f hostname
+        # Store actual hostname for tests
+        ACTUAL_HOSTNAME=$(hostname -s)
     }
     
     cleanup_test() {
         cd "$SPEC_DIR" || return
         rm -rf "$TEMP_DIR"
-        unset -f hostname
     }
     
     BeforeEach 'setup_test'
@@ -75,7 +73,7 @@ Describe 'statusline.sh'
         It 'shows hostname'
             When call sh -c "echo '{}' | bash '$HOOK_DIR/statusline.sh'"
             The status should equal 0
-            The stdout should include 'mercury'
+            The stdout should include "$ACTUAL_HOSTNAME"
         End
     End
     
@@ -100,7 +98,7 @@ Describe 'statusline.sh'
             The status should equal 0
             The stdout should include '~/project'
             The stdout should include 'Opus'
-            The stdout should include 'mercury'
+            The stdout should include "$ACTUAL_HOSTNAME"
             The stdout should include ''
         End
     End

@@ -361,9 +361,9 @@ case $exit_code in
         exit 0
         ;;
     1)
-        # Lint passed - show success message and exit 0
+        # Lint passed - show success message and exit 2
         echo -e "${YELLOW}👉 Lints pass. Continue with your task.${NC}" >&2
-        exit 0
+        exit 2
         ;;
     2)
         # Lint failed - show blocking message and exit 2

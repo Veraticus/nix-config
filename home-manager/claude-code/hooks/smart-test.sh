@@ -339,9 +339,9 @@ case $exit_code in
         exit 0
         ;;
     1)
-        # Tests passed - show success message and exit 0
+        # Tests passed - show success message and exit 2
         echo -e "${YELLOW}👉 Tests pass. Continue with your task.${NC}" >&2
-        exit 0
+        exit 2
         ;;
     2)
         # Tests failed - show blocking message and exit 2

@@ -26,18 +26,8 @@
 
 set -uo pipefail
 
-# Set up a safety timeout (10 seconds default)
-{
-    sleep "${CLAUDE_HOOKS_TEST_TIMEOUT:-10}"
-    kill -TERM -$$ 2>/dev/null
-} &
-TIMEOUT_PID=$!
-
-cleanup_timeout() {
-    kill "$TIMEOUT_PID" 2>/dev/null
-    wait "$TIMEOUT_PID" 2>/dev/null
-}
-trap cleanup_timeout EXIT
+# Default timeout for test commands (10 seconds)
+TEST_TIMEOUT="${CLAUDE_HOOKS_TEST_TIMEOUT:-10}"
 
 # Source common helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -158,7 +148,6 @@ cleanup() {
         echo ""  # Empty first line (no PID)
         date +%s  # Second line: completion timestamp
     } > "$LOCK_FILE" 2>/dev/null
-    cleanup_timeout
 }
 trap cleanup EXIT
 
@@ -201,7 +190,7 @@ find_and_run_test() {
                 log_debug "🧪 Running 'make test' from $current_dir"
                 cd "$current_dir" || return 2
                 
-                if make test >/dev/null 2>&1; then
+                if timeout "${TEST_TIMEOUT}s" make test >/dev/null 2>&1; then
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
@@ -221,7 +210,7 @@ find_and_run_test() {
                 log_debug "🧪 Running 'just test' from $current_dir"
                 cd "$current_dir" || return 2
                 
-                if just test >/dev/null 2>&1; then
+                if timeout "${TEST_TIMEOUT}s" just test >/dev/null 2>&1; then
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
@@ -246,7 +235,7 @@ find_and_run_test() {
                     pm="pnpm"
                 fi
                 
-                if $pm run test >/dev/null 2>&1; then
+                if timeout "${TEST_TIMEOUT}s" $pm run test >/dev/null 2>&1; then
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
@@ -263,7 +252,7 @@ find_and_run_test() {
             cd "$current_dir" || return 2
             
             # shellcheck disable=SC2065  # False positive - this is a script execution, not a comparison
-            if ./scripts/test >/dev/null 2>&1; then
+            if timeout "${TEST_TIMEOUT}s" ./scripts/test >/dev/null 2>&1; then
                 log_debug "Tests passed"
                 return 1  # Tests passed
             else
@@ -279,7 +268,7 @@ find_and_run_test() {
                 log_debug "🧪 Running 'cargo test' from $current_dir"
                 cd "$current_dir" || return 2
                 
-                if cargo test >/dev/null 2>&1; then
+                if timeout "${TEST_TIMEOUT}s" cargo test >/dev/null 2>&1; then
                     log_debug "Tests passed"
                     return 1  # Tests passed
                 else
@@ -300,7 +289,8 @@ find_and_run_test() {
                 if command -v "$cmd_check" &>/dev/null; then
                     cd "$current_dir" || return 2
                     
-                    if $tester >/dev/null 2>&1; then
+                    # shellcheck disable=SC2086  # $tester may contain command with arguments
+                    if timeout "${TEST_TIMEOUT}s" $tester >/dev/null 2>&1; then
                         log_debug "Tests passed"
                         return 1  # Tests passed
                     else

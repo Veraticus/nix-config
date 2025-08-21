@@ -26,18 +26,8 @@
 
 set -uo pipefail
 
-# Set up a safety timeout (10 seconds default)
-{
-    sleep "${CLAUDE_HOOKS_LINT_TIMEOUT:-10}"
-    kill -TERM -$$ 2>/dev/null
-} &
-TIMEOUT_PID=$!
-
-cleanup_timeout() {
-    kill "$TIMEOUT_PID" 2>/dev/null
-    wait "$TIMEOUT_PID" 2>/dev/null
-}
-trap cleanup_timeout EXIT
+# Default timeout for lint commands (10 seconds)
+LINT_TIMEOUT="${CLAUDE_HOOKS_LINT_TIMEOUT:-10}"
 
 # Source common helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -158,7 +148,6 @@ cleanup() {
         echo ""  # Empty first line (no PID)
         date +%s  # Second line: completion timestamp
     } > "$LOCK_FILE" 2>/dev/null
-    cleanup_timeout
 }
 trap cleanup EXIT
 
@@ -200,7 +189,7 @@ find_and_run_lint() {
             if check_make_target "$makefile" "lint"; then
                 cd "$current_dir" || return 2
                 
-                if make lint >/dev/null 2>&1; then
+                if timeout "${LINT_TIMEOUT}s" make lint >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
@@ -219,7 +208,7 @@ find_and_run_lint() {
             if check_just_recipe "$justfile" "lint"; then
                 cd "$current_dir" || return 2
                 
-                if just lint >/dev/null 2>&1; then
+                if timeout "${LINT_TIMEOUT}s" just lint >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
@@ -243,7 +232,7 @@ find_and_run_lint() {
                     pm="pnpm"
                 fi
                 
-                if $pm run lint >/dev/null 2>&1; then
+                if timeout "${LINT_TIMEOUT}s" $pm run lint >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
@@ -258,7 +247,7 @@ find_and_run_lint() {
         if [[ -x "$current_dir/scripts/lint" ]]; then
             cd "$current_dir" || return 2
             
-            if ./scripts/lint >/dev/null 2>&1; then
+            if timeout "${LINT_TIMEOUT}s" ./scripts/lint >/dev/null 2>&1; then
                 log_debug "Linting passed"
                 return 1  # Lint passed
             else
@@ -273,7 +262,7 @@ find_and_run_lint() {
             if command -v cargo &>/dev/null; then
                 cd "$current_dir" || return 2
                 
-                if cargo clippy -- -D warnings >/dev/null 2>&1; then
+                if timeout "${LINT_TIMEOUT}s" cargo clippy -- -D warnings >/dev/null 2>&1; then
                     log_debug "Linting passed"
                     return 1  # Lint passed
                 else
@@ -294,7 +283,7 @@ find_and_run_lint() {
                     
                     case "$linter" in
                         ruff)
-                            if ruff check . >/dev/null 2>&1; then
+                            if timeout "${LINT_TIMEOUT}s" ruff check . >/dev/null 2>&1; then
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else
@@ -304,7 +293,7 @@ find_and_run_lint() {
                             fi
                             ;;
                         flake8)
-                            if flake8 . >/dev/null 2>&1; then
+                            if timeout "${LINT_TIMEOUT}s" flake8 . >/dev/null 2>&1; then
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else
@@ -314,7 +303,7 @@ find_and_run_lint() {
                             fi
                             ;;
                         pylint)
-                            if pylint . >/dev/null 2>&1; then
+                            if timeout "${LINT_TIMEOUT}s" pylint . >/dev/null 2>&1; then
                                 log_debug "Linting passed"
                                 return 1  # Lint passed
                             else

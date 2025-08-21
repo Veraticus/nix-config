@@ -26,8 +26,8 @@
 
 set -uo pipefail
 
-# Default timeout for lint commands (10 seconds)
-LINT_TIMEOUT="${CLAUDE_HOOKS_LINT_TIMEOUT:-10}"
+# Default timeout for lint commands (20 seconds)
+LINT_TIMEOUT="${CLAUDE_HOOKS_LINT_TIMEOUT:-20}"
 
 # Source common helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

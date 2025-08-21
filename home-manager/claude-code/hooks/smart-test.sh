@@ -26,8 +26,8 @@
 
 set -uo pipefail
 
-# Default timeout for test commands (10 seconds)
-TEST_TIMEOUT="${CLAUDE_HOOKS_TEST_TIMEOUT:-10}"
+# Default timeout for test commands (20 seconds)
+TEST_TIMEOUT="${CLAUDE_HOOKS_TEST_TIMEOUT:-20}"
 
 # Source common helpers
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

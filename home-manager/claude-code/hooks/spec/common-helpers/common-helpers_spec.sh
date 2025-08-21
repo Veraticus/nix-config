@@ -16,6 +16,11 @@ setup_basic() {
 
 setup_project_detection() {
     setup_test_with_fixture "common-helpers" "project-detection"
+    
+    # Initialize git repo in git-project since .git directories aren't in fixtures
+    if [[ -d "$TEMP_DIR/git-project" ]]; then
+        (cd "$TEMP_DIR/git-project" && git init >/dev/null 2>&1)
+    fi
 }
 
 setup_ignore_patterns() {

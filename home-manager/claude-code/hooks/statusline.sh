@@ -167,7 +167,7 @@ MODEL_ICON="${MODEL_ICONS:$RANDOM_INDEX:1} "
 # We'll handle transcript search later with other cached operations
 # But we need to define functions here so they're available in subshells
 
-# Get terminal width - we'll adjust it later based on context percentage
+# Get terminal width - complex operation so we cache it
 get_terminal_width() {
   # Try environment variable first (fastest)
   if [[ -n "${COLUMNS:-}" ]] && [[ "$COLUMNS" -gt 0 ]]; then
@@ -175,53 +175,94 @@ get_terminal_width() {
     return
   fi
 
-  # Try to find the Claude process's TTY via /proc (Linux only)
-  if [[ -d /proc ]]; then
-    # Walk up the process tree to find a Claude process with a TTY
-    local check_pid=$PPID
-    local attempts=0
-
-    while [[ $attempts -lt 5 ]] && [[ $check_pid -gt 1 ]]; do
-      # Check if this process is claude
-      if [[ -r "/proc/$check_pid/comm" ]]; then
-        local comm
-        comm=$(cat "/proc/$check_pid/comm" 2>/dev/null)
-
-        # If we found claude or we have a TTY, try to get dimensions
-        if [[ "$comm" == "claude" ]] || [[ -e "/proc/$check_pid/fd/1" ]]; then
-          local tty_path
-          tty_path=$(readlink "/proc/$check_pid/fd/1" 2>/dev/null)
-
-          if [[ "$tty_path" =~ ^/dev/(pts/|tty) ]]; then
-            # Get terminal size from this TTY with timeout
-            local stty_output
-            stty_output=$(timeout 0.02s stty size <"$tty_path" 2>/dev/null || true)
-            if [[ -n "$stty_output" ]]; then
-              local width
-              width=$(echo "$stty_output" | awk '{print $2}')
-              if [[ -n "$width" ]] && [[ "$width" -gt 0 ]]; then
-                echo "$width"
-                return
-              fi
-            fi
+  # Walk up process tree to find a TTY - works on both macOS and Linux
+  local current_pid=$$
+  local attempts=0
+  
+  while [[ $attempts -lt 10 ]] && [[ $current_pid -gt 1 ]]; do
+    # Get the parent PID
+    local parent_pid
+    if [[ "$(uname)" == "Darwin" ]]; then
+      # macOS: use ps
+      parent_pid=$(ps -o ppid= -p "$current_pid" 2>/dev/null | tr -d ' ')
+    elif [[ -r "/proc/$current_pid/stat" ]]; then
+      # Linux: use /proc
+      parent_pid=$(awk '{print $4}' "/proc/$current_pid/stat" 2>/dev/null)
+    else
+      break
+    fi
+    
+    if [[ -z "$parent_pid" ]] || [[ "$parent_pid" == "0" ]]; then
+      break
+    fi
+    
+    # Check if this process has a TTY
+    if [[ "$(uname)" == "Darwin" ]]; then
+      # macOS: check via ps
+      local tty_device
+      tty_device=$(ps -o tty= -p "$parent_pid" 2>/dev/null | tr -d ' ')
+      
+      if [[ -n "$tty_device" ]] && [[ "$tty_device" != "??" ]] && [[ "$tty_device" != "?" ]]; then
+        # Found a TTY - try to get its size
+        local stty_result
+        local tty_path
+        if [[ "$tty_device" =~ ^s[0-9]+ ]]; then
+          tty_path="/dev/tty$tty_device"
+        elif [[ "$tty_device" =~ ^ttys[0-9]+ ]]; then
+          tty_path="/dev/$tty_device"
+        else
+          tty_path="/dev/$tty_device"
+        fi
+        
+        # Use native macOS stty if available, otherwise try GNU stty
+        if [[ -x /bin/stty ]]; then
+          # Native macOS stty with -f flag
+          stty_result=$(/bin/stty -f "$tty_path" size 2>/dev/null || true)
+        elif [[ -x /usr/bin/stty ]]; then
+          # Alternative macOS path
+          stty_result=$(/usr/bin/stty -f "$tty_path" size 2>/dev/null || true)
+        else
+          # Try GNU stty by redirecting stdin
+          stty_result=$(stty size < "$tty_path" 2>/dev/null || true)
+        fi
+        
+        if [[ -n "$stty_result" ]]; then
+          local width
+          width=$(echo "$stty_result" | awk '{print $2}')
+          if [[ -n "$width" ]] && [[ "$width" -gt 0 ]]; then
+            echo "$width"
+            return
           fi
         fi
       fi
-
-      # Get parent PID and continue
-      if [[ -r "/proc/$check_pid/stat" ]]; then
-        check_pid=$(awk '{print $4}' "/proc/$check_pid/stat" 2>/dev/null)
-      else
-        break
+    elif [[ -e "/proc/$parent_pid/fd/0" ]]; then
+      # Linux: check via /proc
+      local tty_path
+      tty_path=$(readlink "/proc/$parent_pid/fd/0" 2>/dev/null)
+      
+      if [[ "$tty_path" =~ ^/dev/(pts/|tty) ]]; then
+        # Get terminal size from this TTY
+        local stty_output
+        stty_output=$(stty size <"$tty_path" 2>/dev/null || true)
+        if [[ -n "$stty_output" ]]; then
+          local width
+          width=$(echo "$stty_output" | awk '{print $2}')
+          if [[ -n "$width" ]] && [[ "$width" -gt 0 ]]; then
+            echo "$width"
+            return
+          fi
+        fi
       fi
-      ((attempts++))
-    done
-  fi
+    fi
+    
+    current_pid=$parent_pid
+    ((attempts++))
+  done
 
-  # Try tput cols as fallback with timeout
+  # Try tput cols as fallback
   if command -v tput >/dev/null 2>&1; then
     local tput_width
-    tput_width=$(timeout 0.02s tput cols 2>/dev/null)
+    tput_width=$(tput cols 2>/dev/null)
     if [[ -n "$tput_width" ]] && [[ "$tput_width" -gt 0 ]]; then
       echo "$tput_width"
       return
@@ -229,7 +270,7 @@ get_terminal_width() {
   fi
 
   # Default to a wider width since most modern terminals are wide
-  echo "160"
+  echo "210"
 }
 
 # Get token metrics if transcript is available (accurate version)
@@ -486,7 +527,16 @@ if [[ $USE_CACHE -eq 0 ]]; then
   ) &
   GIT_PID=$!
 
-  # Terminal width will be detected after cache logic
+  # Terminal width - cache for 10 seconds since window size can change
+  (
+    TERM_WIDTH_CACHE="$CACHE_DIR/terminal_width"
+    if cache_valid "$TERM_WIDTH_CACHE" 10; then
+      cat "$TERM_WIDTH_CACHE"
+    else
+      get_terminal_width | tee "$TERM_WIDTH_CACHE"
+    fi >"$TMP_DIR/terminal_width" 2>/dev/null
+  ) &
+  TERM_WIDTH_PID=$!
 
   (
     # Kubernetes context - cache for 30 seconds (changes infrequently)
@@ -520,9 +570,9 @@ if [[ $USE_CACHE -eq 0 ]]; then
 
   # Wait for all background processes to complete
   if [[ -n "${TOKEN_PID:-}" ]]; then
-    wait "$GIT_PID" "$K8S_PID" "$TOKEN_PID"
+    wait "$GIT_PID" "$TERM_WIDTH_PID" "$K8S_PID" "$TOKEN_PID"
   else
-    wait "$GIT_PID" "$K8S_PID"
+    wait "$GIT_PID" "$TERM_WIDTH_PID" "$K8S_PID"
   fi
 
   time_point "after_parallel_ops"
@@ -538,7 +588,12 @@ if [[ $USE_CACHE -eq 0 ]]; then
     GIT_STATUS=""
   fi
 
-  # Terminal width was already set earlier (not in parallel)
+  # Terminal width
+  if [[ -f "$TMP_DIR/terminal_width" ]]; then
+    RAW_TERM_WIDTH=$(cat "$TMP_DIR/terminal_width")
+  else
+    RAW_TERM_WIDTH=210  # Fallback default
+  fi
 
   # Kubernetes context
   if [[ -f "$TMP_DIR/k8s_context" ]]; then
@@ -571,12 +626,12 @@ HOSTNAME="$HOSTNAME"
 DEVSPACE="$DEVSPACE"
 DEVSPACE_SYMBOL="$DEVSPACE_SYMBOL"
 TRANSCRIPT_PATH="$TRANSCRIPT_PATH"
+RAW_TERM_WIDTH="$RAW_TERM_WIDTH"
 EOF
 
 fi # End of cache miss block
 
-# Get terminal width (not cached as it's fast and needs to be current)
-RAW_TERM_WIDTH=$(get_terminal_width)
+# Terminal width is already set from cache or parallel detection above
 
 # Format token count for display
 format_tokens() {

@@ -28,6 +28,15 @@
       export ZVM_CURSOR_STYLE_ENABLED=false
       export XL_SECRET_PROVIDER=FILE
       export WINEDLLOVERRIDES="d3dcompiler_47=n;d3d11=n,b"
+      
+      # Set up Prisma to use Nix-provided engines on NixOS
+      ${lib.optionalString pkgs.stdenv.isLinux ''
+        export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
+        export PRISMA_QUERY_ENGINE_LIBRARY="${pkgs.prisma-engines}/lib/libquery_engine.node"
+        export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
+        export PRISMA_FMT_BINARY="${pkgs.prisma-engines}/bin/prisma-fmt"
+      ''}
+      
       source ~/.secrets
     '';
 

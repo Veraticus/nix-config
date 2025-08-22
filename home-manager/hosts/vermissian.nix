@@ -32,6 +32,9 @@
       inetutils # Network utilities (includes netstat-like tools)
       kubernetes-helm
       ginkgo
+      prisma
+      prisma-engines
+      nodePackages.prisma
     ];
   };
 

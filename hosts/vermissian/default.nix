@@ -105,8 +105,6 @@ in
       address = "172.31.0.202";
       prefixLength = 24;
     }];
-    interfaces.wwp0s20f0u12i8.useDHCP = false;
-    interfaces.wwp0s20f0u12i10.useDHCP = false;
   };
 
   boot = {

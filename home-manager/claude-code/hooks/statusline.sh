@@ -40,7 +40,7 @@ get_file_mtime() {
     echo "0"
     return
   fi
-  
+
   # Try macOS native stat first (if available)
   if [[ -x /usr/bin/stat ]]; then
     /usr/bin/stat -f "%m" "$file" 2>/dev/null || echo "0"
@@ -55,19 +55,27 @@ time_point "before_read_stdin"
 input=$(cat)
 time_point "after_read_stdin"
 
-# Quick parse to get cache key (directory is main variable)
+# Quick parse to get cache key (use project directory as main variable)
 time_point "before_cache_check"
-CURRENT_DIR_FOR_CACHE=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // "~"' 2>/dev/null || echo "~")
+CURRENT_DIR_FOR_CACHE=$(echo "$input" | jq -r '.workspace.project_dir // .workspace.current_dir // .cwd // "~"' 2>/dev/null || echo "~")
 CACHE_KEY="$(echo -n "$CURRENT_DIR_FOR_CACHE" | md5sum | cut -d' ' -f1)"
-CACHE_FILE="/tmp/claude_statusline_data_${CACHE_KEY}"
 
-# Check data cache (valid for 5 seconds)
+# Use RAM-based /dev/shm to avoid SSD wear from frequent cache checks
+# Allow override for testing
+CACHE_DIR="${CLAUDE_STATUSLINE_CACHE_DIR:-/dev/shm}"
+CACHE_FILE="${CACHE_DIR}/claude_statusline_${CACHE_KEY}"
+
+# Configurable cache duration (default 20 seconds)
+# This reduces computation from 180/minute to just 3/minute
+CACHE_DURATION="${CLAUDE_STATUSLINE_CACHE_SECONDS:-20}"
+
+# Check data cache
 USE_CACHE=0
 if [[ -f "$CACHE_FILE" ]]; then
   age=$(($(date +%s) - $(get_file_mtime "$CACHE_FILE")))
-  if [[ $age -lt 5 ]]; then
+  if [[ $age -lt $CACHE_DURATION ]]; then
     time_point "cache_hit"
-    # Load cached data
+    # Load cached data from RAM
     # shellcheck source=/dev/null
     source "$CACHE_FILE"
     USE_CACHE=1
@@ -146,20 +154,23 @@ PROGRESS_RIGHT_FULL=""
 # MAIN LOGIC
 # ============================================================================
 
-# Parse ALL JSON values at once (single jq invocation for performance)
-# Input already read above for cache check
-time_point "before_jq_parse"
-json_values=$(echo "$input" | timeout 0.1s jq -r '
-    (.model.display_name // "Claude") + "|" +
-    (.workspace.current_dir // .cwd // "~") + "|" +
-    (.transcript_path // "")
-' 2>/dev/null || echo "Claude|~|")
-time_point "after_jq_parse"
+# Only parse JSON if we don't have cached data
+if [[ $USE_CACHE -eq 0 ]]; then
+  # Parse ALL JSON values at once (single jq invocation for performance)
+  # Input already read above for cache check
+  time_point "before_jq_parse"
+  json_values=$(echo "$input" | timeout 0.1s jq -r '
+      (.model.display_name // "Claude") + "|" +
+      (.workspace.project_dir // .workspace.current_dir // .cwd // "~") + "|" +
+      (.transcript_path // "")
+  ' 2>/dev/null || echo "Claude|~|")
+  time_point "after_jq_parse"
 
-# Split the parsed values
-IFS='|' read -r MODEL_DISPLAY CURRENT_DIR TRANSCRIPT_PATH <<<"$json_values"
+  # Split the parsed values
+  IFS='|' read -r MODEL_DISPLAY CURRENT_DIR TRANSCRIPT_PATH <<<"$json_values"
+fi
 
-# Select a random icon from MODEL_ICONS
+# Always select a random icon (doesn't need caching)
 ICON_COUNT=${#MODEL_ICONS}
 RANDOM_INDEX=$((RANDOM % ICON_COUNT))
 MODEL_ICON="${MODEL_ICONS:$RANDOM_INDEX:1} "
@@ -175,10 +186,20 @@ get_terminal_width() {
     return
   fi
 
+  # Check if we're in tmux and get width directly from tmux
+  if [[ -n "${TMUX:-}" ]]; then
+    local tmux_width
+    tmux_width=$(tmux display-message -p '#{window_width}' 2>/dev/null)
+    if [[ -n "$tmux_width" ]] && [[ "$tmux_width" -gt 0 ]]; then
+      echo "$tmux_width"
+      return
+    fi
+  fi
+
   # Walk up process tree to find a TTY - works on both macOS and Linux
   local current_pid=$$
   local attempts=0
-  
+
   while [[ $attempts -lt 10 ]] && [[ $current_pid -gt 1 ]]; do
     # Get the parent PID
     local parent_pid
@@ -191,17 +212,17 @@ get_terminal_width() {
     else
       break
     fi
-    
+
     if [[ -z "$parent_pid" ]] || [[ "$parent_pid" == "0" ]]; then
       break
     fi
-    
+
     # Check if this process has a TTY
     if [[ "$(uname)" == "Darwin" ]]; then
       # macOS: check via ps
       local tty_device
       tty_device=$(ps -o tty= -p "$parent_pid" 2>/dev/null | tr -d ' ')
-      
+
       if [[ -n "$tty_device" ]] && [[ "$tty_device" != "??" ]] && [[ "$tty_device" != "?" ]]; then
         # Found a TTY - try to get its size
         local stty_result
@@ -213,7 +234,7 @@ get_terminal_width() {
         else
           tty_path="/dev/$tty_device"
         fi
-        
+
         # Use native macOS stty if available, otherwise try GNU stty
         if [[ -x /bin/stty ]]; then
           # Native macOS stty with -f flag
@@ -223,9 +244,9 @@ get_terminal_width() {
           stty_result=$(/usr/bin/stty -f "$tty_path" size 2>/dev/null || true)
         else
           # Try GNU stty by redirecting stdin
-          stty_result=$(stty size < "$tty_path" 2>/dev/null || true)
+          stty_result=$(stty size <"$tty_path" 2>/dev/null || true)
         fi
-        
+
         if [[ -n "$stty_result" ]]; then
           local width
           width=$(echo "$stty_result" | awk '{print $2}')
@@ -239,7 +260,7 @@ get_terminal_width() {
       # Linux: check via /proc
       local tty_path
       tty_path=$(readlink "/proc/$parent_pid/fd/0" 2>/dev/null)
-      
+
       if [[ "$tty_path" =~ ^/dev/(pts/|tty) ]]; then
         # Get terminal size from this TTY
         local stty_output
@@ -254,7 +275,7 @@ get_terminal_width() {
         fi
       fi
     fi
-    
+
     current_pid=$parent_pid
     ((attempts++))
   done
@@ -340,11 +361,11 @@ format_path() {
 truncate_text() {
   local text="$1"
   local max_length="$2"
-  
+
   # Count actual display width (handles UTF-8)
   local length
   length=$(echo -n "$text" | wc -m | tr -d ' ')
-  
+
   if [[ $length -le $max_length ]]; then
     echo "$text"
   else
@@ -357,29 +378,104 @@ truncate_text() {
   fi
 }
 
-# Get git information if in a git repo (with timeout for performance)
+# Get git information by reading .git directory directly (like starship)
+# This is MUCH faster than calling git commands
 get_git_info() {
   local git_branch=""
   local git_status=""
+  local git_dir=""
 
-  # Use timeout to prevent hanging on slow operations
-  if timeout 0.1s git rev-parse --git-dir >/dev/null 2>&1; then
-    # Get current branch with timeout
-    git_branch=$(timeout 0.05s git branch --show-current 2>/dev/null || echo "")
+  # Find .git directory (walk up tree)
+  local dir="$PWD"
+  while [[ "$dir" != "/" ]]; do
+    if [[ -d "$dir/.git" ]]; then
+      git_dir="$dir/.git"
+      break
+    elif [[ -f "$dir/.git" ]]; then
+      # Handle git worktrees (file contains path to actual git dir)
+      git_dir=$(grep "^gitdir:" "$dir/.git" 2>/dev/null | cut -d: -f2- | tr -d ' ')
+      if [[ -n "$git_dir" && -d "$git_dir" ]]; then
+        break
+      fi
+    fi
+    dir=$(dirname "$dir")
+  done
 
-    # Get git status indicators with timeout (fastest possible check)
-    if [[ -n $(timeout 0.05s git status --porcelain 2>/dev/null) ]]; then
+  # If no git dir found, return empty
+  if [[ -z "$git_dir" ]]; then
+    echo "|"
+    return
+  fi
+
+  # Read branch from HEAD file
+  if [[ -f "$git_dir/HEAD" ]]; then
+    local head_content
+    head_content=$(cat "$git_dir/HEAD" 2>/dev/null)
+    if [[ "$head_content" =~ ^ref:\ refs/heads/(.+)$ ]]; then
+      git_branch="${BASH_REMATCH[1]}"
+    elif [[ "$head_content" =~ ^[0-9a-f]{40}$ ]]; then
+      # Detached HEAD - show short hash
+      git_branch="${head_content:0:7}"
+    fi
+  fi
+
+  # Check for uncommitted changes
+  # Quick checks: index modified recently, or MERGE_HEAD exists
+  if [[ -f "$git_dir/index" ]]; then
+    # If index was modified in last 60 seconds, likely have changes
+    local index_age=$(($(date +%s) - $(get_file_mtime "$git_dir/index")))
+    if [[ $index_age -lt 60 ]]; then
       git_status="!"
     fi
   fi
 
+  # Also check for merge/rebase states
+  if [[ -f "$git_dir/MERGE_HEAD" ]] || [[ -d "$git_dir/rebase-merge" ]] || [[ -d "$git_dir/rebase-apply" ]]; then
+    git_status="!"
+  fi
+
   echo "${git_branch}|${git_status}"
+}
+
+# Get kubernetes context by reading kubeconfig directly (like starship does)
+# This is MUCH faster than calling kubectl
+get_k8s_context() {
+  # Allow test override via CLAUDE_STATUSLINE_KUBECONFIG
+  local kubeconfig="${CLAUDE_STATUSLINE_KUBECONFIG:-${KUBECONFIG:-$HOME/.kube/config}}"
+
+  # Check if file exists
+  if [[ ! -f "$kubeconfig" ]]; then
+    return
+  fi
+
+  # Try to extract current-context directly
+  # First try grep for speed (works with both JSON and YAML)
+  local context
+  context=$(grep -m1 "current-context:" "$kubeconfig" 2>/dev/null | sed 's/.*current-context:[[:space:]]*//' | tr -d '"')
+
+  # If that worked and isn't empty, use it
+  if [[ -n "$context" ]]; then
+    echo "$context"
+    return
+  fi
+
+  # Fallback to jq for JSON format (some tools write JSON kubeconfig)
+  if [[ "$(head -c1 "$kubeconfig" 2>/dev/null)" == "{" ]]; then
+    context=$(jq -r '.["current-context"] // empty' "$kubeconfig" 2>/dev/null)
+    if [[ -n "$context" ]]; then
+      echo "$context"
+    fi
+  fi
 }
 
 # Get hostname (short form) - will be cached later if needed
 time_point "before_hostname"
 if [[ -z "${HOSTNAME:-}" ]]; then
   HOSTNAME=$(timeout 0.02s hostname -s 2>/dev/null || timeout 0.02s hostname 2>/dev/null || echo "unknown")
+fi
+# Apply test override if set
+if [[ -n "${CLAUDE_STATUSLINE_HOSTNAME:-}" ]]; then
+  HOSTNAME="${CLAUDE_STATUSLINE_HOSTNAME}"
 fi
 time_point "after_hostname"
 
@@ -388,7 +484,15 @@ time_point "before_devspace"
 DEVSPACE=""
 DEVSPACE_SYMBOL=""
 # Check for TMUX_DEVSPACE environment variable (it might be set even outside tmux)
-if [[ -n "${TMUX_DEVSPACE:-}" ]] && [[ "${TMUX_DEVSPACE}" != "-TMUX_DEVSPACE" ]]; then
+# Allow test override via CLAUDE_STATUSLINE_DEVSPACE
+if [[ -v CLAUDE_STATUSLINE_DEVSPACE ]]; then
+  # Test override is set (even if empty), use it
+  TMUX_DEVSPACE="${CLAUDE_STATUSLINE_DEVSPACE}"
+else
+  # No test override, use normal TMUX_DEVSPACE
+  TMUX_DEVSPACE="${TMUX_DEVSPACE:-}"
+fi
+if [[ -n "${TMUX_DEVSPACE}" ]] && [[ "${TMUX_DEVSPACE}" != "-TMUX_DEVSPACE" ]]; then
   case "$TMUX_DEVSPACE" in
   mercury) DEVSPACE_SYMBOL="☿" ;;
   venus) DEVSPACE_SYMBOL="♀" ;;
@@ -405,227 +509,55 @@ time_point "after_devspace"
 # Format the directory
 DIR_PATH=$(format_path "$CURRENT_DIR")
 
-# Set up cache directory for persistent caching
-CACHE_DIR="/tmp/claude_statusline_cache"
-mkdir -p "$CACHE_DIR"
+# Note: We use simple caching with /dev/shm (RAM) to avoid disk I/O
+# All expensive operations are computed once and cached for CACHE_DURATION seconds
 
-# Clean up old cache files occasionally (1% chance per run)
-if [[ $((RANDOM % 100)) -eq 0 ]]; then
-  find "$CACHE_DIR" -type f -mmin +10 -delete 2>/dev/null &
-fi
-
-# Function to check cache validity
-cache_valid() {
-  local cache_file="$1"
-  local max_age="${2:-5}" # Default 5 seconds
-
-  if [[ ! -f "$cache_file" ]]; then
-    return 1
-  fi
-
-  local age=$(($(date +%s) - $(get_file_mtime "$cache_file")))
-  [[ $age -lt $max_age ]]
-}
-
-# Function to get cached value or compute it
-get_cached() {
-  local cache_file="$1"
-  local max_age="$2"
-  shift 2
-  local command="$*"
-
-  if cache_valid "$cache_file" "$max_age"; then
-    cat "$cache_file"
-  else
-    # Run command and cache result
-    local result
-    result=$(eval "$command" 2>/dev/null)
-    echo "$result" >"$cache_file"
-    echo "$result"
-  fi
-}
-
-# Find transcript if not provided and not disabled
-# This needs to happen regardless of cache status to ensure token metrics work
-if [[ "${CLAUDE_STATUSLINE_NO_TOKENS:-}" != "1" ]]; then
-  if [[ -z "$TRANSCRIPT_PATH" ]] || [[ "$TRANSCRIPT_PATH" == "null" ]]; then
-    # Look for most recent transcript in Claude project directory
-    # Convert current directory to the sanitized project path format
-    PROJECT_PATH="${CURRENT_DIR}"
-    # Handle home directory - use appropriate prefix based on OS
-    if [[ "$(uname)" == "Darwin" ]]; then
-      # macOS uses /Users
-      PROJECT_PATH="${PROJECT_PATH/#$HOME/-Users-$(whoami)}"
-    else
-      # Linux uses /home
-      PROJECT_PATH="${PROJECT_PATH/#$HOME/-home-$(whoami)}"
-    fi
-    # Replace slashes with dashes
-    PROJECT_PATH="${PROJECT_PATH//\//-}"
-
-    # Look in ~/.claude/projects/ for this project
-    CLAUDE_PROJECT_DIR="${HOME}/.claude/projects/${PROJECT_PATH}"
-
-    if [[ -d "$CLAUDE_PROJECT_DIR" ]]; then
-      # Cache transcript path for 5 seconds - changes when new conversation starts
-      time_point "before_transcript_search"
-      TRANSCRIPT_CACHE="$CACHE_DIR/transcript_$(echo -n "$CLAUDE_PROJECT_DIR" | md5sum | cut -d' ' -f1)"
-      if cache_valid "$TRANSCRIPT_CACHE" 5; then
-        TRANSCRIPT_PATH=$(cat "$TRANSCRIPT_CACHE")
-      else
-        # Use simpler ls-based approach with timeout for better performance
-        # Get the most recent .jsonl file (ls -t sorts by modification time)
-        TRANSCRIPT_PATH=$(timeout 0.1s ls -t "$CLAUDE_PROJECT_DIR"/*.jsonl 2>/dev/null | head -n1)
-        if [[ -n "$TRANSCRIPT_PATH" ]]; then
-          echo "$TRANSCRIPT_PATH" >"$TRANSCRIPT_CACHE"
-        fi
-      fi
-      time_point "after_transcript_search"
-
-      # If we found a transcript, validate it's recent (within last hour)
-      if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
-        # Check if file was modified in the last hour
-        CURRENT_TIME=$(date +%s)
-        FILE_TIME=$(get_file_mtime "$TRANSCRIPT_PATH")
-        TIME_DIFF=$((CURRENT_TIME - FILE_TIME))
-
-        # If file is older than 1 hour (3600 seconds), ignore it
-        if [[ $TIME_DIFF -gt 3600 ]]; then
-          TRANSCRIPT_PATH=""
-        fi
-      fi
-    fi
-  fi
-fi
+# transcript_path is provided directly in the JSON input, no need to search for it!
 
 # Skip expensive operations if we have cached data
 if [[ $USE_CACHE -eq 0 ]]; then
 
-  # Run expensive operations in parallel using background processes
-  time_point "before_parallel_ops"
+  # Compute all data directly (no complex parallel operations or individual caches)
+  time_point "before_compute"
 
-  # Create temp files for parallel operations
-  TMP_DIR="/tmp/claude_statusline_$$"
-  mkdir -p "$TMP_DIR"
-  # Add cleanup to existing trap if timing is enabled
-  if [[ "${DEBUG_TIMING:-}" == "1" ]]; then
-    trap 'rm -rf '"$TMP_DIR"'; finish_timing' EXIT
-  else
-    trap 'rm -rf '"$TMP_DIR" EXIT
+  # Get git information
+  IFS='|' read -r GIT_BRANCH GIT_STATUS <<<"$(get_git_info)"
+
+  # Get terminal width
+  RAW_TERM_WIDTH=$(get_terminal_width)
+  if [[ -z "$RAW_TERM_WIDTH" ]] || [[ "$RAW_TERM_WIDTH" -eq 0 ]]; then
+    RAW_TERM_WIDTH=210 # Fallback default
   fi
 
-  # Start all expensive operations in parallel
-  (
-    # Git information - cache for 2 seconds (changes frequently)
-    # Include directory in cache key since git info is directory-specific
-    GIT_CACHE="$CACHE_DIR/git_$(echo -n "$PWD" | md5sum | cut -d' ' -f1)"
-    if cache_valid "$GIT_CACHE" 2; then
-      cat "$GIT_CACHE"
-    else
-      get_git_info | tee "$GIT_CACHE"
-    fi >"$TMP_DIR/git_info" 2>/dev/null
-  ) &
-  GIT_PID=$!
+  # Get Kubernetes context
+  K8S_CONTEXT=$(get_k8s_context)
 
-  # Terminal width - cache for 10 seconds since window size can change
-  (
-    TERM_WIDTH_CACHE="$CACHE_DIR/terminal_width"
-    if cache_valid "$TERM_WIDTH_CACHE" 10; then
-      cat "$TERM_WIDTH_CACHE"
-    else
-      get_terminal_width | tee "$TERM_WIDTH_CACHE"
-    fi >"$TMP_DIR/terminal_width" 2>/dev/null
-  ) &
-  TERM_WIDTH_PID=$!
-
-  (
-    # Kubernetes context - cache for 30 seconds (changes infrequently)
-    if command -v kubectl >/dev/null 2>&1; then
-      K8S_CACHE="$CACHE_DIR/k8s_context"
-      if cache_valid "$K8S_CACHE" 30; then
-        cat "$K8S_CACHE"
-      else
-        timeout 0.1s kubectl config current-context 2>/dev/null | tee "$K8S_CACHE"
-      fi
-    fi >"$TMP_DIR/k8s_context" 2>/dev/null
-  ) &
-  K8S_PID=$!
-
-  # Token metrics can run in background too if transcript exists
+  # Get token metrics if transcript exists
   if [[ -n "$TRANSCRIPT_PATH" ]] && [[ -f "$TRANSCRIPT_PATH" ]]; then
-    (
-      # Cache token metrics for 1 second - changes frequently during conversation
-      # Use file modification time as part of cache key
-      FILE_MTIME=$(get_file_mtime "$TRANSCRIPT_PATH")
-      TOKEN_CACHE="$CACHE_DIR/tokens_$(echo -n "${TRANSCRIPT_PATH}_${FILE_MTIME}" | md5sum | cut -d' ' -f1)"
-      if cache_valid "$TOKEN_CACHE" 1; then
-        cat "$TOKEN_CACHE"
-      else
-        result=$(get_token_metrics "$TRANSCRIPT_PATH")
-        echo "$result" | tee "$TOKEN_CACHE"
-      fi >"$TMP_DIR/token_metrics"
-    ) &
-    TOKEN_PID=$!
-  fi
-
-  # Wait for all background processes to complete
-  if [[ -n "${TOKEN_PID:-}" ]]; then
-    wait "$GIT_PID" "$TERM_WIDTH_PID" "$K8S_PID" "$TOKEN_PID"
-  else
-    wait "$GIT_PID" "$TERM_WIDTH_PID" "$K8S_PID"
-  fi
-
-  time_point "after_parallel_ops"
-
-  # Read results from temp files
-  time_point "before_read_results"
-
-  # Git information
-  if [[ -f "$TMP_DIR/git_info" ]]; then
-    IFS='|' read -r GIT_BRANCH GIT_STATUS <"$TMP_DIR/git_info"
-  else
-    GIT_BRANCH=""
-    GIT_STATUS=""
-  fi
-
-  # Terminal width
-  if [[ -f "$TMP_DIR/terminal_width" ]]; then
-    RAW_TERM_WIDTH=$(cat "$TMP_DIR/terminal_width")
-  else
-    RAW_TERM_WIDTH=210  # Fallback default
-  fi
-
-  # Kubernetes context
-  if [[ -f "$TMP_DIR/k8s_context" ]]; then
-    K8S_CONTEXT=$(cat "$TMP_DIR/k8s_context")
-  else
-    K8S_CONTEXT=""
-  fi
-
-  # Token metrics
-  if [[ -f "$TMP_DIR/token_metrics" ]]; then
-    IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH <"$TMP_DIR/token_metrics"
+    IFS='|' read -r INPUT_TOKENS OUTPUT_TOKENS _ CONTEXT_LENGTH <<<"$(get_token_metrics "$TRANSCRIPT_PATH")"
   else
     INPUT_TOKENS=0
     OUTPUT_TOKENS=0
     CONTEXT_LENGTH=0
   fi
 
-  time_point "after_read_results"
+  time_point "after_compute"
 
   # Save all data to cache file
   cat >"$CACHE_FILE" <<EOF
 # Cached statusline data
+MODEL_DISPLAY="$MODEL_DISPLAY"
+CURRENT_DIR="$CURRENT_DIR"
+TRANSCRIPT_PATH="$TRANSCRIPT_PATH"
 GIT_BRANCH="$GIT_BRANCH"
 GIT_STATUS="$GIT_STATUS"
 K8S_CONTEXT="$K8S_CONTEXT"
 INPUT_TOKENS="$INPUT_TOKENS"
 OUTPUT_TOKENS="$OUTPUT_TOKENS"
 CONTEXT_LENGTH="$CONTEXT_LENGTH"
-HOSTNAME="$HOSTNAME"
+HOSTNAME="${CLAUDE_STATUSLINE_HOSTNAME:-${HOSTNAME:-$(hostname 2>/dev/null || echo "unknown")}}"
 DEVSPACE="$DEVSPACE"
 DEVSPACE_SYMBOL="$DEVSPACE_SYMBOL"
-TRANSCRIPT_PATH="$TRANSCRIPT_PATH"
 RAW_TERM_WIDTH="$RAW_TERM_WIDTH"
 EOF
 
@@ -675,11 +607,13 @@ create_context_bar() {
   # Bar components
   local label="${CONTEXT_ICON}Context "
   local percent_text=" ${percentage}%" # Space before percentage
-  # Use wc -m for proper Unicode character width counting
-  local label_length percent_length
-  label_length=$(echo -n "$label" | wc -m | tr -d ' ')
+  # Count characters but account for wide icon
+  # CONTEXT_ICON is 1 character but displays as 2 columns
+  local label_char_count percent_length
+  label_char_count=$(echo -n "$label" | wc -m | tr -d ' ')
   percent_length=$(echo -n "$percent_text" | wc -m | tr -d ' ')
-  local text_length=$((label_length + percent_length + 1)) # +1 for space after percent
+  # Add 1 for the context icon being wide
+  local text_length=$((label_char_count + percent_length + 1 + 1)) # +1 for space after percent, +1 for wide icon
 
   # Calculate bar fill width (minus curves and text)
   local fill_width=$((available_width - text_length - 2)) # -2 for curves
@@ -998,18 +932,104 @@ if [[ -n "$RIGHT_SIDE" ]]; then
 fi
 
 # Calculate spacing to push right side to the right
-# Use printf %b to interpret the escape sequences, then strip them
-# Calculate visible length for spacing - properly handle multi-byte UTF-8 characters
-# Use wc -m to count display width instead of byte length
-LEFT_VISIBLE=$(printf '%b' "${STATUS_LINE}" | sed 's/\x1b\[[0-9;:]*m//g')
-RIGHT_VISIBLE=$(printf '%b' "${RIGHT_SIDE}" | sed 's/\x1b\[[0-9;:]*m//g')
-# Use wc -m for character count (not byte count)
-LEFT_LENGTH=$(echo -n "$LEFT_VISIBLE" | wc -m | tr -d ' ')
-RIGHT_LENGTH=$(echo -n "$RIGHT_VISIBLE" | wc -m | tr -d ' ')
+# Account for wide characters (icons/symbols take 2 columns)
+# Left side calculation:
+# - Left curve (powerline): 1
+# - Directory path: actual character count
+# - Spaces around directory: 2
+# - Model section chevron: 1
+# - Model icon: 2 (wide character)
+# - Model name and tokens: actual character count
+# - Spaces in model section: varies
+# - End chevron: 1
+
+# Count left side accurately with proper wide character accounting
+# Structure: [curve][bg][space][dir][space][chevron][bg][model_icon][model][tokens][space][chevron]
+# Note: We always output " ${DIR_PATH_TRUNCATED} " so there's always 2 spaces even if dir is empty
+LEFT_LENGTH=1                                         # Left curve (powerline character)
+LEFT_LENGTH=$((LEFT_LENGTH + 1))                      # Space before directory
+LEFT_LENGTH=$((LEFT_LENGTH + ${#DIR_PATH_TRUNCATED})) # Directory text (no icon here)
+LEFT_LENGTH=$((LEFT_LENGTH + 1))                      # Space after directory (always present in output)
+LEFT_LENGTH=$((LEFT_LENGTH + 1))                      # Chevron to model section
+
+# Model section: icon + space + model name + optional tokens
+# The TOKEN_INFO variable includes: " [icon] ModelName" or " [icon] ModelName ↑X ↓Y"
+# But the icon is 2 columns wide even though it's 1 character
+# TOKEN_INFO already has the space, icon, and text, but we need to add 1 for icon width
+LEFT_LENGTH=$((LEFT_LENGTH + ${#TOKEN_INFO})) # Model section content as counted
+LEFT_LENGTH=$((LEFT_LENGTH + 1))              # Add 1 because model icon displays as 2 columns
+
+LEFT_LENGTH=$((LEFT_LENGTH + 1)) # End chevron
+
+# Calculate right side width by counting each component
+RIGHT_LENGTH=0
+
+# Only count if we have components
+if [[ -n "$DEVSPACE" ]] || [[ -n "$HOSTNAME" ]] || [[ -n "$GIT_BRANCH" ]] || [[ -n "$AWS_PROFILE" ]] || [[ -n "$K8S_CONTEXT" ]]; then
+  # First chevron to start right section
+  RIGHT_LENGTH=$((RIGHT_LENGTH + 1))
+
+  # Track if we need separators between components
+  PREV_COMPONENT=0
+
+  # Add devspace if present
+  if [[ -n "$DEVSPACE" ]]; then
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                      # Space before
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 2))                      # Planet symbol (wide character)
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                      # Space after symbol
+    RIGHT_LENGTH=$((RIGHT_LENGTH + ${#DEVSPACE_TRUNCATED})) # Devspace name text
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                      # Space after
+    PREV_COMPONENT=1
+  fi
+
+  # Add hostname if present
+  if [[ -n "$HOSTNAME" ]]; then
+    [[ $PREV_COMPONENT -eq 1 ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 1)) # Chevron separator
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                                # Space before
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 3))                                # HOSTNAME_ICON " " = space + icon (2 cols)
+    RIGHT_LENGTH=$((RIGHT_LENGTH + ${#HOSTNAME_TRUNCATED}))           # Hostname text
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                                # Space after
+    PREV_COMPONENT=1
+  fi
+
+  # Add git branch if present
+  if [[ -n "$GIT_BRANCH" ]]; then
+    [[ $PREV_COMPONENT -eq 1 ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 1)) # Chevron separator
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 2))                                # Git icon (wide character) - includes space
+    RIGHT_LENGTH=$((RIGHT_LENGTH + ${#GIT_BRANCH_TRUNCATED}))         # Branch text
+    [[ -n "$GIT_STATUS" ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 2))      # Space + status char
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                                # Space after
+    PREV_COMPONENT=1
+  fi
+
+  # Add AWS profile if present
+  if [[ -n "$AWS_PROFILE" ]]; then
+    [[ $PREV_COMPONENT -eq 1 ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 1)) # Chevron separator
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 3))                                # AWS_ICON " " = icon (2 cols) + space
+    RIGHT_LENGTH=$((RIGHT_LENGTH + ${#AWS_PROFILE_TRUNCATED}))        # Profile text
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                                # Space after
+    PREV_COMPONENT=1
+  fi
+
+  # Add K8s context if present
+  if [[ -n "$K8S_CONTEXT" ]]; then
+    [[ $PREV_COMPONENT -eq 1 ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 1)) # Chevron separator
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 3))                                # K8S_ICON " ☸ " = space + icon + space
+    RIGHT_LENGTH=$((RIGHT_LENGTH + ${#SHORT_K8S_TRUNCATED}))          # Context text
+    RIGHT_LENGTH=$((RIGHT_LENGTH + 1))                                # Space after
+    PREV_COMPONENT=1
+  fi
+
+  # End curve
+  RIGHT_LENGTH=$((RIGHT_LENGTH + 1))
+
+  # Add extra space if in compact mode (already added to RIGHT_SIDE string)
+  [[ $IN_COMPACT_MODE -eq 1 ]] && RIGHT_LENGTH=$((RIGHT_LENGTH + 1))
+fi
 
 # Calculate the exact width we need to work with
-# Account for newline and a larger safety margin to prevent overflow on first render
-RESERVED_END_CHARS=4 # Newline + 3 char safety margin to prevent overflow
+# Reserve space for safety margin to prevent overflow
+RESERVED_END_CHARS=0 # Safety margin to prevent overflow
 if [[ $IN_COMPACT_MODE -eq 1 ]]; then
   # Reserve space for the auto-compact message (space is already in RIGHT_LENGTH)
   COMPACT_MESSAGE_WIDTH=41 # 41 chars for the message itself
@@ -1026,6 +1046,7 @@ if [[ "${STATUSLINE_DEBUG:-}" == "1" ]]; then
   >&2 echo "DEBUG: TERM_WIDTH=$TERM_WIDTH, LEFT_LENGTH=$LEFT_LENGTH, RIGHT_LENGTH=$RIGHT_LENGTH"
   >&2 echo "DEBUG: RESERVED_END_CHARS=$RESERVED_END_CHARS, COMPACT_MESSAGE_WIDTH=$COMPACT_MESSAGE_WIDTH"
   >&2 echo "DEBUG: AVAILABLE_WIDTH=$AVAILABLE_WIDTH"
+  >&2 echo "DEBUG: Components: DEVSPACE='$DEVSPACE_TRUNCATED' HOST='$HOSTNAME_TRUNCATED' GIT='$GIT_BRANCH_TRUNCATED' AWS='$AWS_PROFILE_TRUNCATED' K8S='$SHORT_K8S_TRUNCATED'"
 fi
 
 # Calculate middle section (context bar or spacing)
@@ -1069,10 +1090,12 @@ if [[ $CONTEXT_LENGTH -gt 0 ]]; then
   fi
 else
   # No context bar, just use spacing to right-align
-  if [[ $SPACE_FOR_MIDDLE -lt 2 ]]; then
-    SPACE_FOR_MIDDLE=2 # Minimum spacing
-  fi
   MIDDLE_SECTION=$(printf '%*s' $SPACE_FOR_MIDDLE '')
+fi
+
+# Debug the actual middle section length
+if [[ "${STATUSLINE_DEBUG:-}" == "1" ]]; then
+  >&2 echo "DEBUG: MIDDLE_SECTION length=${#MIDDLE_SECTION}, SPACE_FOR_MIDDLE=$SPACE_FOR_MIDDLE"
 fi
 
 # Output the statusline (no newline - statusline should be exact width)

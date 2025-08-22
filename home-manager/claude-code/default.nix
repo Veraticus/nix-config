@@ -8,7 +8,7 @@
 {
   # Install Node.js to enable npm
   home.packages = with pkgs; [
-    nodejs_20
+    nodejs_24
     # Dependencies for hooks
     yq
     ripgrep
@@ -89,7 +89,7 @@
 
   # Install Claude Code on activation
   home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    PATH="${pkgs.nodejs_20}/bin:$PATH"
+    PATH="${pkgs.nodejs_24}/bin:$PATH"
     export NPM_CONFIG_PREFIX="$HOME/.npm-global"
 
     if ! command -v claude >/dev/null 2>&1; then

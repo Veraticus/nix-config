@@ -111,6 +111,7 @@ EOF
   export COLUMNS=$TERMINAL_WIDTH
   export CLAUDE_STATUSLINE_HOSTNAME="$hostname"
   export AWS_PROFILE="$aws_profile"
+  export CLAUDE_STATUSLINE_DEVSPACE=""  # Explicitly disable devspace unless overridden
 
   # Create a temporary kubeconfig if k8s context is specified
   if [[ -n "$k8s_context" ]]; then
@@ -126,8 +127,11 @@ contexts:
     user: test-user
   name: $k8s_context
 EOF
+    export CLAUDE_STATUSLINE_KUBECONFIG="$TEMP_DIR/.kube/config"
+  else
+    # No k8s context - point to non-existent file so nothing is found
+    export CLAUDE_STATUSLINE_KUBECONFIG="/dev/null"
   fi
-  # Note: If k8s_context is empty, the kubeconfig file won't exist, which is what we want
 
   # Run the statusline and capture output
   local output

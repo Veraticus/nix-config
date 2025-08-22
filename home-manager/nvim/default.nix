@@ -1,6 +1,6 @@
 { inputs, lib, config, pkgs, ... }: {
   home.packages = with pkgs; [
-    nodejs_20
+    nodejs_24
     ripgrep
     fd
     rustc

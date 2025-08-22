@@ -443,8 +443,8 @@ get_k8s_context() {
   # Allow test override via CLAUDE_STATUSLINE_KUBECONFIG
   local kubeconfig="${CLAUDE_STATUSLINE_KUBECONFIG:-${KUBECONFIG:-$HOME/.kube/config}}"
 
-  # Check if file exists
-  if [[ ! -f "$kubeconfig" ]]; then
+  # Check if file exists and is readable (not /dev/null)
+  if [[ ! -f "$kubeconfig" ]] || [[ "$kubeconfig" == "/dev/null" ]]; then
     return
   fi
 
@@ -555,7 +555,7 @@ K8S_CONTEXT="$K8S_CONTEXT"
 INPUT_TOKENS="$INPUT_TOKENS"
 OUTPUT_TOKENS="$OUTPUT_TOKENS"
 CONTEXT_LENGTH="$CONTEXT_LENGTH"
-HOSTNAME="${CLAUDE_STATUSLINE_HOSTNAME:-${HOSTNAME:-$(hostname 2>/dev/null || echo "unknown")}}"
+HOSTNAME="$HOSTNAME"
 DEVSPACE="$DEVSPACE"
 DEVSPACE_SYMBOL="$DEVSPACE_SYMBOL"
 RAW_TERM_WIDTH="$RAW_TERM_WIDTH"

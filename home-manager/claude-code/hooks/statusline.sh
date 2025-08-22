@@ -1090,6 +1090,10 @@ if [[ $CONTEXT_LENGTH -gt 0 ]]; then
   fi
 else
   # No context bar, just use spacing to right-align
+  # Reduce by 1 to prevent wrapping when there's no context bar
+  if [[ $SPACE_FOR_MIDDLE -gt 0 ]]; then
+    SPACE_FOR_MIDDLE=$((SPACE_FOR_MIDDLE - 1))
+  fi
   MIDDLE_SECTION=$(printf '%*s' $SPACE_FOR_MIDDLE '')
 fi
 

@@ -6,8 +6,8 @@ local opt = vim.opt
 
 opt.wrap = true
 
--- Load clipboard configuration
-require("config.clipboard")
+-- Clipboard will be configured after LazyVim loads to prevent overrides
+-- See config/clipboard-setup.lua which is loaded via autocmd
 -- opt.textwidth = 0
 -- opt.scrolloff = 4
 -- opt.wildmode = "longest:full,full"
@@ -40,5 +40,4 @@ require("config.clipboard")
 -- opt.mouse = "nivh"
 -- opt.signcolumn = "yes:1"
 -- opt.ruler = true
-opt.clipboard = "unnamedplus"
 opt.termguicolors = true

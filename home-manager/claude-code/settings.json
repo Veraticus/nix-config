@@ -3,6 +3,14 @@
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "600000"
   },
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "~/.claude/playwright-mcp-wrapper.sh",
+      "args": [],
+      "env": {}
+    }
+  },
   "statusLine": {
     "type": "command",
     "command": "~/.claude/hooks/statusline.sh",

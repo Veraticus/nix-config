@@ -12,6 +12,8 @@
     # Dependencies for hooks
     yq
     ripgrep
+    # FHS environment for running Playwright browsers
+    steam-run
   ];
 
   # Add npm global bin to PATH for user-installed packages
@@ -67,6 +69,12 @@
     # Status line script
     ".claude/hooks/statusline.sh" = {
       source = ./hooks/statusline.sh;
+      executable = true;
+    };
+    
+    # Playwright MCP wrapper for steam-run
+    ".claude/playwright-mcp-wrapper.sh" = {
+      source = ./playwright-headless-wrapper.sh;
       executable = true;
     };
     

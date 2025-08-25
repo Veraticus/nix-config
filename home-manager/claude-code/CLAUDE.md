@@ -75,3 +75,19 @@ Your redirects prevent over-engineering. When uncertain about implementation, st
 - **Clear naming** in all code
 
 Focus on maintainable solutions over clever abstractions.
+
+## Playwright MCP Server Configuration
+
+**IMPORTANT**: This is a headless NixOS server with no display. When using the Playwright MCP tools:
+
+1. **Always use Firefox** - Set `browserType: "firefox"` in all `playwright_navigate` calls
+2. **Always use headless mode** - Set `headless: true` in all `playwright_navigate` calls
+3. **Example**: 
+   ```
+   playwright_navigate with parameters:
+   - url: "https://example.com"
+   - browserType: "firefox"
+   - headless: true
+   ```
+
+Chromium does not work on this headless server due to missing dependencies. Firefox is the only supported browser.

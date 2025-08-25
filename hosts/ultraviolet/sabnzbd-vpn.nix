@@ -71,7 +71,7 @@
         volumes = [
           "/var/lib/sabnzbd:/config"                    # Config with secrets
           "/var/cache/sabnzbd:/downloads"               # Local SSD for temp files (fast!)
-          "/mnt/video/sabnzbd/completed:/complete"      # NFS for completed downloads
+          "/mnt/video/sabnzbd/completed:/mnt/video/sabnzbd/completed"  # NFS mount path matches host
         ];
         
         # Use Gluetun's network stack - this is the key!

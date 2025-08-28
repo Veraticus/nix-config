@@ -52,8 +52,7 @@ in
       ".claude/CLAUDE.md".source = ./CLAUDE.md;
 
       # Symlinks to cc-tools binaries with cleaner paths
-      ".claude/bin/cc-tools-lint".source = "${cc-tools}/bin/cc-tools-lint";
-      ".claude/bin/cc-tools-test".source = "${cc-tools}/bin/cc-tools-test";
+      ".claude/bin/cc-tools-validate".source = "${cc-tools}/bin/cc-tools-validate";
       ".claude/bin/cc-tools-statusline".source = "${cc-tools}/bin/cc-tools-statusline";
 
       # Notification hook (still needed as separate script)

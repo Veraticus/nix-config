@@ -28,7 +28,7 @@
     linkpearl.url = "github:Veraticus/linkpearl";
     
     # CC-Tools - Claude Code smart hooks (local development)
-    cc-tools.url = "path:../cc-tools";
+    cc-tools.url = "path:/home/joshsymonds/Personal/cc-tools";
   };
 
   outputs = { nixpkgs, darwin, home-manager, self, ... }@inputs:

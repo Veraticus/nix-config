@@ -6,8 +6,8 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1756346806,
-        "narHash": "sha256-ZQu83qSaKeUAzKUuFjEWFnAtLLD/8TEXUzFstw/KZec=",
+        "lastModified": 1756361414,
+        "narHash": "sha256-jQcUWI8A0lJsKjk1tf8HBkU9rdWH2XjrIqzsJOcPIGI=",
         "path": "/home/joshsymonds/Personal/cc-tools",
         "type": "path"
       },

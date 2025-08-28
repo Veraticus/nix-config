@@ -48,6 +48,7 @@
       shellspec
       socat
       wireguard-tools
+      inputs.cc-tools.packages.${pkgs.system}.default
       k9s
       starlark-lsp
       terraform

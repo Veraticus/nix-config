@@ -8,9 +8,13 @@
 -- e.g. vim.api.nvim_del_augroup_by_name("lazyvim_wrap_spell")
 
 -- Set up clipboard after LazyVim loads to prevent it from being overridden
-vim.api.nvim_create_autocmd("VimEnter", {
+-- Use VeryLazy event which fires after LazyVim restores its clipboard settings
+vim.api.nvim_create_autocmd("User", {
+  pattern = "VeryLazy",
   callback = function()
-    require("config.clipboard-setup")
+    -- Load clipboard config immediately
+    -- LazyVim has already restored its clipboard setting by this point
+    require("config.clipboard")
   end,
-  desc = "Configure clipboard settings after startup",
+  desc = "Configure clipboard settings after LazyVim setup",
 })

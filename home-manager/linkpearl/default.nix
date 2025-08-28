@@ -15,7 +15,8 @@ in
     # Server mode: listen on port, no join addresses
     # Client mode: don't listen, join ultraviolet (and vermissian for Darwin)
     listen = if isServer then ":9437" else null;
-    join = if isServer then [ ] 
+    join = if hostname == "vermissian" then [ "ultraviolet:9437" ]  # vermissian is server but also joins ultraviolet
+           else if isServer then [ ]  # ultraviolet doesn't join anyone
            else if hostname == "cloudbank" then [ "ultraviolet:9437" "vermissian:9437" ]
            else [ "ultraviolet:9437" ];
 

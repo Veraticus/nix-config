@@ -23,11 +23,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/smart-lint.sh"
+            "command": "~/.claude/hooks/lint.sh"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/smart-test.sh"
+            "command": "~/.claude/hooks/test.sh"
           }
         ]
       }

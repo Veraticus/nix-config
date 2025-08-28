@@ -5,6 +5,10 @@
   pkgs,
   ...
 }:
+let
+  # Get cc-tools binaries from the flake
+  cc-tools = inputs.cc-tools.packages.${pkgs.system}.default;
+in
 {
   # Install Node.js to enable npm
   home.packages = with pkgs; [
@@ -14,6 +18,8 @@
     ripgrep
     # FHS environment for running Playwright browsers
     steam-run
+    # Include cc-tools binaries
+    cc-tools
   ];
 
   # Add npm global bin to PATH for user-installed packages
@@ -21,79 +27,90 @@
     "$HOME/.npm-global/bin"
   ];
 
-  # Set npm prefix to user directory
+  # Set npm prefix to user directory and cc-tools socket path
   home.sessionVariables = {
     NPM_CONFIG_PREFIX = "$HOME/.npm-global";
+    CC_TOOLS_SOCKET = "/run/user/\${UID}/cc-tools.sock";
   };
 
   # Create and manage ~/.claude directory
-  home.file = let
-    # Dynamically read command files
-    commandFiles = builtins.readDir ./commands;
-    commandEntries = lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".md" name) commandFiles;
-    commandFileAttrs = lib.mapAttrs' (name: _: 
-      lib.nameValuePair ".claude/commands/${name}" { source = ./commands/${name}; }
-    ) commandEntries;
-  in commandFileAttrs // {
-    # Static files
-    ".claude/settings.json".source = ./settings.json;
-    ".claude/CLAUDE.md".source = ./CLAUDE.md;
+  home.file =
+    let
+      # Dynamically read command files
+      commandFiles = builtins.readDir ./commands;
+      commandEntries = lib.filterAttrs (
+        name: type: type == "regular" && lib.hasSuffix ".md" name
+      ) commandFiles;
+      commandFileAttrs = lib.mapAttrs' (
+        name: _: lib.nameValuePair ".claude/commands/${name}" { source = ./commands/${name}; }
+      ) commandEntries;
+    in
+    commandFileAttrs
+    // {
+      # Static files
+      ".claude/settings.json".source = ./settings.json;
+      ".claude/CLAUDE.md".source = ./CLAUDE.md;
 
-    # Copy hook scripts with executable permissions
-    ".claude/hooks/common-helpers.sh" = {
-      source = ./hooks/common-helpers.sh;
-      executable = true;
-    };
+      # Hook wrapper scripts
+      ".claude/hooks/lint.sh" = {
+        text = ''
+          #!/usr/bin/env bash
+          # Wrapper for cc-tools lint subcommand
+          # This script ensures the Go binary is called with proper environment
 
-    ".claude/hooks/smart-lint.sh" = {
-      source = ./hooks/smart-lint.sh;
-      executable = true;
-    };
+          # Set the socket path to match the systemd service
+          export CC_TOOLS_SOCKET="''${CC_TOOLS_SOCKET:-/run/user/$(id -u)/cc-tools.sock}"
 
-    ".claude/hooks/smart-test.sh" = {
-      source = ./hooks/smart-test.sh;
-      executable = true;
-    };
+          exec ${cc-tools}/bin/cc-tools lint "$@"
+        '';
+        executable = true;
+      };
 
-    ".claude/hooks/ntfy-notifier.sh" = {
-      source = ./hooks/ntfy-notifier.sh;
-      executable = true;
-    };
+      ".claude/hooks/test.sh" = {
+        text = ''
+          #!/usr/bin/env bash
+          # Wrapper for cc-tools test subcommand
+          # This script ensures the Go binary is called with proper environment
 
-    # Integration helper script
-    ".claude/hooks/integrate.sh" = {
-      source = ./hooks/integrate.sh;
-      executable = true;
-    };
+          # Set the socket path to match the systemd service
+          export CC_TOOLS_SOCKET="''${CC_TOOLS_SOCKET:-/run/user/$(id -u)/cc-tools.sock}"
 
-    # Status line script
-    ".claude/hooks/statusline.sh" = {
-      source = ./hooks/statusline.sh;
-      executable = true;
-    };
-    
-    # Playwright MCP wrapper for steam-run
-    ".claude/playwright-mcp-wrapper.sh" = {
-      source = ./playwright-headless-wrapper.sh;
-      executable = true;
-    };
-    
-    # Copy documentation and examples (not executable)
-    ".claude/hooks/README.md".source = ./hooks/README.md;
-    ".claude/hooks/INTEGRATION.md".source = ./hooks/INTEGRATION.md;
-    ".claude/hooks/QUICK_START.md".source = ./hooks/QUICK_START.md;
-    ".claude/hooks/example-Makefile".source = ./hooks/example-Makefile;
-    ".claude/hooks/example-claude-hooks-config.sh".source =
-      ./hooks/example-claude-hooks-config.sh;
-    ".claude/hooks/example-claude-hooks-ignore".source = ./hooks/example-claude-hooks-ignore;
+          exec ${cc-tools}/bin/cc-tools test "$@"
+        '';
+        executable = true;
+      };
 
-    # Create necessary directories
-    ".claude/.keep".text = "";
-    ".claude/projects/.keep".text = "";
-    ".claude/todos/.keep".text = "";
-    ".claude/statsig/.keep".text = "";
-    ".claude/commands/.keep".text = "";
-  };
+      # Notification hook
+      ".claude/hooks/ntfy-notifier.sh" = {
+        source = ./hooks/ntfy-notifier.sh;
+        executable = true;
+      };
+
+      # Status line script
+      ".claude/hooks/statusline.sh" = {
+        text = ''
+          #!/usr/bin/env bash
+          # Wrapper for cc-tools statusline subcommand
+          # Statusline always runs locally to access user environment variables
+
+          exec ${cc-tools}/bin/cc-tools statusline "$@"
+        '';
+        executable = true;
+      };
+
+      # Playwright MCP wrapper for steam-run
+      ".claude/playwright-mcp-wrapper.sh" = {
+        source = ./playwright-headless-wrapper.sh;
+        executable = true;
+      };
+
+      # Create necessary directories
+      ".claude/.keep".text = "";
+      ".claude/projects/.keep".text = "";
+      ".claude/todos/.keep".text = "";
+      ".claude/statsig/.keep".text = "";
+      ".claude/commands/.keep".text = "";
+    };
 
   # Install Claude Code on activation
   home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -107,5 +124,14 @@
       echo "Claude Code is already installed at $(which claude)"
     fi
   '';
+
+  # Enable cc-tools server using the module from the flake
+  services.cc-tools = {
+    enable = true;
+    package = cc-tools;
+  };
+
+  # Enable the service to start on switch
+  systemd.user.startServices = "sd-switch";
 
 }

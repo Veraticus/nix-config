@@ -2,7 +2,7 @@
 
 let
   # Determine if this host should run as a server or client
-  isServer = hostname == "ultraviolet";
+  isServer = hostname == "ultraviolet" || hostname == "vermissian";
 in
 {
   imports = [ inputs.linkpearl.homeManagerModules.default ];
@@ -13,9 +13,11 @@ in
     secretFile = "${config.xdg.configHome}/linkpearl/secret";
 
     # Server mode: listen on port, no join addresses
-    # Client mode: don't listen, join ultraviolet
+    # Client mode: don't listen, join ultraviolet (and vermissian for Darwin)
     listen = if isServer then ":9437" else null;
-    join = if isServer then [ ] else [ "ultraviolet:9437" ];
+    join = if isServer then [ ] 
+           else if hostname == "cloudbank" then [ "ultraviolet:9437" "vermissian:9437" ]
+           else [ "ultraviolet:9437" ];
 
     nodeId = hostname;
     verbose = false;

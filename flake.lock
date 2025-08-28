@@ -6,17 +6,14 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1756333379,
-        "narHash": "sha256-TtnpfwySfxotrff75zA6Utt/G6TWTjIoCif78O7VmTE=",
-        "owner": "Veraticus",
-        "repo": "cc-tools",
-        "rev": "62310713d44b83edd16d931d57e110bbda9643fe",
-        "type": "github"
+        "lastModified": 1756346806,
+        "narHash": "sha256-ZQu83qSaKeUAzKUuFjEWFnAtLLD/8TEXUzFstw/KZec=",
+        "path": "/home/joshsymonds/Personal/cc-tools",
+        "type": "path"
       },
       "original": {
-        "owner": "Veraticus",
-        "repo": "cc-tools",
-        "type": "github"
+        "path": "/home/joshsymonds/Personal/cc-tools",
+        "type": "path"
       }
     },
     "darwin": {

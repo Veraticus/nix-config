@@ -47,54 +47,18 @@ in
     in
     commandFileAttrs
     // {
-      # Static files
+      # Static configuration files
       ".claude/settings.json".source = ./settings.json;
       ".claude/CLAUDE.md".source = ./CLAUDE.md;
 
-      # Hook wrapper scripts
-      ".claude/hooks/lint.sh" = {
-        text = ''
-          #!/usr/bin/env bash
-          # Wrapper for cc-tools lint subcommand
-          # This script ensures the Go binary is called with proper environment
+      # Symlinks to cc-tools binaries with cleaner paths
+      ".claude/bin/cc-tools-lint".source = "${cc-tools}/bin/cc-tools-lint";
+      ".claude/bin/cc-tools-test".source = "${cc-tools}/bin/cc-tools-test";
+      ".claude/bin/cc-tools-statusline".source = "${cc-tools}/bin/cc-tools-statusline";
 
-          # Set the socket path to match the systemd service
-          export CC_TOOLS_SOCKET="''${CC_TOOLS_SOCKET:-/run/user/$(id -u)/cc-tools.sock}"
-
-          exec ${cc-tools}/bin/cc-tools lint "$@"
-        '';
-        executable = true;
-      };
-
-      ".claude/hooks/test.sh" = {
-        text = ''
-          #!/usr/bin/env bash
-          # Wrapper for cc-tools test subcommand
-          # This script ensures the Go binary is called with proper environment
-
-          # Set the socket path to match the systemd service
-          export CC_TOOLS_SOCKET="''${CC_TOOLS_SOCKET:-/run/user/$(id -u)/cc-tools.sock}"
-
-          exec ${cc-tools}/bin/cc-tools test "$@"
-        '';
-        executable = true;
-      };
-
-      # Notification hook
+      # Notification hook (still needed as separate script)
       ".claude/hooks/ntfy-notifier.sh" = {
         source = ./hooks/ntfy-notifier.sh;
-        executable = true;
-      };
-
-      # Status line script
-      ".claude/hooks/statusline.sh" = {
-        text = ''
-          #!/usr/bin/env bash
-          # Wrapper for cc-tools statusline subcommand
-          # Statusline always runs locally to access user environment variables
-
-          exec ${cc-tools}/bin/cc-tools statusline "$@"
-        '';
         executable = true;
       };
 
@@ -125,11 +89,11 @@ in
     fi
   '';
 
-  # Enable cc-tools server using the module from the flake
-  services.cc-tools = {
-    enable = true;
-    package = cc-tools;
-  };
+  # Disable cc-tools server (cc-tools doesn't have a serve command)
+  # services.cc-tools = {
+  #   enable = true;
+  #   package = cc-tools;
+  # };
 
   # Enable the service to start on switch
   systemd.user.startServices = "sd-switch";

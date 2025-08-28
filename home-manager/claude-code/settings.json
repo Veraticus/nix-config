@@ -13,7 +13,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/hooks/statusline.sh",
+    "command": "~/.claude/bin/cc-tools-statusline",
     "padding": 0
   },
   "hooks": {
@@ -23,11 +23,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "~/.claude/hooks/lint.sh"
+            "command": "~/.claude/bin/cc-tools-lint"
           },
           {
             "type": "command",
-            "command": "~/.claude/hooks/test.sh"
+            "command": "~/.claude/bin/cc-tools-test"
           }
         ]
       }

@@ -27,8 +27,8 @@
     # Linkpearl - clipboard sync
     linkpearl.url = "github:Veraticus/linkpearl";
     
-    # CC-Tools - Claude Code smart hooks
-    cc-tools.url = "github:Veraticus/cc-tools";
+    # CC-Tools - Claude Code smart hooks (local development)
+    cc-tools.url = "path:/home/joshsymonds/Personal/cc-tools";
   };
 
   outputs = { nixpkgs, darwin, home-manager, self, ... }@inputs:

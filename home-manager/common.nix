@@ -8,9 +8,6 @@
 {
   # You can import other home-manager modules here
   imports = [
-    # Import cc-tools home-manager module
-    inputs.cc-tools.homeManagerModule
-    
     # You can also split up your configuration and import pieces of it here:
     ./atuin
     ./claude-code

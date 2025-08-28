@@ -16,10 +16,11 @@ in
     # Dependencies for hooks
     yq
     ripgrep
-    # FHS environment for running Playwright browsers
-    steam-run
     # Include cc-tools binaries
     cc-tools
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    # FHS environment for running Playwright browsers (Linux only)
+    steam-run
   ];
 
   # Add npm global bin to PATH for user-installed packages
@@ -61,18 +62,19 @@ in
         executable = true;
       };
 
-      # Playwright MCP wrapper for steam-run
-      ".claude/playwright-mcp-wrapper.sh" = {
-        source = ./playwright-headless-wrapper.sh;
-        executable = true;
-      };
-
       # Create necessary directories
       ".claude/.keep".text = "";
       ".claude/projects/.keep".text = "";
       ".claude/todos/.keep".text = "";
       ".claude/statsig/.keep".text = "";
       ".claude/commands/.keep".text = "";
+    }
+    // lib.optionalAttrs pkgs.stdenv.isLinux {
+      # Playwright MCP wrapper for steam-run (Linux only)
+      ".claude/playwright-mcp-wrapper.sh" = {
+        source = ./playwright-headless-wrapper.sh;
+        executable = true;
+      };
     };
 
   # Install Claude Code on activation
@@ -87,14 +89,4 @@ in
       echo "Claude Code is already installed at $(which claude)"
     fi
   '';
-
-  # Disable cc-tools server (cc-tools doesn't have a serve command)
-  # services.cc-tools = {
-  #   enable = true;
-  #   package = cc-tools;
-  # };
-
-  # Enable the service to start on switch
-  systemd.user.startServices = "sd-switch";
-
 }

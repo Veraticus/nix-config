@@ -6,11 +6,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1756401784,
-        "narHash": "sha256-BLyIj/MEHBRXGQ8+tQALrHH98WEHxO8s7B0Tu2x3dmw=",
+        "lastModified": 1756531776,
+        "narHash": "sha256-JVeJN5reCId7kjmTN7vdxSdMPxzJikp1qMkpipUYMZI=",
         "owner": "Veraticus",
         "repo": "cc-tools",
-        "rev": "360899f93f054d24491e7cf9ce847e1ca7a83b00",
+        "rev": "beec6968e84dd49e143232735fcc96fa83796d00",
         "type": "github"
       },
       "original": {
@@ -134,6 +134,24 @@
     "flake-utils_2": {
       "inputs": {
         "systems": "systems_2"
+      },
+      "locked": {
+        "lastModified": 1731533236,
+        "narHash": "sha256-l0KFg5HjrsfsO/JpG+r7fRrqm12kzFHyUHqHCVpMMbI=",
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "rev": "11707dc2f618dd54ca8739b309ec4fc024de578b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "flake-utils",
+        "type": "github"
+      }
+    },
+    "flake-utils_3": {
+      "inputs": {
+        "systems": "systems_3"
       },
       "locked": {
         "lastModified": 1731533236,
@@ -391,6 +409,22 @@
         "type": "github"
       }
     },
+    "nixpkgs_5": {
+      "locked": {
+        "lastModified": 1756386758,
+        "narHash": "sha256-1wxxznpW2CKvI9VdniaUnTT2Os6rdRJcRUf65ZK9OtE=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "dfb2f12e899db4876308eba6d93455ab7da304cd",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "cc-tools": "cc-tools",
@@ -400,7 +434,8 @@
         "linkpearl": "linkpearl",
         "neovim-nightly": "neovim-nightly",
         "nixpkgs": "nixpkgs_4",
-        "nixpkgs-stable": "nixpkgs-stable"
+        "nixpkgs-stable": "nixpkgs-stable",
+        "targetprocess-mcp": "targetprocess-mcp"
       }
     },
     "systems": {
@@ -430,6 +465,40 @@
       "original": {
         "owner": "nix-systems",
         "repo": "default",
+        "type": "github"
+      }
+    },
+    "systems_3": {
+      "locked": {
+        "lastModified": 1681028828,
+        "narHash": "sha256-Vy1rq5AaRuLzOxct8nz4T6wlgyUR7zLU309k9mBC768=",
+        "owner": "nix-systems",
+        "repo": "default",
+        "rev": "da67096a3b9bf56a91d16901293e51ba5b49a27e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "default",
+        "type": "github"
+      }
+    },
+    "targetprocess-mcp": {
+      "inputs": {
+        "flake-utils": "flake-utils_3",
+        "nixpkgs": "nixpkgs_5"
+      },
+      "locked": {
+        "lastModified": 1756508840,
+        "narHash": "sha256-D8i5KY+qUDusSi1G1mZJ8zrmNH5FDNvVth5mD+3hcY8=",
+        "owner": "Veraticus",
+        "repo": "targetprocess-mcp",
+        "rev": "f5cb754d7c1e3d97c20648dcd3a94bc3f6a00d65",
+        "type": "github"
+      },
+      "original": {
+        "owner": "Veraticus",
+        "repo": "targetprocess-mcp",
         "type": "github"
       }
     },

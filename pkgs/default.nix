@@ -5,4 +5,5 @@
   myCaddy = pkgs.callPackage ./caddy { };
   starlark-lsp = pkgs.callPackage ./starlark-lsp { };
   nuclei = pkgs.callPackage ./nuclei { };
+  mcp-atlassian = pkgs.callPackage ./mcp-atlassian { };
 }

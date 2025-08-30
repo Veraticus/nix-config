@@ -9,6 +9,18 @@
       "command": "~/.claude/playwright-mcp-wrapper.sh",
       "args": [],
       "env": {}
+    },
+    "targetprocess": {
+      "type": "stdio",
+      "command": "~/.claude/bin/targetprocess-mcp",
+      "args": [],
+      "env": {}
+    },
+    "jira": {
+      "type": "stdio",
+      "command": "~/.claude/jira-mcp-wrapper.sh",
+      "args": [],
+      "env": {}
     }
   },
   "statusLine": {

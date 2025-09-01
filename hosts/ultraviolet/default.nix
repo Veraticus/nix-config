@@ -20,6 +20,9 @@ in
     
     # SABnzbd with Mullvad VPN (migrated from bluedesert)
     ./sabnzbd-vpn.nix
+    
+    # Home Assistant for home automation
+    ./home-assistant.nix
 
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix
@@ -1173,6 +1176,15 @@ in
   environment.etc."homepage/config/services.yaml" = {
     mode = "0644";
     text = ''
+      - Home Automation:
+        - Home Assistant:
+            icon: home-assistant.png
+            href: https://homeassistant.home.husbuddies.gay
+            description: Home automation hub
+            widget:
+              type: homeassistant
+              url: http://127.0.0.1:8123
+              key: {{HOMEPAGE_FILE_HOMEASSISTANT_API_KEY}}
       - Media Management:
         - Jellyseerr:
             icon: jellyseerr.png
@@ -1324,6 +1336,7 @@ in
           HOMEPAGE_FILE_NEXTDNS_API_KEY = "/app/keys/nextdns-api-key";
           HOMEPAGE_FILE_JELLYSEERR_API_KEY = "/app/keys/jellyseerr-api-key";
           HOMEPAGE_FILE_SABNZBD_API_KEY = "/app/keys/sabnzbd-api-key";
+          HOMEPAGE_FILE_HOMEASSISTANT_API_KEY = "/app/keys/homeassistant-api-key";
         };
         extraOptions = [ "--network=host" ];
       };

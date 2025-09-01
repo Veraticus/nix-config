@@ -3,9 +3,9 @@
 { inputs, lib, config, pkgs, ... }: {
   imports = [
     ./git
-    ./ssh
-    ./starship  # Keep starship for nice prompt
-    ./tmux      # Keep tmux for persistent sessions
+    ./ssh-config   # SSH configuration
+    ./starship     # Keep starship for nice prompt
+    ./tmux         # Keep tmux for persistent sessions
   ];
 
   home = {

@@ -4,7 +4,7 @@
   ];
 
   # Override any specific settings for bluedesert if needed
-  programs.zsh.shellAliases = {
+  programs.zsh.shellAliases = lib.mkForce {
     update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
     ll = "ls -la";
     l = "ls -l";

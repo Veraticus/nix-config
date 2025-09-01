@@ -4,6 +4,7 @@
   services.ntfy-sh = {
     enable = true;
     settings = {
+      base-url = "http://bluedesert:8093";  # Required setting
       listen-http = ":8093";
       cache-file = "/var/cache/ntfy/cache.db";
       cache-duration = "12h";

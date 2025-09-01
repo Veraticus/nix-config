@@ -225,6 +225,111 @@ in
   
   # Add jellyfin user to video and render groups for GPU hardware acceleration
   users.users.jellyfin.extraGroups = [ "video" "render" ];
+  
+  # Configure Jellyfin user policies to disable transcoding for direct play
+  systemd.services.jellyfin-user-policy = {
+    description = "Configure Jellyfin user policies for direct play";
+    after = [ "jellyfin.service" ];
+    wants = [ "jellyfin.service" ];
+    wantedBy = [ "multi-user.target" ];
+    
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStartPre = "${pkgs.bash}/bin/bash -c 'sleep 30'"; # Wait for Jellyfin to fully start
+      ExecStart = let
+        configureScript = pkgs.writeScriptBin "configure-jellyfin-users" ''
+          #!${pkgs.bash}/bin/bash
+          set -euo pipefail
+          
+          echo "Configuring Jellyfin user policies for direct play..."
+          
+          # Wait for Jellyfin API to be ready
+          until ${pkgs.curl}/bin/curl -s http://localhost:8096/System/Info >/dev/null 2>&1; do
+            echo "Waiting for Jellyfin API..."
+            sleep 5
+          done
+          
+          # Check if API key file exists
+          if [ ! -f /etc/homepage/keys/jellyfin-api-key ]; then
+            echo "⚠ Jellyfin API key file not found at /etc/homepage/keys/jellyfin-api-key"
+            echo "  Skipping user policy configuration - will retry on next boot"
+            exit 0
+          fi
+          
+          # Get API key from secure location
+          API_KEY=$(cat /etc/homepage/keys/jellyfin-api-key | tr -d '\n')
+          
+          if [ -z "$API_KEY" ]; then
+            echo "⚠ Jellyfin API key is empty"
+            echo "  Skipping user policy configuration - will retry on next boot"
+            exit 0
+          fi
+          
+          # Function to update user policy
+          update_user_policy() {
+            local username="$1"
+            
+            # Get user ID
+            USER_ID=$(${pkgs.curl}/bin/curl -s "http://localhost:8096/Users" \
+              -H "X-Emby-Token: $API_KEY" 2>/dev/null | \
+              ${pkgs.jq}/bin/jq -r --arg name "$username" '.[] | select(.Name == $name) | .Id' 2>/dev/null)
+            
+            if [ -n "$USER_ID" ] && [ "$USER_ID" != "null" ]; then
+              echo "Updating policy for user: $username (ID: $USER_ID)"
+              
+              # Disable video transcoding to force direct play
+              ${pkgs.curl}/bin/curl -X POST "http://localhost:8096/Users/$USER_ID/Policy" \
+                -H "X-Emby-Token: $API_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "EnableVideoPlaybackTranscoding": false,
+                  "EnablePlaybackRemuxing": false
+                }' >/dev/null 2>&1
+              
+              echo "  ✓ Disabled transcoding for $username"
+            else
+              echo "  ⚠ User $username not found (may not be created yet)"
+            fi
+          }
+          
+          # Get all users and check if we have any
+          ALL_USERS=$(${pkgs.curl}/bin/curl -s "http://localhost:8096/Users" \
+            -H "X-Emby-Token: $API_KEY" 2>/dev/null | \
+            ${pkgs.jq}/bin/jq -r '.[].Name' 2>/dev/null)
+          
+          if [ -z "$ALL_USERS" ]; then
+            echo "ℹ No users found in Jellyfin yet"
+            echo "  This is normal for a fresh installation"
+            echo "  User policies will be configured when users are created"
+            exit 0
+          fi
+          
+          echo "Found users: $(echo $ALL_USERS | tr '\n' ', ')"
+          
+          # Update policies for known users if they exist
+          update_user_policy "jellyfin"
+          update_user_policy "josh"
+          
+          # Also update any other users to use the same policy
+          echo "$ALL_USERS" | while read -r username; do
+            if [ "$username" != "jellyfin" ] && [ "$username" != "josh" ] && [ -n "$username" ]; then
+              echo "Found additional user: $username"
+              update_user_policy "$username"
+            fi
+          done
+          
+          echo "Jellyfin user policy configuration complete"
+        '';
+      in "${configureScript}/bin/configure-jellyfin-users";
+      StandardOutput = "journal";
+      StandardError = "journal";
+      User = "root";
+    };
+    
+    startLimitIntervalSec = 60;
+    startLimitBurst = 3;
+  };
 
   # Jellyfin encoding configuration for better performance with large files
   systemd.services.jellyfin.preStart = ''
@@ -330,20 +435,31 @@ in
           RADARR_API_KEY=$(${pkgs.sudo}/bin/sudo cat /var/lib/radarr/.config/Radarr/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP '(?<=<ApiKey>)[^<]+' || echo "")
           RADARR_URL="http://localhost:7878"
 
-          SONARR_API_KEY=$(${pkgs.sudo}/bin/sudo cat /var/lib/sonarr/.config/Sonarr/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP '(?<=<ApiKey>)[^<]+' || echo "")
+          SONARR_API_KEY=$(${pkgs.sudo}/bin/sudo cat /var/lib/sonarr/.config/NzbDrone/config.xml 2>/dev/null | ${pkgs.gnugrep}/bin/grep -oP '(?<=<ApiKey>)[^<]+' || echo "")
           SONARR_URL="http://localhost:8989"
 
           if [ -z "$RADARR_API_KEY" ]; then
-              echo "Error: Could not find Radarr API key in /var/lib/radarr/.config/Radarr/config.xml"
-              exit 1
+              echo "⚠ Could not find Radarr API key in /var/lib/radarr/.config/Radarr/config.xml"
+              echo "  This is normal on fresh installations - Radarr needs to start first"
+              echo "  Configuration will be applied on next boot after Radarr generates its config"
+              
+              # Still try to configure Sonarr if it's available
+              if [ -n "$SONARR_API_KEY" ]; then
+                  echo "  Found Sonarr API key, will configure Sonarr only"
+              else
+                  echo "  No Sonarr API key found either - exiting"
+                  exit 0
+              fi
           fi
 
-          echo "=== Configuring Radarr for optimal quality ==="
-          echo "Target: 4K HEVC when available, 1080p HEVC fallback"
-          echo ""
+          # Only configure Radarr if we have an API key
+          if [ -n "$RADARR_API_KEY" ]; then
+              echo "=== Configuring Radarr for optimal quality ==="
+              echo "Target: 4K HEVC when available, 1080p HEVC fallback"
+              echo ""
 
-          # Clean up duplicate custom formats first
-          cleanup_duplicate_formats() {
+              # Clean up duplicate custom formats first
+              cleanup_duplicate_formats() {
               echo "Cleaning up duplicate custom formats..."
               
               # Get all custom formats
@@ -414,6 +530,72 @@ in
                           {
                               "name": "value",
                               "value": "\\b(x265|h265|hevc)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # Bad release groups to avoid
+          create_or_update_format "Bad Release Groups" '{
+              "name": "Bad Release Groups",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "Bad Release Groups",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(YIFY|YTS|RARBG.*REENC|TERRiBLE|LiGaS|BRrip|CHD|RM|mSD|HDTime|SiC)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # Trusted HEVC encoders
+          create_or_update_format "Trusted HEVC Groups" '{
+              "name": "Trusted HEVC Groups",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "Trusted HEVC Groups",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(QxR|UTR|TOMMY|FLUX|NTb|CtrlHD|TERMINAL|TIGERS|HONE|MONOLITH|PSA|MZABI|TAoE|SEV|CMRG)\\b"
+                          }
+                      ]
+                  }
+              ]
+          }'
+
+          # Re-encoded content warning
+          create_or_update_format "Re-Encoded" '{
+              "name": "Re-Encoded",
+              "includeCustomFormatWhenRenaming": false,
+              "specifications": [
+                  {
+                      "name": "Re-Encoded",
+                      "implementation": "ReleaseTitleSpecification",
+                      "implementationName": "Release Title",
+                      "infoLink": "https://wiki.servarr.com/radarr/settings#custom-formats-2",
+                      "negate": false,
+                      "required": false,
+                      "fields": [
+                          {
+                              "name": "value",
+                              "value": "\\b(REENC|ReEnc|Re-Enc|Reencoded)\\b"
                           }
                       ]
                   }
@@ -567,6 +749,9 @@ in
           fourk_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "4K/2160p") | .id')
           remux_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Remux") | .id')
           foreign_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Foreign Film") | .id')
+          bad_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Bad Release Groups") | .id')
+          trusted_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Trusted HEVC Groups") | .id')
+          reenc_id=$(${pkgs.curl}/bin/curl -s "$RADARR_URL/api/v3/customformat" -H "X-Api-Key: $RADARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Re-Encoded") | .id')
 
           echo "Updating quality profiles with optimal scoring..."
 
@@ -580,10 +765,13 @@ in
               # Build format items with scores optimized for 4K HEVC
               format_items="["
               [ -n "$hevc_id" ] && [ "$hevc_id" != "null" ] && format_items+="{\"format\": $hevc_id, \"name\": \"x265/HEVC\", \"score\": 150},"
+              [ -n "$trusted_id" ] && [ "$trusted_id" != "null" ] && format_items+="{\"format\": $trusted_id, \"name\": \"Trusted HEVC Groups\", \"score\": 100},"
               [ -n "$fourk_id" ] && [ "$fourk_id" != "null" ] && format_items+="{\"format\": $fourk_id, \"name\": \"4K/2160p\", \"score\": 50},"
               [ -n "$foreign_id" ] && [ "$foreign_id" != "null" ] && format_items+="{\"format\": $foreign_id, \"name\": \"Foreign Film\", \"score\": 30},"
               [ -n "$x264_id" ] && [ "$x264_id" != "null" ] && format_items+="{\"format\": $x264_id, \"name\": \"x264/H.264\", \"score\": -30},"
+              [ -n "$reenc_id" ] && [ "$reenc_id" != "null" ] && format_items+="{\"format\": $reenc_id, \"name\": \"Re-Encoded\", \"score\": -100},"
               [ -n "$remux_id" ] && [ "$remux_id" != "null" ] && format_items+="{\"format\": $remux_id, \"name\": \"Remux\", \"score\": -200},"
+              [ -n "$bad_id" ] && [ "$bad_id" != "null" ] && format_items+="{\"format\": $bad_id, \"name\": \"Bad Release Groups\", \"score\": -1000},"
               format_items="''${format_items%,}]"
               
               # Update profile with new scoring and settings
@@ -624,47 +812,204 @@ in
               
               echo "  Updated $movie_count movies to use optimized profile"
           fi
+          fi  # End of Radarr configuration block
 
-          # Configure Sonarr if available
+          # Configure Sonarr if available (v4 uses Custom Formats like Radarr)
           if [ -n "$SONARR_API_KEY" ]; then
               echo ""
               echo "=== Configuring Sonarr ==="
               
-              # Create release profile for HEVC preference
-              existing=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/releaseprofile" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Prefer HEVC")')
+              # Sonarr v4 uses Custom Formats similar to Radarr
+              echo "Creating custom formats for Sonarr..."
               
-              if [ -z "$existing" ]; then
-                  echo "  Creating HEVC release profile..."
+              # Function to create or update Sonarr custom format
+              create_or_update_sonarr_format() {
+                  local name="$1"
+                  local json="$2"
+                  
+                  # Check if format exists
+                  local existing_id=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/customformat" -H "X-Api-Key: $SONARR_API_KEY" | \
+                      ${pkgs.jq}/bin/jq --arg name "$name" '.[] | select(.name == $name) | .id')
+                  
+                  if [ -n "$existing_id" ] && [ "$existing_id" != "null" ]; then
+                      # Update existing format
+                      ${pkgs.curl}/bin/curl -X PUT "$SONARR_URL/api/v3/customformat/$existing_id" \
+                          -H "X-Api-Key: $SONARR_API_KEY" \
+                          -H "Content-Type: application/json" \
+                          -d "$(echo "$json" | ${pkgs.jq}/bin/jq --argjson id "$existing_id" '. + {id: $id}')" > /dev/null 2>&1
+                      echo "  Updated custom format: $name"
+                  else
+                      # Create new format
+                      ${pkgs.curl}/bin/curl -X POST "$SONARR_URL/api/v3/customformat" \
+                          -H "X-Api-Key: $SONARR_API_KEY" \
+                          -H "Content-Type: application/json" \
+                          -d "$json" > /dev/null 2>&1
+                      echo "  Created custom format: $name"
+                  fi
+              }
+              
+              # Create HEVC format
+              create_or_update_sonarr_format "x265/HEVC" '{
+                  "name": "x265/HEVC",
+                  "includeCustomFormatWhenRenaming": false,
+                  "specifications": [
+                      {
+                          "name": "x265/HEVC",
+                          "implementation": "ReleaseTitleSpecification",
+                          "implementationName": "Release Title",
+                          "infoLink": "https://wiki.servarr.com/sonarr/settings#custom-formats-2",
+                          "negate": false,
+                          "required": false,
+                          "fields": [
+                              {
+                                  "name": "value",
+                                  "value": "\\b(x265|h265|hevc)\\b"
+                              }
+                          ]
+                      }
+                  ]
+              }'
+              
+              # Create bad release groups format
+              create_or_update_sonarr_format "Bad Release Groups" '{
+                  "name": "Bad Release Groups",
+                  "includeCustomFormatWhenRenaming": false,
+                  "specifications": [
+                      {
+                          "name": "Bad Release Groups",
+                          "implementation": "ReleaseTitleSpecification",
+                          "implementationName": "Release Title",
+                          "infoLink": "https://wiki.servarr.com/sonarr/settings#custom-formats-2",
+                          "negate": false,
+                          "required": false,
+                          "fields": [
+                              {
+                                  "name": "value",
+                                  "value": "\\b(YIFY|YTS|RARBG.*REENC|TERRiBLE|LiGaS|BRrip|CHD|RM|mSD|HDTime|SiC)\\b"
+                              }
+                          ]
+                      }
+                  ]
+              }'
+              
+              # Create trusted HEVC groups format
+              create_or_update_sonarr_format "Trusted HEVC Groups" '{
+                  "name": "Trusted HEVC Groups",
+                  "includeCustomFormatWhenRenaming": false,
+                  "specifications": [
+                      {
+                          "name": "Trusted HEVC Groups",
+                          "implementation": "ReleaseTitleSpecification",
+                          "implementationName": "Release Title",
+                          "infoLink": "https://wiki.servarr.com/sonarr/settings#custom-formats-2",
+                          "negate": false,
+                          "required": false,
+                          "fields": [
+                              {
+                                  "name": "value",
+                                  "value": "\\b(QxR|UTR|TOMMY|FLUX|NTb|CtrlHD|TERMINAL|TIGERS|HONE|MONOLITH|PSA|MZABI|TAoE|SEV|CMRG)\\b"
+                              }
+                          ]
+                      }
+                  ]
+              }'
+              
+              # Create re-encoded format
+              create_or_update_sonarr_format "Re-Encoded" '{
+                  "name": "Re-Encoded",
+                  "includeCustomFormatWhenRenaming": false,
+                  "specifications": [
+                      {
+                          "name": "Re-Encoded",
+                          "implementation": "ReleaseTitleSpecification",
+                          "implementationName": "Release Title",
+                          "infoLink": "https://wiki.servarr.com/sonarr/settings#custom-formats-2",
+                          "negate": false,
+                          "required": false,
+                          "fields": [
+                              {
+                                  "name": "value",
+                                  "value": "\\b(REENC|ReEnc|Re-Enc|Reencoded)\\b"
+                              }
+                          ]
+                      }
+                  ]
+              }'
+              
+              # Also keep the release profile for blocking (it still works for must not contain)
+              bad_existing=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/releaseprofile" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Block Bad Encoders")')
+              
+              if [ -z "$bad_existing" ]; then
+                  echo "  Creating bad encoder blocking profile..."
                   ${pkgs.curl}/bin/curl -X POST "$SONARR_URL/api/v3/releaseprofile" \
                       -H "X-Api-Key: $SONARR_API_KEY" \
                       -H "Content-Type: application/json" \
                       -d '{
-                          "name": "Prefer HEVC",
+                          "name": "Block Bad Encoders",
                           "enabled": true,
                           "required": [],
-                          "ignored": [],
-                          "preferred": [
-                              {
-                                  "key": "/\\b(x265|h265|hevc)\\b/i",
-                                  "value": 100
-                              },
-                              {
-                                  "key": "/\\b(2160p|4K|UHD)\\b/i",
-                                  "value": 50
-                              },
-                              {
-                                  "key": "/\\bremux\\b/i",
-                                  "value": -200
-                              }
+                          "ignored": [
+                              "YIFY",
+                              "YTS",
+                              "RARBG.*REENC",
+                              "TERRiBLE",
+                              "LiGaS",
+                              "BRrip",
+                              "CHD",
+                              "RM",
+                              "mSD",
+                              "HDTime",
+                              "SiC",
+                              "REENC",
+                              "ReEnc",
+                              "Re-Enc",
+                              "Reencoded"
                           ],
-                          "includePreferredWhenRenaming": false,
                           "indexerId": 0,
                           "tags": []
                       }' > /dev/null 2>&1
-                  echo "  HEVC release profile created"
+                  echo "  Bad encoder blocking profile created"
               else
-                  echo "  HEVC release profile already exists"
+                  echo "  Bad encoder blocking profile already exists"
               fi
+              
+              # Now update quality profiles with custom format scores
+              echo "Updating Sonarr quality profiles with custom format scoring..."
+              
+              # Get format IDs
+              hevc_id=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/customformat" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "x265/HEVC") | .id')
+              bad_id=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/customformat" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Bad Release Groups") | .id')
+              trusted_id=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/customformat" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Trusted HEVC Groups") | .id')
+              reenc_id=$(${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/customformat" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq '.[] | select(.name == "Re-Encoded") | .id')
+              
+              # Update quality profiles
+              ${pkgs.curl}/bin/curl -s "$SONARR_URL/api/v3/qualityprofile" -H "X-Api-Key: $SONARR_API_KEY" | ${pkgs.jq}/bin/jq -c '.[]' | while read -r profile; do
+                  profile_id=$(echo "$profile" | ${pkgs.jq}/bin/jq '.id')
+                  profile_name=$(echo "$profile" | ${pkgs.jq}/bin/jq -r '.name')
+                  
+                  echo "  Updating profile: $profile_name"
+                  
+                  # Build format items with scores
+                  format_items="["
+                  [ -n "$hevc_id" ] && [ "$hevc_id" != "null" ] && format_items+="{\"format\": $hevc_id, \"name\": \"x265/HEVC\", \"score\": 100},"
+                  [ -n "$trusted_id" ] && [ "$trusted_id" != "null" ] && format_items+="{\"format\": $trusted_id, \"name\": \"Trusted HEVC Groups\", \"score\": 50},"
+                  [ -n "$reenc_id" ] && [ "$reenc_id" != "null" ] && format_items+="{\"format\": $reenc_id, \"name\": \"Re-Encoded\", \"score\": -100},"
+                  [ -n "$bad_id" ] && [ "$bad_id" != "null" ] && format_items+="{\"format\": $bad_id, \"name\": \"Bad Release Groups\", \"score\": -1000},"
+                  format_items="''${format_items%,}]"
+                  
+                  # Update profile
+                  updated_profile=$(echo "$profile" | ${pkgs.jq}/bin/jq \
+                      --argjson items "$format_items" \
+                      '.formatItems = $items | .minFormatScore = -1000 | .cutoffFormatScore = 10000'
+                  )
+                  
+                  ${pkgs.curl}/bin/curl -X PUT "$SONARR_URL/api/v3/qualityprofile/$profile_id" \
+                      -H "X-Api-Key: $SONARR_API_KEY" \
+                      -H "Content-Type: application/json" \
+                      -d "$updated_profile" > /dev/null 2>&1
+              done
+              
+              echo "  Sonarr configuration complete"
           fi
 
           echo ""
@@ -674,10 +1019,13 @@ in
           echo ""
           echo "Format scoring:"
           echo "  • x265/HEVC: +150 points (essential for 4K content)"
+          echo "  • Trusted HEVC Groups: +100 points (quality encoders)"
           echo "  • 4K/2160p: +50 points (your hardware handles this well with HEVC)"
           echo "  • Foreign films: +30 points (for international content)"
           echo "  • x264/H.264: -30 points (mild penalty, still grabbable)"
+          echo "  • Re-Encoded: -100 points (avoid poor re-encodes)"
           echo "  • Remux: -200 points (unnecessarily large, uncompressed)"
+          echo "  • Bad Release Groups: -1000 points (blocks known bad encoders)"
           echo ""
           echo "Bitrate limits (prevents oversized TV episodes):"
           echo "  • 720p: 3-5 Mbps (2-4 GB per movie, 200-400 MB per TV episode)"

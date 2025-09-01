@@ -6,6 +6,7 @@ in
   # You can import other NixOS modules here
   imports = [
     ../common.nix
+    ./home-automation.nix  # Z-Wave bridge, MQTT, and notifications
 
     # You can also split up your configuration and import pieces of it here:
     # ./users.nix
@@ -162,32 +163,6 @@ in
   programs.zsh.enable = true;
 
   services.rpcbind.enable = true;
-
-  services.mullvad-vpn = {
-    enable = true;
-    package = pkgs.mullvad-vpn;
-  };
-
-  services.transmission = {
-    enable = true;
-    openPeerPorts = true;
-    openRPCPort = true;
-    package = pkgs.transmission_3;
-    settings = {
-      bind-address-ipv4 = "0.0.0.0";
-      download-dir = "/mnt/video/torrents";
-      rpc-bind-address = "0.0.0.0";
-      rpc-whitelist = "127.0.0.1,172.31.0.*";
-      rpc-host-whitelist = "transmission.home.husbuddies.gay";
-      download-queue-size = 10;
-      incomplete-dir-enabled = false;
-    };
-  };
-
-  services.sabnzbd = {
-    enable = true;
-    package = pkgs.sabnzbd;
-  };
 
   # Environment
   environment = {

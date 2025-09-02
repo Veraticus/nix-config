@@ -33,7 +33,10 @@
     ];
   };
 
-  programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
+  programs.zsh.shellAliases = {
+    update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
+    update-bluedesert = "cd ~/nix-config && sudo nixos-rebuild switch --flake '.#bluedesert' --target-host joshsymonds@172.31.0.201 --use-remote-sudo";
+  };
 
   systemd.user.startServices = "sd-switch";
 }

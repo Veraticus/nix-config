@@ -15,22 +15,16 @@ in
     ./hardware-configuration.nix
   ];
 
-  # Hardware setup
+  # Hardware setup (minimal for headless Z-Wave bridge)
   hardware = {
     cpu = {
       intel.updateMicrocode = true;
     };
-    graphics = {
-      enable = true;
-      extraPackages = with pkgs; [
-        intel-media-driver
-        intel-vaapi-driver
-        vaapiVdpau
-        intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
-        vpl-gpu-rt # Modern Intel Media SDK replacement with QSV support
-      ];
-    };
-    enableAllFirmware = true;
+    # No graphics drivers needed for headless operation
+    graphics.enable = false;
+    # Only enable specific firmware needed for this hardware
+    enableAllFirmware = false;
+    enableRedistributableFirmware = true;
   };
 
   nixpkgs = {
@@ -60,22 +54,31 @@ in
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     optimise.automatic = true;
+    
+    # Aggressive garbage collection for limited storage
+    gc = {
+      automatic = true;
+      dates = "weekly";
+      options = "--delete-older-than 3d";
+    };
 
     settings = {
       # Enable flakes and new 'nix' command
       experimental-features = "nix-command flakes";
-      # Deduplicate and optimize nix store
-
+      
+      # Optimize for slow disk and limited resources
+      download-buffer-size = 268435456; # 256MB buffer to avoid "buffer full" warnings
+      max-substitution-jobs = 4; # Parallel downloads
+      cores = 2; # Limit build parallelism on weak CPU
+      
       # Caches
       substituters = [
-        # "https://hyprland.cachix.org"
         "https://cache.nixos.org"
-        # "https://nixpkgs-wayland.cachix.org"
+        "https://nix-community.cachix.org" # For common packages like starship
       ];
       trusted-public-keys = [
-        # "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-        # "nixpkgs-wayland.cachix.org-1:3lwxaILxMRkVhehr5StQprHdEo4IrE8sRho9R9HOLYA="
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
       ];
     };
   };

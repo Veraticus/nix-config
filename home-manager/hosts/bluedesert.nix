@@ -5,7 +5,8 @@
 
   # Override any specific settings for bluedesert if needed
   programs.zsh.shellAliases = lib.mkForce {
-    update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
+    # Remote build through ultraviolet
+    update = "ssh joshsymonds@172.31.0.200 'cd ~/nix-config && sudo nixos-rebuild switch --flake .#bluedesert --target-host joshsymonds@172.31.0.201 --use-remote-sudo'";
     ll = "ls -la";
     l = "ls -l";
     # Monitoring aliases specific to this box

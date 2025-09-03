@@ -6,7 +6,7 @@
     settings = {
       base-url = "http://bluedesert:8093";  # Required setting
       listen-http = ":8093";
-      cache-file = "/var/cache/ntfy/cache.db";
+      cache-file = "/var/lib/ntfy-sh/cache.db";  # Use StateDirectory instead of /var/cache
       cache-duration = "12h";
       behind-proxy = false;
       
@@ -41,7 +41,8 @@
   # Create necessary directories
   systemd.tmpfiles.rules = [
     "d /var/lib/zwave-js-ui 0755 root root -"
-    "d /var/cache/ntfy 0755 ntfy ntfy -"
+    # ntfy-sh StateDirectory is automatically created by systemd with DynamicUser=true
+    # No need to manually create /var/lib/ntfy-sh directories
   ];
 
   # Open firewall ports

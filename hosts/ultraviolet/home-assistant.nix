@@ -55,12 +55,19 @@
         time_zone = "America/Los_Angeles";
         currency = "USD";
         country = "US";
+        # External access via Cloudflare Tunnel
+        external_url = "https://home.husbuddies.gay";
+        internal_url = "http://localhost:8123";
       };
       
       # Enable the web interface
       http = {
-        server_host = "::1";  # Listen on localhost only (Caddy will proxy)
-        trusted_proxies = [ "::1" "127.0.0.1" ];
+        server_host = "0.0.0.0";  # Listen on all interfaces (needed for proxies)
+        trusted_proxies = [ 
+          "::1" 
+          "127.0.0.1"
+          "172.31.0.0/24"  # Local network
+        ];
         use_x_forwarded_for = true;
       };
       

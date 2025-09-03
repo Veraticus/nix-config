@@ -23,6 +23,9 @@ in
     
     # Home Assistant for home automation
     ./home-assistant.nix
+    
+    # Cloudflare Tunnel for secure external access
+    ./cloudflare-tunnel.nix
 
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix

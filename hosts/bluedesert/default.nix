@@ -5,7 +5,7 @@ in
 { inputs, outputs, lib, config, pkgs, ... }: {
   # You can import other NixOS modules here
   imports = [
-    ../common.nix
+    # Skip common.nix to avoid NFS mounts and other unnecessary configs
     ./home-automation.nix  # Z-Wave bridge, MQTT, and notifications
 
     # You can also split up your configuration and import pieces of it here:
@@ -59,7 +59,7 @@ in
     gc = {
       automatic = true;
       dates = "weekly";
-      options = "--delete-older-than 3d";
+      options = lib.mkForce "--delete-older-than 3d";  # Override common.nix setting
     };
 
     settings = {
@@ -80,6 +80,9 @@ in
         "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
         "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
       ];
+      
+      # Trust joshsymonds for remote builds from ultraviolet
+      trusted-users = [ "root" "joshsymonds" ];
     };
   };
 

@@ -31,10 +31,8 @@
     };
     extraOptions = [
       "--network=host"
-      # Map the Z-Wave USB device when you plug it in
-      # Uncomment and adjust when you have the USB stick:
-      # "--device=/dev/ttyUSB0:/dev/zwave"
-      # Or use --device=/dev/serial/by-id/... for more stable naming
+      # Map the Z-Wave USB device
+      "--device=/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_80B54EE5E010-if00:/dev/zwave"
     ];
   };
 

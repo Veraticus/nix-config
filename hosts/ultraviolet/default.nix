@@ -24,12 +24,22 @@ in
     # Home Assistant for home automation
     ./home-assistant.nix
     
+    # Wyoming Whisper STT service for Home Assistant voice
+    ./wyoming-whisper.nix
+    
     # Cloudflare Tunnel for secure external access
     ./cloudflare-tunnel.nix
 
     # Import your generated (nixos-generate-config) hardware configuration
     ./hardware-configuration.nix
   ];
+
+  # Additional NFS mount for Home Assistant backups
+  fileSystems."/mnt/backups" = {
+    device = "172.31.0.100:/volume1/backup";
+    fsType = "nfs";
+    options = [ "x-systemd.automount" "noauto" "x-systemd.idle-timeout=60" ];
+  };
 
   # Hardware setup
   hardware = {
@@ -104,12 +114,15 @@ in
       allowedUDPPorts = [
         51820
         config.services.tailscale.port
+        5353  # mDNS/Bonjour for HomeKit discovery
       ];
       allowedTCPPorts = [
         22
         80
         443
         9437
+        1400  # Sonos event callbacks (primary)
+        10200 # Wyoming Piper TTS server
       ];
     };
     defaultGateway = "172.31.0.1";
@@ -199,6 +212,15 @@ in
 
   # Services
   services.thermald.enable = true;
+  
+  # Wyoming Piper TTS server for Home Assistant
+  services.wyoming.piper.servers = {
+    "amy" = {
+      enable = true;
+      voice = "en_US-amy-medium";
+      uri = "tcp://0.0.0.0:10200";
+    };
+  };
 
   services.openssh = {
     enable = true;

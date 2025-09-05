@@ -30,9 +30,9 @@
       TZ = "America/Los_Angeles";
     };
     extraOptions = [
-      "--network=host"
       # Map the Z-Wave USB device
       "--device=/dev/serial/by-id/usb-Nabu_Casa_ZWA-2_80B54EE5E010-if00:/dev/zwave"
+      "--privileged"
     ];
   };
 

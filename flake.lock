@@ -6,11 +6,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1756531776,
-        "narHash": "sha256-JVeJN5reCId7kjmTN7vdxSdMPxzJikp1qMkpipUYMZI=",
+        "lastModified": 1756827963,
+        "narHash": "sha256-7ciRlaB1d3Zsuq9XOxI5eRh4kxV4AqY3aSeTXIIf57I=",
         "owner": "Veraticus",
         "repo": "cc-tools",
-        "rev": "beec6968e84dd49e143232735fcc96fa83796d00",
+        "rev": "6765974b5385f03200b96519aa02462b27bfe97b",
         "type": "github"
       },
       "original": {
@@ -489,11 +489,11 @@
         "nixpkgs": "nixpkgs_5"
       },
       "locked": {
-        "lastModified": 1756508840,
-        "narHash": "sha256-D8i5KY+qUDusSi1G1mZJ8zrmNH5FDNvVth5mD+3hcY8=",
+        "lastModified": 1757010622,
+        "narHash": "sha256-5OFY5WeruR0wwegNEw6n1h61RAcY/C+agwWnk8/Fk84=",
         "owner": "Veraticus",
         "repo": "targetprocess-mcp",
-        "rev": "f5cb754d7c1e3d97c20648dcd3a94bc3f6a00d65",
+        "rev": "55486ffcb74fa1080814f6cdeb3d64075ffe01a0",
         "type": "github"
       },
       "original": {

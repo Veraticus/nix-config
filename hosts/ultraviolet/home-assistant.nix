@@ -1,9 +1,21 @@
-{
-  config,
-  pkgs,
-  lib,
-  ...
-}:
+{ config, pkgs, lib, ... }:
+let
+  # HACS (Home Assistant Community Store) - Latest release
+  hacs = pkgs.fetchFromGitHub {
+    owner = "hacs";
+    repo = "integration";
+    rev = "2.1.1"; # Latest stable version
+    sha256 = "sha256-/yWGZQnQFhWtHUtlrWmUGkDABFyotSO4Og+gPDccurU=";
+  };
+  
+  # Bubble Card - Latest release
+  bubbleCard = pkgs.fetchFromGitHub {
+    owner = "Clooos";
+    repo = "Bubble-Card";
+    rev = "v3.0.3"; # Latest stable version  
+    sha256 = "sha256-soLeHWDp72C5KzjnkdPVneJrShFVcOHvvVyLPMVpJM0=";
+  };
+in
 {
   services.home-assistant = {
     enable = true;
@@ -162,12 +174,23 @@
         # This will be configured through the UI
         # URL: ws://bluedesert:3000 or ws://172.31.0.201:3000
       };
-
-      # Frontend themes
+      
+      # Frontend themes and Lovelace resources
       frontend = {
         themes = "!include_dir_merge_named themes";
       };
-
+      
+      # Lovelace configuration for HACS cards
+      lovelace = {
+        mode = "storage"; # Use storage mode for UI management
+        resources = [
+          {
+            url = "/local/community/bubble-card/bubble-card.js";
+            type = "module";
+          }
+        ];
+      };
+      
       # Logging
       logger = {
         default = "warning";
@@ -225,6 +248,11 @@
   # Create necessary directories and files
   systemd.tmpfiles.rules = [
     "d /var/lib/hass/themes 0755 hass hass -"
+    "d /var/lib/hass/custom_components 0755 hass hass -"
+    "d /var/lib/hass/custom_components/hacs 0755 hass hass -"
+    "d /var/lib/hass/www 0755 hass hass -"
+    "d /var/lib/hass/www/community 0755 hass hass -"
+    "d /var/lib/hass/www/community/bubble-card 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
   ];
 
@@ -259,8 +287,8 @@
       ntfy_topic_security: door-sensors-CHANGEME
     '';
   };
-
-  # Copy secrets file to Home Assistant directory on startup
+  
+  # Setup HACS and custom components on startup
   systemd.services.home-assistant.preStart = lib.mkAfter ''
     # Copy secrets file if it doesn't exist
     if [ ! -f /var/lib/hass/secrets.yaml ]; then
@@ -269,6 +297,23 @@
       chmod 600 /var/lib/hass/secrets.yaml
       echo "Created secrets.yaml - please edit it with your actual values"
     fi
+    
+    # Install HACS integration
+    echo "Installing HACS integration..."
+    rm -rf /var/lib/hass/custom_components/hacs
+    cp -r ${hacs}/custom_components/hacs /var/lib/hass/custom_components/
+    chown -R hass:hass /var/lib/hass/custom_components/hacs
+    chmod -R 755 /var/lib/hass/custom_components/hacs
+    
+    # Install Bubble Card
+    echo "Installing Bubble Card..."
+    rm -rf /var/lib/hass/www/community/bubble-card
+    mkdir -p /var/lib/hass/www/community/bubble-card
+    cp -r ${bubbleCard}/* /var/lib/hass/www/community/bubble-card/
+    chown -R hass:hass /var/lib/hass/www/community/bubble-card
+    chmod -R 755 /var/lib/hass/www/community/bubble-card
+    
+    echo "HACS and Bubble Card installation complete"
   '';
 
   # Backup service for Home Assistant
@@ -483,15 +528,24 @@
   # 2. Access Home Assistant at https://homeassistant.home.husbuddies.gay
   # 3. Complete the onboarding process
   # 4. Update location in UI: Settings -> System -> General
-  # 5. Add integrations:
+  # 5. Configure HACS:
+  #    - Settings -> Devices & Services -> Add Integration -> HACS
+  #    - Authorize with GitHub (create GitHub account if needed)
+  #    - Enable experimental features if desired
+  #    - Bubble Card should already be installed and ready to use
+  # 6. Add integrations:
   #    - Z-Wave JS: URL ws://bluedesert:3000 or ws://172.31.0.201:3000
   #    - Philips Hue: Will auto-discover or add manually
   #    - Ecobee: Use the cloud integration with OAuth
   #    - Jellyfin: Server at http://localhost:8096
-  # 6. Generate Long-Lived Access Token for Homepage:
+  # 7. Generate Long-Lived Access Token for Homepage:
   #    - Profile -> Security -> Long-Lived Access Tokens
   #    - Save to /etc/homepage/keys/homeassistant-api-key
-  # 7. Install the companion app on your phone
-  # 8. Set up ntfy in automations for push notifications
+  # 8. Install the companion app on your phone
+  # 9. Set up ntfy in automations for push notifications
+  # 10. Install additional HACS components as needed:
+  #     - Mushroom Cards (mobile-optimized UI)
+  #     - Button Card (advanced customization)
+  #     - Card-mod (styling)
+  #     - Mini Graph Card (data visualization)
 }
-

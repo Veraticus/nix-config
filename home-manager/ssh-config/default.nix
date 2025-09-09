@@ -28,7 +28,6 @@
       ConnectTimeout 10
       
       # Disable unnecessary features that add latency
-      GSSAPIAuthentication no
       
       # Enable pipelining for faster command execution
       EnableEscapeCommandline yes

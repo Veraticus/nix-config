@@ -36,7 +36,7 @@
     syntaxHighlighting.enable = false;  # Save resources
     
     shellAliases = {
-      update = "sudo nixos-rebuild switch --fast --flake \".#$(hostname)\"";
+      update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
       ll = "ls -la";
       l = "ls -l";
       # Monitoring aliases for this box

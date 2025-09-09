@@ -34,8 +34,8 @@
   };
 
   programs.zsh.shellAliases = {
-    update = "sudo nixos-rebuild switch --fast --flake \".#$(hostname)\"";
-    update-bluedesert = "cd ~/nix-config && sudo env NIX_SSHOPTS='-i /home/joshsymonds/.ssh/github' nixos-rebuild switch --fast --flake '.#bluedesert' --target-host joshsymonds@172.31.0.201 --sudo";
+    update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
+    update-bluedesert = "cd ~/nix-config && sudo env NIX_SSHOPTS='-i /home/joshsymonds/.ssh/github' nixos-rebuild switch --flake '.#bluedesert' --target-host joshsymonds@172.31.0.201 --sudo";
   };
 
   systemd.user.startServices = "sd-switch";

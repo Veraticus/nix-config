@@ -4,6 +4,10 @@
   lib,
   ...
 }:
+let
+  # Create a package for the backup script
+  ha-backup-script = pkgs.writeShellScriptBin "backup-ha" (builtins.readFile ./home-assistant/scripts/backup-ha.sh);
+in
 {
   services.home-assistant = {
     enable = true;
@@ -347,54 +351,21 @@
       "mnt-backups.mount"
     ];
     requires = [ "mnt-backups.mount" ];
+    
+    path = with pkgs; [
+      coreutils
+      rsync
+      util-linux  # for mountpoint and logger
+      findutils
+      gnused
+    ];
 
     serviceConfig = {
       Type = "oneshot";
       User = "root";
-      ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p /mnt/backups/home-assistant";
-      ExecStart = pkgs.writeShellScript "ha-backup" ''
-        set -e
-
-        BACKUP_DIR="/mnt/backups/home-assistant"
-        SOURCE_DIR="/var/lib/hass"
-        DATE=$(date +%Y%m%d-%H%M%S)
-        BACKUP_PATH="$BACKUP_DIR/backup-$DATE"
-
-        # Call Home Assistant to purge old recorder entries for database consistency
-        if [ -f /var/lib/hass/.secrets/backup-token ]; then
-          ${pkgs.curl}/bin/curl -X POST \
-            -H "Authorization: Bearer $(cat /var/lib/hass/.secrets/backup-token)" \
-            -H "Content-Type: application/json" \
-            http://localhost:8123/api/services/recorder/purge \
-            -d '{"keep_days": 30, "repack": false}' \
-            2>/dev/null || true
-        fi
-
-        # Wait a moment for any pending writes to complete
-        sleep 5
-
-        # Perform the backup using rsync (no ownership preservation for NFS)
-        ${pkgs.rsync}/bin/rsync -rlptDv \
-          --exclude='home-assistant_v2.db-shm' \
-          --exclude='home-assistant_v2.db-wal' \
-          --exclude='*.log' \
-          --exclude='*.log.*' \
-          --exclude='.cloud' \
-          --exclude='deps' \
-          --exclude='__pycache__' \
-          "$SOURCE_DIR/" "$BACKUP_PATH/"
-
-        # Keep only the last 14 days of backups
-        find "$BACKUP_DIR" -maxdepth 1 -type d -name "backup-*" -mtime +14 -exec rm -rf {} \; || true
-
-        # Create a "latest" symlink for easy access
-        ln -sfn "$BACKUP_PATH" "$BACKUP_DIR/latest"
-
-        echo "Backup completed successfully to $BACKUP_PATH"
-
-        # Log backup size for monitoring
-        ${pkgs.coreutils}/bin/du -sh "$BACKUP_PATH" | ${pkgs.util-linux}/bin/logger -t home-assistant-backup
-      '';
+      # Use the backup script we've created
+      # For scheduled backups, don't pass a label argument
+      ExecStart = "${ha-backup-script}/bin/backup-ha";
     };
   };
 
@@ -504,6 +475,7 @@
 
   # Create convenient restore command
   environment.systemPackages = with pkgs; [
+    ha-backup-script  # Add the backup script to PATH
     (writeShellScriptBin "ha-restore" ''
       # Home Assistant Restore Tool
       # Usage: ha-restore [backup-name|latest]

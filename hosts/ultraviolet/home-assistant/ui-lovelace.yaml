@@ -2,6 +2,11 @@
 # Exported from storage mode
 # Now managed in Git
 
+# Custom card resources (required in YAML mode)
+resources:
+  - url: /hacsfiles/Bubble-Card/bubble-card.js
+    type: module
+
 views:
 - title: Overview
   path: overview

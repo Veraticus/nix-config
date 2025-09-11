@@ -172,16 +172,10 @@
       # Lovelace configuration
       lovelace = {
         mode = "yaml"; # Use YAML mode for version control
-        # Define dashboards - each gets its own YAML file
+        # In YAML mode, HA looks for ui-lovelace.yaml in the config directory
+        # Additional dashboards can be defined here
         dashboards = {
-          bubble-overview = {
-            mode = "yaml";
-            title = "Bubble Overview";
-            icon = "mdi:view-dashboard-variant";
-            show_in_sidebar = true;
-            filename = "dashboards/bubble-overview.yaml";
-          };
-          floor-plan = {
+          "floor-plan" = {
             mode = "yaml";
             title = "Floor Plan";
             icon = "mdi:floor-plan";
@@ -253,6 +247,7 @@
     "d /var/lib/hass/dashboards 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
     # Symlink dashboard files from nix-config to Home Assistant
+    "L+ /var/lib/hass/ui-lovelace.yaml - - - - ${./home-assistant/ui-lovelace.yaml}"
     "L+ /var/lib/hass/dashboards/bubble-overview.yaml - - - - ${./home-assistant/dashboards/bubble-overview.yaml}"
     "L+ /var/lib/hass/dashboards/floor-plan.yaml - - - - ${./home-assistant/dashboards/floor-plan.yaml}"
   ];

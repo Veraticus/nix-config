@@ -1,0 +1,5 @@
+# This is the main entry point for YAML mode
+# It loads the Bubble Overview dashboard as the default
+
+# Include the main dashboard directly
+!include dashboards/bubble-overview.yaml

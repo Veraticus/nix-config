@@ -1,8 +1,8 @@
 title: Bubble Overview
 resources:
-- url: /local/community/Bubble-Card/bubble-card.js
+- url: /hacsfiles/Bubble-Card/bubble-card.js
   type: module
-- url: /local/community/lovelace-auto-entities/auto-entities.js
+- url: /hacsfiles/lovelace-auto-entities/auto-entities.js
   type: module
 views:
 - title: Overview

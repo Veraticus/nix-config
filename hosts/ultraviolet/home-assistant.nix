@@ -173,16 +173,6 @@
       lovelace = {
         mode = "yaml"; # Use YAML mode for version control
         # In YAML mode, HA looks for ui-lovelace.yaml in the config directory
-        # Additional dashboards can be defined here
-        dashboards = {
-          "floor-plan" = {
-            mode = "yaml";
-            title = "Floor Plan";
-            icon = "mdi:floor-plan";
-            show_in_sidebar = true;
-            filename = "dashboards/floor-plan.yaml";
-          };
-        };
       };
 
       # Logging

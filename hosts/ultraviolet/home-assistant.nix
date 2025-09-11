@@ -171,8 +171,8 @@
 
       # Lovelace configuration
       lovelace = {
-        mode = "yaml"; # Use YAML mode for version control
-        # In YAML mode, HA looks for ui-lovelace.yaml in the config directory
+        mode = "storage"; # Use storage mode for UI editing
+        # Dashboards are backed up to git automatically
       };
 
       # Logging

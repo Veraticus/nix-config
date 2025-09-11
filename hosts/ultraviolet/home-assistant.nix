@@ -1,21 +1,9 @@
-{ config, pkgs, lib, ... }:
-let
-  # HACS (Home Assistant Community Store) - Latest release
-  hacs = pkgs.fetchFromGitHub {
-    owner = "hacs";
-    repo = "integration";
-    rev = "2.1.1"; # Latest stable version
-    sha256 = "sha256-/yWGZQnQFhWtHUtlrWmUGkDABFyotSO4Og+gPDccurU=";
-  };
-  
-  # Bubble Card - Latest release
-  bubbleCard = pkgs.fetchFromGitHub {
-    owner = "Clooos";
-    repo = "Bubble-Card";
-    rev = "v3.0.3"; # Latest stable version  
-    sha256 = "sha256-soLeHWDp72C5KzjnkdPVneJrShFVcOHvvVyLPMVpJM0=";
-  };
-in
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 {
   services.home-assistant = {
     enable = true;
@@ -27,20 +15,21 @@ in
         grpcio-status
         grpcio-reflection
         grpcio-tools
-        gtts  # Google Text-to-Speech
-        pyatv  # Apple TV integration
-        pyheos  # HEOS (Denon/Marantz) integration
-        wyoming  # Wyoming protocol for voice services (Piper TTS)
+        gtts # Google Text-to-Speech
+        pyatv # Apple TV integration
+        pyheos # HEOS (Denon/Marantz) integration
+        wyoming # Wyoming protocol for voice services (Piper TTS)
+        aiogithubapi # Required for HACS
       ];
 
     # Custom components (like Nest Protect)
     customComponents = with pkgs.home-assistant-custom-components; [
       nest_protect
     ];
-    
+
     # Custom Lovelace cards
     customLovelaceModules = with pkgs.home-assistant-custom-lovelace-modules; [
-      card-mod  # CSS styling for cards
+      card-mod # CSS styling for cards
     ];
 
     extraComponents = [
@@ -83,10 +72,10 @@ in
 
       # Additional services
       "todoist"
-      
+
       # Voice and audio
-      "piper"  # Local text-to-speech (supports custom voices like GlaDOS)
-      "wyoming"  # Protocol for voice services integration
+      "piper" # Local text-to-speech (supports custom voices like GlaDOS)
+      "wyoming" # Protocol for voice services integration
 
       # Mobile app support
       "mobile_app" # For Home Assistant companion app
@@ -174,23 +163,17 @@ in
         # This will be configured through the UI
         # URL: ws://bluedesert:3000 or ws://172.31.0.201:3000
       };
-      
-      # Frontend themes and Lovelace resources
+
+      # Frontend themes
       frontend = {
         themes = "!include_dir_merge_named themes";
       };
-      
-      # Lovelace configuration for HACS cards
+
+      # Lovelace configuration
       lovelace = {
         mode = "storage"; # Use storage mode for UI management
-        resources = [
-          {
-            url = "/local/community/bubble-card/bubble-card.js";
-            type = "module";
-          }
-        ];
       };
-      
+
       # Logging
       logger = {
         default = "warning";
@@ -249,10 +232,7 @@ in
   systemd.tmpfiles.rules = [
     "d /var/lib/hass/themes 0755 hass hass -"
     "d /var/lib/hass/custom_components 0755 hass hass -"
-    "d /var/lib/hass/custom_components/hacs 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
-    "d /var/lib/hass/www/community 0755 hass hass -"
-    "d /var/lib/hass/www/community/bubble-card 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
   ];
 
@@ -287,8 +267,59 @@ in
       ntfy_topic_security: door-sensors-CHANGEME
     '';
   };
+
+  # Setup HACS and secrets file
+  # We use a separate service to install HACS to avoid systemd sandboxing issues
+  systemd.services.home-assistant-setup-hacs = {
+    description = "Setup HACS for Home Assistant";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "home-assistant.service" ];
+    
+    serviceConfig = {
+      Type = "oneshot";
+      User = "hass";
+      Group = "hass";
+      RemainAfterExit = true;
+    };
+    
+    script = ''
+      set -e
+      
+      # Ensure custom_components directory exists
+      mkdir -p /var/lib/hass/custom_components
+      
+      # Download and install HACS if not present or outdated
+      if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
+        echo "Installing HACS..."
+        
+        # Change to custom_components directory (following official script)
+        cd /var/lib/hass/custom_components
+        
+        # Download latest HACS release
+        ${pkgs.wget}/bin/wget -q "https://github.com/hacs/integration/releases/latest/download/hacs.zip"
+        
+        # Remove old HACS if it exists
+        if [ -d "hacs" ]; then
+          rm -rf hacs
+        fi
+        
+        # Create HACS directory
+        mkdir hacs
+        
+        # Unpack HACS (exactly like official script)
+        ${pkgs.unzip}/bin/unzip -q hacs.zip -d hacs
+        
+        # Cleanup
+        rm -f hacs.zip
+        
+        echo "HACS installation complete"
+      else
+        echo "HACS already installed"
+      fi
+    '';
+  };
   
-  # Setup HACS and custom components on startup
+  # Setup secrets file on startup
   systemd.services.home-assistant.preStart = lib.mkAfter ''
     # Copy secrets file if it doesn't exist
     if [ ! -f /var/lib/hass/secrets.yaml ]; then
@@ -297,23 +328,6 @@ in
       chmod 600 /var/lib/hass/secrets.yaml
       echo "Created secrets.yaml - please edit it with your actual values"
     fi
-    
-    # Install HACS integration
-    echo "Installing HACS integration..."
-    rm -rf /var/lib/hass/custom_components/hacs
-    cp -r ${hacs}/custom_components/hacs /var/lib/hass/custom_components/
-    chown -R hass:hass /var/lib/hass/custom_components/hacs
-    chmod -R 755 /var/lib/hass/custom_components/hacs
-    
-    # Install Bubble Card
-    echo "Installing Bubble Card..."
-    rm -rf /var/lib/hass/www/community/bubble-card
-    mkdir -p /var/lib/hass/www/community/bubble-card
-    cp -r ${bubbleCard}/* /var/lib/hass/www/community/bubble-card/
-    chown -R hass:hass /var/lib/hass/www/community/bubble-card
-    chmod -R 755 /var/lib/hass/www/community/bubble-card
-    
-    echo "HACS and Bubble Card installation complete"
   '';
 
   # Backup service for Home Assistant

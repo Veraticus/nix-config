@@ -279,54 +279,55 @@
 
   # Setup HACS and secrets file
   # We use a separate service to install HACS to avoid systemd sandboxing issues
-  systemd.services.home-assistant-setup-hacs = {
-    description = "Setup HACS for Home Assistant";
-    wantedBy = [ "multi-user.target" ];
-    before = [ "home-assistant.service" ];
-    
-    serviceConfig = {
-      Type = "oneshot";
-      User = "hass";
-      Group = "hass";
-      RemainAfterExit = true;
-    };
-    
-    script = ''
-      set -e
-      
-      # Ensure custom_components directory exists
-      mkdir -p /var/lib/hass/custom_components
-      
-      # Download and install HACS if not present or outdated
-      if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
-        echo "Installing HACS..."
-        
-        # Change to custom_components directory (following official script)
-        cd /var/lib/hass/custom_components
-        
-        # Download latest HACS release
-        ${pkgs.wget}/bin/wget -q "https://github.com/hacs/integration/releases/latest/download/hacs.zip"
-        
-        # Remove old HACS if it exists
-        if [ -d "hacs" ]; then
-          rm -rf hacs
-        fi
-        
-        # Create HACS directory
-        mkdir hacs
-        
-        # Unpack HACS (exactly like official script)
-        ${pkgs.unzip}/bin/unzip -q hacs.zip -d hacs
-        
-        # Cleanup
-        rm -f hacs.zip
-        
-        echo "HACS installation complete"
-      else
-        echo "HACS already installed"
-      fi
-    '';
-  };
+  # TEMPORARILY DISABLED FOR DEBUGGING
+  # systemd.services.home-assistant-setup-hacs = {
+  #   description = "Setup HACS for Home Assistant";
+  #   wantedBy = [ "multi-user.target" ];
+  #   before = [ "home-assistant.service" ];
+  #   
+  #   serviceConfig = {
+  #     Type = "oneshot";
+  #     User = "hass";
+  #     Group = "hass";
+  #     RemainAfterExit = true;
+  #   };
+  #   
+  #   script = ''
+  #     set -e
+  #     
+  #     # Ensure custom_components directory exists
+  #     mkdir -p /var/lib/hass/custom_components
+  #     
+  #     # Download and install HACS if not present or outdated
+  #     if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
+  #       echo "Installing HACS..."
+  #       
+  #       # Change to custom_components directory (following official script)
+  #       cd /var/lib/hass/custom_components
+  #       
+  #       # Download latest HACS release
+  #       ${pkgs.wget}/bin/wget -q "https://github.com/hacs/integration/releases/latest/download/hacs.zip"
+  #       
+  #       # Remove old HACS if it exists
+  #       if [ -d "hacs" ]; then
+  #         rm -rf hacs
+  #       fi
+  #       
+  #       # Create HACS directory
+  #       mkdir hacs
+  #       
+  #       # Unpack HACS (exactly like official script)
+  #       ${pkgs.unzip}/bin/unzip -q hacs.zip -d hacs
+  #       
+  #       # Cleanup
+  #       rm -f hacs.zip
+  #       
+  #       echo "HACS installation complete"
+  #     else
+  #       echo "HACS already installed"
+  #     fi
+  #   '';
+  # };
   
   # Setup secrets file on startup
   systemd.services.home-assistant.preStart = lib.mkAfter ''

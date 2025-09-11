@@ -1,5 +1,122 @@
-# This is the main entry point for YAML mode
-# It loads the Bubble Overview dashboard as the default
+# Home Assistant Dashboard - Bubble Overview
+# Exported from storage mode
+# Now managed in Git
 
-# Include the main dashboard directly
-!include dashboards/bubble-overview.yaml
+views:
+- title: Overview
+  path: overview
+  icon: mdi:home
+  theme: default
+  cards:
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.living_room
+    name: Living Room
+    icon: mdi:sofa
+    show_state: true
+    show_last_changed: false
+    show_attribute: true
+    attribute: brightness
+    slider_live_update: false
+    allow_light_slider_to_0: false
+    card_layout: large
+    sub_button:
+    - icon: mdi:arrow-expand
+      name: ''
+      tap_action:
+        action: navigate
+        navigation_path: '#living-room-lights'
+      show_background: true
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#living-room-lights'
+      name: Living Room Lights
+      icon: mdi:sofa
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+    - type: custom:bubble-card
+      card_type: separator
+      name: Room Control
+      icon: mdi:lightbulb-group
+    - type: custom:bubble-card
+      card_type: button
+      button_type: slider
+      entity: light.living_room
+      name: All Lights
+      icon: mdi:lightbulb-group
+      show_state: true
+      show_attribute: true
+      attribute: brightness
+      slider_live_update: false
+      allow_light_slider_to_0: true
+      sub_button:
+      - entity: light.living_room
+        icon: mdi:palette
+        name: Color
+        tap_action:
+          action: more-info
+    - type: custom:bubble-card
+      card_type: separator
+      name: Hue Scenes
+      icon: mdi:palette
+    - type: custom:auto-entities
+      card:
+        type: grid
+        columns: 4
+        square: false
+      card_param: cards
+      filter:
+        template: "{% set scenes = states.scene | selectattr('entity_id', 'match', 'scene.living_room_') | list %}\n{% for\
+          \ scene in scenes | sort(attribute='attributes.friendly_name') %}\n  {%- set scene_name = scene.attributes.friendly_name\
+          \ | replace('Living Room ', '') | replace('Living room ', '') -%}\n  {%- set icon_map = {\n    'USA': 'mdi:flag',\n\
+          \    'Read': 'mdi:book-open',\n    'Ruby glow': 'mdi:fire',\n    'Dimmed': 'mdi:brightness-3',\n    'Bright': 'mdi:brightness-7',\n\
+          \    'Concentrate': 'mdi:target',\n    'Energize': 'mdi:lightning-bolt',\n    'Relax': 'mdi:spa',\n    'Nightlight':\
+          \ 'mdi:weather-night',\n    'Halloween': 'mdi:halloween',\n    'Xmas': 'mdi:pine-tree',\n    'Arctic aurora': 'mdi:aurora',\n\
+          \    'Spring blossom': 'mdi:flower',\n    'Tropical twilight': 'mdi:palm-tree',\n    'Savanna sunset': 'mdi:weather-sunset',\n\
+          \    'Nebula': 'mdi:creation',\n    'Rainbow': 'mdi:looks',\n    'Ibiza': 'mdi:party-popper',\n    'Sweden': 'mdi:flag',\n\
+          \    'Sunday morning': 'mdi:coffee',\n    'Champagne': 'mdi:glass-flute',\n    'Lavender': 'mdi:flower-outline',\n\
+          \    'Peach': 'mdi:fruit-cherries',\n    'Circle': 'mdi:circle',\n    'Blue white': 'mdi:snowflake'\n  } -%}\n \
+          \ {%- set icon = icon_map.get(scene_name, 'mdi:palette') -%}\n  {\n    \"type\": \"custom:bubble-card\",\n    \"\
+          card_type\": \"button\",\n    \"button_type\": \"name\",\n    \"name\": \"{{ scene_name }}\",\n    \"icon\": \"\
+          {{ icon }}\",\n    \"entity\": \"{{ scene.entity_id }}\",\n    \"card_layout\": \"normal\",\n    \"styles\": \"\
+          ha-card { height: 36px !important; } .bubble-container { height: 36px !important; } .bubble-name { font-size: 11px\
+          \ !important; } .bubble-icon-container { min-width: 28px !important; min-height: 28px !important; margin: 4px !important;\
+          \ } .bubble-icon { --mdc-icon-size: 18px !important; }\",\n    \"button_action\": {\n      \"tap_action\": {\n \
+          \       \"action\": \"call-service\",\n        \"service\": \"scene.turn_on\",\n        \"service_data\": {\n  \
+          \        \"entity_id\": \"{{ scene.entity_id }}\"\n        }\n      }\n    }\n  }{%- if not loop.last -%},{%- endif\
+          \ -%}\n{% endfor %}"
+    - type: custom:bubble-card
+      card_type: separator
+      name: Individual Lights
+      icon: mdi:lightbulb
+    - type: custom:auto-entities
+      card:
+        type: vertical-stack
+      card_param: cards
+      filter:
+        include:
+        - area: Living Room
+          domain: light
+          options:
+            type: custom:bubble-card
+            card_type: button
+            button_type: slider
+            show_state: true
+            show_attribute: true
+            attribute: brightness
+            slider_live_update: false
+            allow_light_slider_to_0: true
+        exclude:
+        - entity_id: light.living_room
+      sort:
+        method: friendly_name

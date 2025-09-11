@@ -171,7 +171,24 @@
 
       # Lovelace configuration
       lovelace = {
-        mode = "storage"; # Use storage mode for UI management
+        mode = "yaml"; # Use YAML mode for version control
+        # Define dashboards - each gets its own YAML file
+        dashboards = {
+          bubble-overview = {
+            mode = "yaml";
+            title = "Bubble Overview";
+            icon = "mdi:view-dashboard-variant";
+            show_in_sidebar = true;
+            filename = "dashboards/bubble-overview.yaml";
+          };
+          floor-plan = {
+            mode = "yaml";
+            title = "Floor Plan";
+            icon = "mdi:floor-plan";
+            show_in_sidebar = true;
+            filename = "dashboards/floor-plan.yaml";
+          };
+        };
       };
 
       # Logging
@@ -233,7 +250,11 @@
     "d /var/lib/hass/themes 0755 hass hass -"
     "d /var/lib/hass/custom_components 0755 hass hass -"
     "d /var/lib/hass/www 0755 hass hass -"
+    "d /var/lib/hass/dashboards 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
+    # Symlink dashboard files from nix-config to Home Assistant
+    "L+ /var/lib/hass/dashboards/bubble-overview.yaml - - - - ${./home-assistant/dashboards/bubble-overview.yaml}"
+    "L+ /var/lib/hass/dashboards/floor-plan.yaml - - - - ${./home-assistant/dashboards/floor-plan.yaml}"
   ];
 
   # Create a secrets.yaml template for Home Assistant

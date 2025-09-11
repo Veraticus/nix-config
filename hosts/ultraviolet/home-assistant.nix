@@ -179,9 +179,12 @@
       logger = {
         default = "warning";
         logs = {
+          "homeassistant.components.lovelace" = "debug";
+          "homeassistant.components.frontend" = "debug";
+          "homeassistant.components.websocket_api" = "debug";
           "homeassistant.components.zwave_js" = "info";
           "homeassistant.components.sonos" = "info"; # Debug Sonos discovery
-          "homeassistant.components.ssdp" = "debug"; # Debug network discovery
+          "homeassistant.components.ssdp" = "warning"; # Reduce noise
         };
       };
 

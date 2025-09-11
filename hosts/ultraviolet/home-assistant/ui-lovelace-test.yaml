@@ -1,0 +1,15 @@
+# Minimal test dashboard to verify YAML mode works
+resources:
+  - url: /local/community/Bubble-Card/bubble-card.js
+    type: module
+
+views:
+  - title: Test
+    path: test
+    cards:
+      - type: markdown
+        content: "If you can see this, YAML mode is working!"
+      - type: custom:bubble-card
+        card_type: button
+        entity: light.living_room
+        name: Test Light

@@ -108,7 +108,7 @@ in
 
   # Install Claude Code on activation
   home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    PATH="${pkgs.nodejs_24}/bin:$PATH"
+    PATH="${pkgs.nodejs_24}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:$PATH"
     export NPM_CONFIG_PREFIX="$HOME/.npm-global"
 
     if ! command -v claude >/dev/null 2>&1; then

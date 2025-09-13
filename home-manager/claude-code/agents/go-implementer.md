@@ -317,6 +317,48 @@ func NewClient(opts ...Option) *Client {
 }
 ```
 
+## Fixing Lint and Test Errors
+
+### CRITICAL: Fix Errors Properly, Not Lazily
+
+When you encounter lint or test errors, you must fix them CORRECTLY:
+
+#### Example: Unused Parameter Error
+```go
+// LINT ERROR: parameter 'name' seems to be unused
+func(name string, config *viper.Viper) (Notifier, error) {
+    // name is not used in the function
+}
+
+// ❌ WRONG - Lazy fix (just silencing the linter)
+func(_ string, config *viper.Viper) (Notifier, error) {
+
+// ✅ CORRECT - Fix the root cause
+// Option 1: Remove the parameter if truly not needed
+func(config *viper.Viper) (Notifier, error) {
+
+// Option 2: Actually use the parameter as intended
+func(name string, config *viper.Viper) (Notifier, error) {
+    notifier.Name = name // Now it's used
+```
+
+#### Principles for Fixing Errors
+1. **Understand why** the error exists before fixing
+2. **Fix the design flaw**, not just the symptom
+3. **Remove unused code** rather than hiding it
+4. **Simplify interfaces** when parameters aren't needed
+5. **Never use underscore `_`** unless the interface requires it
+6. **Never add `//nolint`** comments to bypass checks
+7. **Never disable linters** to avoid fixing issues
+
+#### Common Fixes Done Right
+- **Unused variable**: Remove it or implement the missing logic
+- **Unused parameter**: Remove from interface or implement usage
+- **Dead code**: Delete it completely
+- **Complex function**: Refactor into smaller functions
+- **Missing error check**: Add proper error handling
+- **Type assertion**: Add proper type checking
+
 ## Never Do These
 
 1. **Never use init()** for setup - use explicit initialization
@@ -327,5 +369,7 @@ func NewClient(opts ...Option) *Client {
 6. **Never use mutable global state**
 7. **Never use reflection** when concrete types work
 8. **Never create versioned functions** (GetUserV2) - replace completely
+9. **Never silence linters** - fix the actual problem
+10. **Never use `_` for parameters** unless required by interface
 
 Remember: Simplicity is the ultimate sophistication. Make it work, make it right, make it fast - in that order.

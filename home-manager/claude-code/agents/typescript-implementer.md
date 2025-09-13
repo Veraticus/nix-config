@@ -423,6 +423,90 @@ function createUserService(config: ServiceConfig): UserService {
 }
 ```
 
+## Fixing Lint and Test Errors
+
+### CRITICAL: Fix Errors Properly, Not Lazily
+
+When you encounter lint or test errors, you must fix them CORRECTLY:
+
+#### Example: Unused Parameter Error
+```typescript
+// LINT ERROR: 'name' is declared but its value is never read
+function createNotifier(name: string, config: Config): Notifier {
+    // name is not used in the function
+    return new Notifier(config);
+}
+
+// ❌ WRONG - Lazy fix (just silencing the linter)
+function createNotifier(_name: string, config: Config): Notifier {
+    // or worse: adding // @ts-ignore or // eslint-disable-next-line
+
+// ✅ CORRECT - Fix the root cause
+// Option 1: Remove the parameter if truly not needed
+function createNotifier(config: Config): Notifier {
+    return new Notifier(config);
+}
+
+// Option 2: Actually use the parameter as intended
+function createNotifier(name: string, config: Config): Notifier {
+    return new Notifier({ ...config, name }); // Now it's used
+}
+```
+
+#### Example: Type Error
+```typescript
+// TS ERROR: Type 'string | undefined' is not assignable to type 'string'
+function processUser(user: User): string {
+    return user.name; // user.name might be undefined
+}
+
+// ❌ WRONG - Lazy fixes
+function processUser(user: User): string {
+    // @ts-ignore
+    return user.name;
+}
+// or
+function processUser(user: User): string {
+    return user.name as string; // Dangerous assertion
+}
+// or
+function processUser(user: User): string {
+    return user.name!; // Non-null assertion without checking
+}
+
+// ✅ CORRECT - Handle the uncertainty properly
+function processUser(user: User): string {
+    if (!user.name) {
+        throw new Error('User must have a name');
+    }
+    return user.name; // TypeScript now knows it's defined
+}
+// or
+function processUser(user: User): string {
+    return user.name ?? 'Unknown'; // Provide default
+}
+```
+
+#### Principles for Fixing Errors
+1. **Understand why** the error exists before fixing
+2. **Fix the design flaw**, not just the symptom
+3. **Remove unused code** rather than hiding it
+4. **Handle edge cases** rather than using assertions
+5. **Never use underscore prefix** just to silence unused warnings
+6. **Never add `@ts-ignore` or `@ts-expect-error`** to bypass checks
+7. **Never add `eslint-disable` comments** to skip linting
+8. **Never use `any` type** to avoid type errors
+9. **Never use non-null assertions `!`** without null checks
+
+#### Common Fixes Done Right
+- **Unused import**: Remove it completely
+- **Unused variable**: Remove it or implement the missing logic
+- **Type mismatch**: Fix the types properly, don't use any
+- **Possibly undefined**: Add proper null checks
+- **Missing return type**: Add explicit return type annotation
+- **Complex function**: Refactor into smaller functions
+- **Circular dependency**: Refactor module structure
+
 ## Never Do These
 
 1. **Never use `any`** - use `unknown` or proper types

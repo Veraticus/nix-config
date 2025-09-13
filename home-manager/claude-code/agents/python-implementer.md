@@ -443,6 +443,66 @@ class ServiceFactory:
         return RedisCache(self._config.redis_url)
 ```
 
+## Fixing Lint and Test Errors
+
+### CRITICAL: Fix Errors Properly, Not Lazily
+
+When you encounter lint or test errors, you must fix them CORRECTLY:
+
+#### Example: Unused Parameter Error
+```python
+# LINT ERROR: Parameter 'name' is unused
+def create_notifier(name: str, config: dict) -> Notifier:
+    # name is not used in the function
+    return Notifier(config)
+
+# ❌ WRONG - Lazy fix (just silencing the linter)
+def create_notifier(_name: str, config: dict) -> Notifier:
+    # or worse: adding # noqa or # type: ignore
+
+# ✅ CORRECT - Fix the root cause
+# Option 1: Remove the parameter if truly not needed
+def create_notifier(config: dict) -> Notifier:
+    return Notifier(config)
+
+# Option 2: Actually use the parameter as intended
+def create_notifier(name: str, config: dict) -> Notifier:
+    config['name'] = name  # Now it's used meaningfully
+    return Notifier(config)
+```
+
+#### Example: Type Checking Error
+```python
+# MYPY ERROR: Incompatible return type
+def get_user(user_id: str) -> User:
+    return None  # Type error!
+
+# ❌ WRONG - Lazy fix
+def get_user(user_id: str) -> User:  # type: ignore
+    return None
+
+# ✅ CORRECT - Fix the type signature
+def get_user(user_id: str) -> Optional[User]:
+    return None  # Now type-correct
+```
+
+#### Principles for Fixing Errors
+1. **Understand why** the error exists before fixing
+2. **Fix the design flaw**, not just the symptom
+3. **Remove unused code** rather than hiding it
+4. **Fix type signatures** rather than using Any or ignore
+5. **Never use underscore prefix** just to silence unused warnings
+6. **Never add `# noqa` or `# type: ignore`** to bypass checks
+7. **Never disable linters** to avoid fixing issues
+
+#### Common Fixes Done Right
+- **Unused import**: Remove it completely
+- **Unused variable**: Remove it or implement the missing logic
+- **Type mismatch**: Fix the types, don't use Any
+- **Missing return type**: Add proper type hints
+- **Cyclic import**: Refactor module structure
+- **Too complex**: Split into smaller functions
+
 ## Never Do These
 
 1. **Never skip type hints** - type everything

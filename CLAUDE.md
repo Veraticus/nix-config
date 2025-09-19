@@ -20,11 +20,11 @@ This is a flake-based Nix configuration managing multiple systems:
 **IMPORTANT**: After making changes to any Nix configuration files (including hooks), you MUST run `update` to apply the changes to the current system. Changes won't take effect until the system is rebuilt!
 
 ### Home Assistant API Access
-Claude Code has programmatic access to Home Assistant via a long-lived access token stored at:
-- **Token location**: `/etc/claude-code/homeassistant-token`
-- **Usage**: Use this token in the Authorization header when making API calls to Home Assistant
-- **Example**: `curl -H "Authorization: Bearer $(cat /etc/claude-code/homeassistant-token)" http://localhost:8123/api/states`
-- **Purpose**: This token is specifically for Claude Code to query and interact with Home Assistant programmatically (checking entity states, device info, etc.)
+Use a long-lived access token stored in your user config:
+- Token location: `~/.config/home-assistant/token` (respects `XDG_CONFIG_HOME`)
+- Usage: Use this token in the Authorization header when making API calls to Home Assistant
+- Example: `curl -H "Authorization: Bearer $(cat ~/.config/home-assistant/token)" http://localhost:8123/api/states`
+- Purpose: Programmatic access to Home Assistant (checking entity states, device info, etc.)
 
 ### Claude Code Hooks Overview
 

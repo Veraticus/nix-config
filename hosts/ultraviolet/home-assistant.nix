@@ -7,6 +7,17 @@
 let
   # Create a package for the backup script
   ha-backup-script = pkgs.writeShellScriptBin "backup-ha" (builtins.readFile ./home-assistant/scripts/backup-ha.sh);
+  # Wrap hass-cli to auto-set server and token (script content on disk for readability)
+  hassCliWrapped = pkgs.writeShellScriptBin "hass-cli" (
+    (builtins.readFile ./home-assistant/scripts/hass-cli.sh)
+    + ''
+exec ${pkgs.home-assistant-cli}/bin/hass-cli "$@"
+''
+  );
+  # Generic Lovelace patch helper (script from repo)
+  haLovelacePatch = pkgs.writeShellScriptBin "ha-lovelace-patch" (
+    builtins.readFile ./home-assistant/scripts/ha-lovelace-patch.sh
+  );
 in
 {
   services.home-assistant = {
@@ -244,10 +255,6 @@ in
     "d /var/lib/hass/www 0755 hass hass -"
     "d /var/lib/hass/dashboards 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
-    # Symlink dashboard files from nix-config to Home Assistant
-    "L+ /var/lib/hass/ui-lovelace.yaml - - - - ${./home-assistant/ui-lovelace.yaml}"
-    "L+ /var/lib/hass/dashboards/bubble-overview.yaml - - - - ${./home-assistant/dashboards/bubble-overview.yaml}"
-    "L+ /var/lib/hass/dashboards/floor-plan.yaml - - - - ${./home-assistant/dashboards/floor-plan.yaml}"
   ];
 
   # Create a secrets.yaml template for Home Assistant
@@ -477,6 +484,11 @@ in
   # Create convenient restore command
   environment.systemPackages = with pkgs; [
     ha-backup-script  # Add the backup script to PATH
+    hassCliWrapped    # hass-cli with auto server/token
+    haLovelacePatch   # Fetch -> jq patch -> save Lovelace dashboard
+    jq                 # required by ha-lovelace-patch
+    diffutils          # for diff in --dry-run
+    util-linux         # for column in --list
     (writeShellScriptBin "ha-restore" ''
       # Home Assistant Restore Tool
       # Usage: ha-restore [backup-name|latest]

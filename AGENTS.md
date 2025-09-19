@@ -1,35 +1,19 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Nix flake entrypoints: `flake.nix`, `flake.lock`.
-- Hosts (NixOS/Darwin): `hosts/<hostname>/` and `home-manager/hosts/<hostname>.nix`.
-- User config: `home-manager/` (apps, shells, editors), reusable `modules/` and `overlays/`.
-- Custom packages: `pkgs/<name>/default.nix` with shared `pkgs/default.nix` aggregator.
-- Docs and references: `docs/`, `reference/`. Top-level `README.md` for overview.
+Keep flake entrypoints at the root (`flake.nix`, `flake.lock`). Host-specific NixOS and Darwin configs live under `hosts/<hostname>/` with matching Home Manager profiles in `home-manager/hosts/<hostname>.nix`. Shared modules, overlays, and user applications sit in `modules/`, `overlays/`, and `home-manager/`. Custom packages belong in `pkgs/<name>/default.nix` and are wired up through `pkgs/default.nix`. Use `docs/` and `reference/` for long-form notes, and the root `README.md` for a quick overview before diving in.
 
 ## Build, Test, and Development Commands
-- `make lint` — Run Nix linters (`statix`, `deadnix`) and hook linters when applicable.
-- `make test` — Run hook tests (ShellSpec fixtures under `home-manager/claude-code/hooks/spec`).
-- `make check` — Lint + test; default target.
-- `make update` — Rebuild and switch the current host (uses `nixos-rebuild` or `darwin-rebuild`).
-- Helpful: `nix flake show` to inspect outputs for hosts and packages.
+Run `make lint` to execute `statix`, `deadnix`, and hook linters. `make test` runs ShellSpec fixtures in `home-manager/claude-code/hooks/spec`. `make check` combines linting and tests and should be your default pre-commit gate. When you need to rebuild a machine locally, use `make update` to call `nixos-rebuild` or `darwin-rebuild`. `nix flake show` is handy for inspecting available outputs.
 
 ## Coding Style & Naming Conventions
-- Nix: 2-space indent, trailing commas in attrsets, keep options alphabetized where practical.
-- Filenames: kebab-case for Nix files (e.g., `home-assistant.nix`).
-- Options/attrs: follow upstream naming (camelCase) and avoid unnecessary overrides.
-- Shell scripts: POSIX-compatible, `set -euo pipefail`; validate with `shellcheck` locally.
+Format Nix with two-space indents, trailing commas in attrsets, and alphabetized options when practical. Stick to kebab-case filenames such as `pkgs/rust-toolchain/default.nix`. Follow upstream option names (often camelCase) instead of inventing aliases. Shell scripts must be POSIX-compliant, begin with `set -euo pipefail`, and pass `shellcheck`.
 
 ## Testing Guidelines
-- Prefer small, composable modules with evaluation-only checks when possible.
-- Hooks: keep or add ShellSpec-style tests near `home-manager/claude-code/hooks/spec`.
-- Run `make test` before submitting; add fixtures/examples under `fixtures/` when useful.
+Favor evaluation-only tests and focused modules. Expand ShellSpec coverage alongside any hook changes in `home-manager/claude-code/hooks/spec`. Place additional fixtures under `fixtures/` and run `make test` before requesting reviews.
 
 ## Commit & Pull Request Guidelines
-- Commits: concise, imperative mood (e.g., `hosts/ultraviolet: fix HASS resources`).
-- Scope changes by host/module/package; group related edits together.
-- PRs: include summary, affected hosts, rationale, and any `make check` output. Add screenshots for UI/dashboard changes.
+Write commits in imperative mood (`modules/editor: enable tree-sitter`). Group edits by host or module. Pull requests should summarize the change, call out affected hosts, note `make check` results, and include screenshots for UI-facing tweaks. Link issues when available and describe any follow-up work.
 
 ## Security & Configuration Tips
-- Do not commit secrets. Use example files (e.g., `hosts/ultraviolet/home-assistant-secrets.yaml.example`) and load real values out-of-repo.
-- Validate risky changes by building first (example: `make check` then `make update` on the target machine).
+Never commit secrets; use example files like `hosts/ultraviolet/home-assistant-secrets.yaml.example`. For risky changes, validate with `make check`, then `make update` on the target host to ensure the deployment succeeds before merging.

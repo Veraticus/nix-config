@@ -5,6 +5,7 @@
     ../devspaces-host
     ../linkpearl
     ../security-tools
+    ../gmailctl
   ];
 
   home = {

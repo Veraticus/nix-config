@@ -56,6 +56,7 @@ in
       "sonos" # Sonos speakers and sound system
       "unifi" # UniFi network devices (access points, switches, controller)
       "spotify" # Spotify media playback and control
+      "tailwind" # Tailwind garage door controllers
       "mqtt" # MQTT (if you add it later)
 
       # Local media integration

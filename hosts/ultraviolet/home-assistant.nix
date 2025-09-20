@@ -22,6 +22,7 @@ in
 {
   services.home-assistant = {
     enable = true;
+    package = pkgs.home-assistant-tailwind;
 
     # Add extra Python packages for integrations that need them
     extraPackages =

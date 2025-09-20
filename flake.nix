@@ -29,7 +29,7 @@
     
     # CC-Tools - Claude Code smart hooks
     cc-tools.url = "github:Veraticus/cc-tools";
-    
+
     # Target Process MCP - Target Process API integration
     targetprocess-mcp.url = "github:Veraticus/targetprocess-mcp";
   };

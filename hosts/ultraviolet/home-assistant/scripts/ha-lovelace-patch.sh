@@ -101,7 +101,11 @@ if $print_only; then
   exit 0
 fi
 
-"${filter_file:+}" &>/dev/null
+# Ensure provided patch file exists before attempting to use it
+if [[ -n "$filter_file" && ! -r "$filter_file" ]]; then
+  echo "Error: patch file '$filter_file' is not readable" >&2
+  exit 2
+fi
 # Build filter: custom provided or built-in long-press patch, operate on config only
 if [[ -n "$filter_file" ]]; then
   jq -c -f "$filter_file" "$cfg_orig" > "$cfg_new"
@@ -227,9 +231,16 @@ if $dry_run; then
 fi
 
 # Save back via WS (send only the config, not the WS wrapper)
-payload=$(jq -c --arg url "$dash" --slurpfile cfg "$cfg_new" '{url_path:$url, config: $cfg[0] }')
-if ! hass-cli --timeout 15 raw ws lovelace/config/save --json "$payload" >/dev/null; then
-  echo "Save failed; leaving backup at $backup_file" >&2
+payload=$(jq -n -c --arg url "$dash" --slurpfile cfg "$cfg_new" '{url_path:$url, config: $cfg[0] }')
+if ! response=$(hass-cli --timeout 15 -o json raw ws lovelace/config/save --json "$payload"); then
+  echo "Save request failed; leaving backup at $backup_file" >&2
+  exit 1
+fi
+
+if [[ "$(echo "$response" | jq -r '.success // false')" != "true" ]]; then
+  err_code=$(echo "$response" | jq -r '.error.code // "unknown_error"')
+  err_msg=$(echo "$response" | jq -r '.error.message // "unknown error"')
+  echo "Save failed ($err_code: $err_msg); leaving backup at $backup_file" >&2
   exit 1
 fi
 
@@ -241,7 +252,7 @@ if hass-cli --timeout 15 -o json raw ws lovelace/config --json "{\"url_path\":\"
   vviews=$(jq -r '.result.views | length' "$verify" 2>/dev/null || echo 0)
   if [ "$vtype" != "object" ] || [ "$vviews" = "0" ]; then
     echo "Validation failed (type=$vtype views=$vviews). Reverting from $backup_file..." >&2
-    revert=$(jq -c --arg url "$dash" --slurpfile cfg "$backup_file" '{url_path:$url, config: $cfg[0] }')
+    revert=$(jq -n -c --arg url "$dash" --slurpfile cfg "$backup_file" '{url_path:$url, config: $cfg[0] }')
     if hass-cli --timeout 15 raw ws lovelace/config/save --json "$revert" >/dev/null; then
       echo "Reverted to previous config." >&2
       exit 1

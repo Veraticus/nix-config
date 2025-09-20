@@ -90,54 +90,39 @@ views:
       }
     sub_button:
     - icon: mdi:arrow-up-bold-circle
-      name: Open
+      name: Garage Door
       show_background: true
       tap_action:
         action: call-service
-        service: cover.open_cover
+        service: cover.toggle
         service_data:
           entity_id: cover.garage_door_opener_d81e60_door1
       styles: |-
-        .bubble-sub-button {
-          {% if is_state('cover.garage_door_opener_d81e60_door1', 'open') %}
-            display: none !important;
-          {% else %}
-            background-color: rgba(120, 144, 156, 0.20) !important;
-            border-radius: 16px;
-          {% endif %}
-        }
         .bubble-sub-button-icon {
-          --mdc-icon-size: 24px;
-          color: #455A64 !important;
+          {% if is_state('cover.garage_door_opener_d81e60_door1', 'open') %}
+            transform: rotate(180deg);
+            color: #1565C0 !important;
+          {% else %}
+            transform: rotate(0deg);
+            color: #455A64 !important;
+          {% endif %}
+          --mdc-icon-size: 26px;
         }
         .bubble-sub-button-name {
+          {% if is_state('cover.garage_door_opener_d81e60_door1', 'open') %}
+            color: #0D47A1 !important;
+          {% else %}
+            color: #37474F !important;
+          {% endif %}
           font-size: 12px;
-          color: #37474F !important;
         }
-    - icon: mdi:arrow-down-bold-circle
-      name: Close
-      show_background: true
-      tap_action:
-        action: call-service
-        service: cover.close_cover
-        service_data:
-          entity_id: cover.garage_door_opener_d81e60_door1
-      styles: |-
         .bubble-sub-button {
           {% if is_state('cover.garage_door_opener_d81e60_door1', 'open') %}
             background-color: rgba(25, 118, 210, 0.22) !important;
-            border-radius: 16px;
           {% else %}
-            display: none !important;
+            background-color: rgba(120, 144, 156, 0.20) !important;
           {% endif %}
-        }
-        .bubble-sub-button-icon {
-          --mdc-icon-size: 24px;
-          color: #1565C0 !important;
-        }
-        .bubble-sub-button-name {
-          font-size: 12px;
-          color: #0D47A1 !important;
+          border-radius: 16px;
         }
     button_action:
       tap_action:

@@ -188,8 +188,21 @@ in
 
       # Lovelace configuration
       lovelace = {
-        mode = "storage"; # Use storage mode for UI editing
-        # Dashboards are backed up to git automatically
+        mode = "yaml";
+        resources = [
+          {
+            url = "/hacsfiles/Bubble-Card/bubble-card.js";
+            type = "module";
+          }
+          {
+            url = "/hacsfiles/lovelace-auto-entities/auto-entities.js";
+            type = "module";
+          }
+          {
+            url = "/local/nixos-lovelace-modules/card-mod.js";
+            type = "module";
+          }
+        ];
       };
 
       # Logging
@@ -341,7 +354,15 @@ in
     '';
   };
   
-  # Setup secrets file on startup
+  # Provide version-controlled Lovelace layout
+  environment.etc."hass-ui-lovelace.yaml" = {
+    mode = "0644";
+    user = "hass";
+    group = "hass";
+    source = ../../dashboards/ui-lovelace.yaml;
+  };
+
+  # Setup secrets file on startup and sync Lovelace YAML
   systemd.services.home-assistant.preStart = lib.mkAfter ''
     # Copy secrets file if it doesn't exist
     if [ ! -f /var/lib/hass/secrets.yaml ]; then
@@ -350,6 +371,10 @@ in
       chmod 600 /var/lib/hass/secrets.yaml
       echo "Created secrets.yaml - please edit it with your actual values"
     fi
+
+    # Deploy ui-lovelace.yaml from the Nix store on every start
+    cp /etc/hass-ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
+    chmod 644 /var/lib/hass/ui-lovelace.yaml
   '';
 
   # Backup service for Home Assistant

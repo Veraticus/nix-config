@@ -14,10 +14,6 @@ let
 exec ${pkgs.home-assistant-cli}/bin/hass-cli "$@"
 ''
   );
-  # Generic Lovelace patch helper (script from repo)
-  haLovelacePatch = pkgs.writeShellScriptBin "ha-lovelace-patch" (
-    builtins.readFile ./home-assistant/scripts/ha-lovelace-patch.sh
-  );
 in
 {
   services.home-assistant = {
@@ -202,6 +198,11 @@ in
         resources = [
           {
             url = "/hacsfiles/Bubble-Card/bubble-card.js";
+            type = "module";
+          }
+          {
+            # Prevent pop-up content from flashing or misinitializing; improves pop-up behavior
+            url = "/hacsfiles/Bubble-Card/bubble-pop-up-fix.js";
             type = "module";
           }
           {
@@ -521,10 +522,8 @@ in
   environment.systemPackages = with pkgs; [
     ha-backup-script  # Add the backup script to PATH
     hassCliWrapped    # hass-cli with auto server/token
-    haLovelacePatch   # Fetch -> jq patch -> save Lovelace dashboard
-    jq                 # required by ha-lovelace-patch
-    diffutils          # for diff in --dry-run
-    util-linux         # for column in --list
+    jq                 # JSON processor for API responses
+    yamllint          # YAML linter for configuration validation
     (writeShellScriptBin "ha-restore" ''
       # Home Assistant Restore Tool
       # Usage: ha-restore [backup-name|latest]

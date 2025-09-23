@@ -26,6 +26,15 @@ Use a long-lived access token stored in your user config:
 - Example: `curl -H "Authorization: Bearer $(cat ~/.config/home-assistant/token)" http://localhost:8123/api/states`
 - Purpose: Programmatic access to Home Assistant (checking entity states, device info, etc.)
 
+### Home Assistant Dashboard Workflow
+When modifying Home Assistant dashboards and cards:
+1. **Edit the YAML directly** - Dashboards are in `dashboards/ui-lovelace.yaml`
+2. **Use specialized agent** - Invoke @agent-home-assistant-configurator for complex dashboard changes
+3. **Apply changes** - Run `update` to deploy the YAML changes to the running system
+4. **Validate YAML** - Use `yamllint dashboards/ui-lovelace.yaml` to check for syntax errors
+
+Note: We use YAML mode (storage: false) for dashboards, so all changes must go through the Nix configuration and rebuild process.
+
 ### Claude Code Hooks Overview
 
 This project includes smart hooks that automatically run lint and test commands when files are edited:

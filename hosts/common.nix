@@ -1,4 +1,9 @@
 { inputs, outputs, lib, config, pkgs, ... }: {
+  # Common packages for all headless Linux hosts
+  environment.systemPackages = with pkgs; [
+    yamllint  # YAML linter, useful for Home Assistant configurations
+  ];
+
   # Nix store management - prevent disk space issues
   nix = {
     # Automatic garbage collection

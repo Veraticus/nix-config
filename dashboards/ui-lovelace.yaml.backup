@@ -146,100 +146,92 @@ views:
     entity: climate.my_ecobee
     name: Dining Room
     icon: mdi:home-thermometer
-    show_state: true
+    show_state: false
     show_attribute: false
     show_last_changed: false
     styles: |-
-      /* Dynamic temperature-based background colors */
-      .bubble-button-card-container {
-        background: ${(() => {
-          const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-          const hvac = hass.states['climate.my_ecobee'];
-          const hvacAction = hvac?.attributes?.hvac_action;
-
-          // Use HVAC action colors if actively heating/cooling
-          if (hvacAction === 'heating') {
-            return 'rgba(239, 154, 154, 0.62)';
-          } else if (hvacAction === 'cooling') {
-            return 'rgba(144, 202, 249, 0.62)';
-          }
-
-          // Otherwise use temperature gradient
-          const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-            ? parseFloat(tempState.state) : 65;
-          const clamped = Math.max(50, Math.min(120, temp));
-          const ratio = (clamped - 50) / 70;
-          const r = Math.round(30 + (181 * ratio));
-          const g = Math.round(136 + ((47 - 136) * ratio));
-          const b = Math.round(229 + ((47 - 229) * ratio));
-          return `rgba(${r}, ${g}, ${b}, 0.62)`;
-        })()} !important;
+      ha-card {
+        --bubble-button-main-background-color: rgba(120, 144, 156, 0.22) !important;
+        --bubble-button-background-color: rgba(120, 144, 156, 0.22) !important;
+        --bubble-button-icon-background-color: rgba(69, 90, 100, 0.60) !important;
       }
-
-      .bubble-icon-container {
-        background: ${(() => {
-          const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-          const hvac = hass.states['climate.my_ecobee'];
-          const hvacAction = hvac?.attributes?.hvac_action;
-
-          // Use HVAC action colors if actively heating/cooling
-          if (hvacAction === 'heating') {
-            return 'rgba(211, 47, 47, 0.80)';
-          } else if (hvacAction === 'cooling') {
-            return 'rgba(30, 136, 229, 0.80)';
-          }
-
-          // Otherwise use temperature gradient
-          const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-            ? parseFloat(tempState.state) : 65;
-          const clamped = Math.max(50, Math.min(120, temp));
-          const ratio = (clamped - 50) / 70;
-          const r = Math.round(30 + (181 * ratio));
-          const g = Math.round(136 + ((47 - 136) * ratio));
-          const b = Math.round(229 + ((47 - 229) * ratio));
-          return `rgba(${r}, ${g}, ${b}, 0.80)`;
-        })()} !important;
-      }
-
-      /* Update state text to show temp and humidity */
-      ${(() => {
-        const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-        const humState = hass.states['sensor.my_ecobee_current_humidity'];
-
-        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-          ? Math.round(parseFloat(tempState.state)) + '°F'
-          : 'N/A';
-
-        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-          ? Math.round(parseFloat(humState.state)) + '%'
-          : 'N/A';
-
-        // Update the state element directly
-        if (card) {
-          const stateEl = card.querySelector('.bubble-state');
-          if (stateEl) {
-            stateEl.textContent = `${tempVal} • ${humVal}`;
-          }
-        }
-
-        return ''; // Return empty CSS rule
-      })()}
-
-      /* Static styles */
+      {% set hvac_state = states('climate.my_ecobee') %}
+      {% set hvac_action = state_attr('climate.my_ecobee', 'hvac_action') %}
       .bubble-icon {
-        color: rgba(238, 238, 238, 0.95) !important;
+        {% if hvac_action == 'heating' %}
+          color: #FFCDD2 !important;
+        {% elif hvac_action == 'cooling' %}
+          color: #BBDEFB !important;
+        {% else %}
+          color: #ECEFF1 !important;
+        {% endif %}
       }
-
       .bubble-name {
-        color: #1a1a1a !important;
+        {% if hvac_action == 'heating' %}
+          color: #B71C1C !important;
+        {% elif hvac_action == 'cooling' %}
+          color: #0D47A1 !important;
+        {% else %}
+          color: #37474F !important;
+        {% endif %}
       }
-
       .bubble-state {
         font-size: 12px;
         font-weight: 600;
-        color: #1a1a1a !important;
-        position: relative;
       }
+      ${(() => {
+        const hvac = hass.states['climate.my_ecobee'];
+        if (!hvac) { return ''; }
+        const modeRaw = hvac.state;
+        const modeText = (!modeRaw || ['unknown', 'unavailable', 'none'].includes(modeRaw))
+          ? 'Unknown'
+          : modeRaw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        const tempAttr = hvac.attributes?.current_temperature;
+        const tempText = typeof tempAttr === 'number' ? `${Math.round(tempAttr)}°F` : 'N/A';
+        const humidityAttr = hvac.attributes?.current_humidity;
+        const humidityText = typeof humidityAttr === 'number' ? `${Math.round(humidityAttr)}%` : 'N/A';
+        const composed = `${modeText} • ${tempText} • ${humidityText}`;
+        const currentCard = typeof card !== 'undefined' ? card : this;
+        const haCard = currentCard?.closest('ha-card');
+        const setBubbleColors = (bg, iconBg) => {
+          if (!haCard) { return; }
+          haCard.style.setProperty('--bubble-button-main-background-color', bg);
+          haCard.style.setProperty('--bubble-button-background-color', bg);
+          haCard.style.setProperty('--bubble-button-icon-background-color', iconBg);
+        };
+        const blendColor = (temp) => {
+          const clamp = (value) => Math.min(Math.max(value, 0), 1);
+          const ratio = clamp((temp - 30) / 70);
+          const lerp = (start, end) => Math.round(start + (end - start) * ratio);
+          const r = lerp(30, 211);
+          const g = lerp(136, 47);
+          const b = lerp(229, 47);
+          return {
+            background: `rgba(${r}, ${g}, ${b}, 0.55)`,
+            icon: `rgba(${r}, ${g}, ${b}, 0.75)`
+          };
+        };
+        const hvacAction = hvac.attributes?.hvac_action;
+        if (hvacAction === 'heating') {
+          setBubbleColors('rgba(239, 154, 154, 0.55)', 'rgba(211, 47, 47, 0.75)');
+        } else if (hvacAction === 'cooling') {
+          setBubbleColors('rgba(144, 202, 249, 0.55)', 'rgba(30, 136, 229, 0.75)');
+        } else {
+          const tempValue = typeof tempAttr === 'number' ? tempAttr : 65;
+          const colors = blendColor(tempValue);
+          setBubbleColors(colors.background, colors.icon);
+        }
+        const stateEl = currentCard?.querySelector('.bubble-state');
+        if (stateEl) {
+          stateEl.style.color = hvac.attributes?.hvac_action === 'heating'
+            ? '#B71C1C'
+            : hvac.attributes?.hvac_action === 'cooling'
+              ? '#0D47A1'
+              : '#455A64';
+          stateEl.innerText = composed;
+        }
+        return '';
+      })()}
     sub_button:
     - icon: mdi:thermostat
       name: Thermostat
@@ -297,81 +289,119 @@ views:
     entity: sensor.server_closet_air_temperature
     name: Server Closet
     icon: mdi:server
-    show_state: true
+    show_state: false
     show_attribute: false
     show_last_changed: false
-    styles: |
-      /* Dynamic temperature-based background colors */
-      .bubble-button-card-container {
-        background: ${(() => {
-          const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
-          const clamped = Math.max(50, Math.min(120, temp));
-          const ratio = (clamped - 50) / 70;
-          const r = Math.round(30 + (181 * ratio));
-          const g = Math.round(136 + ((47 - 136) * ratio));
-          const b = Math.round(229 + ((47 - 229) * ratio));
-          return `rgba(${r}, ${g}, ${b}, 0.62)`;
-        })()} !important;
-      }
-      
-      .bubble-icon-container {
-        background: ${(() => {
-          const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
-          const clamped = Math.max(50, Math.min(120, temp));
-          const ratio = (clamped - 50) / 70;
-          const r = Math.round(30 + (181 * ratio));
-          const g = Math.round(136 + ((47 - 136) * ratio));
-          const b = Math.round(229 + ((47 - 229) * ratio));
-          return `rgba(${r}, ${g}, ${b}, 0.80)`;
-        })()} !important;
-      }
-      
-      /* Update state text to show temp and humidity */
-      ${(() => {
-        const tempState = hass.states['sensor.server_closet_air_temperature'];
-        const humState = hass.states['sensor.server_closet_humidity'];
-        
-        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state) 
-          ? Math.round(parseFloat(tempState.state)) + '°F' 
-          : 'N/A';
-        
-        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-          ? Math.round(parseFloat(humState.state)) + '%'
-          : 'N/A';
-        
-        // Update the state element directly
-        if (card) {
-          const stateEl = card.querySelector('.bubble-state');
-          if (stateEl) {
-            stateEl.textContent = `${tempVal} • ${humVal}`;
-          }
-        }
-        
-        return ''; // Return empty CSS rule
-      })()}
-      
-      /* Static styles */
+    styles: |-
+      /* Base styles */
       .bubble-icon {
         color: rgba(238, 238, 238, 0.95) !important;
       }
-      
       .bubble-name {
         color: #1a1a1a !important;
       }
-      
       .bubble-state {
         font-size: 12px;
         font-weight: 600;
         color: #1a1a1a !important;
         position: relative;
       }
-      
       .bubble-action,
       .bubble-button,
       .bubble-wrapper,
       .bubble-action-enabled {
         pointer-events: none !important;
       }
+    card_mod:
+      style: |
+        (() => {
+          const updateColors = () => {
+            const card = this;
+            if (!window.hass) return;
+
+            // Get sensor values
+            const tempState = window.hass.states['sensor.server_closet_air_temperature'];
+            const humidityState = window.hass.states['sensor.server_closet_humidity'];
+
+            // Process temperature
+            let tempValue = 65.0;
+            let tempLabel = 'N/A';
+            if (tempState && tempState.state &&
+                !['unknown', 'unavailable', ''].includes(tempState.state)) {
+              tempValue = parseFloat(tempState.state) || 65.0;
+              tempLabel = Math.round(tempValue) + '°F';
+            }
+
+            // Process humidity
+            let humidityLabel = 'N/A';
+            if (humidityState && humidityState.state &&
+                !['unknown', 'unavailable', ''].includes(humidityState.state)) {
+              humidityLabel = Math.round(parseFloat(humidityState.state) || 0) + '%';
+            }
+
+            // Clamp temperature to range
+            tempValue = Math.max(30, Math.min(100, tempValue));
+
+            // Calculate color gradient (30°F = blue, 100°F = red)
+            const ratio = (tempValue - 30.0) / 70.0;
+            const red = Math.round(30 + (181 * ratio));
+            const green = Math.round(136 + ((47 - 136) * ratio));
+            const blue = Math.round(229 + ((47 - 229) * ratio));
+
+            const backgroundColor = `rgba(${red}, ${green}, ${blue}, 0.62)`;
+            const iconBackgroundColor = `rgba(${red}, ${green}, ${blue}, 0.80)`;
+
+            // Update CSS custom properties
+            card.style.setProperty('--bubble-main-background-color', backgroundColor);
+            card.style.setProperty('--bubble-secondary-background-color', backgroundColor);
+            card.style.setProperty('--bubble-button-main-background-color', backgroundColor);
+            card.style.setProperty('--bubble-button-background-color', backgroundColor);
+            card.style.setProperty('--bubble-button-icon-background-color', iconBackgroundColor);
+
+            // Update background elements
+            const background = card.querySelector('.bubble-background');
+            if (background) {
+              background.style.backgroundColor = backgroundColor;
+              background.style.opacity = '1';
+            }
+
+            const button = card.querySelector('.bubble-button');
+            if (button) {
+              button.style.backgroundColor = backgroundColor;
+            }
+
+            const iconContainer = card.querySelector('.bubble-icon-container');
+            if (iconContainer) {
+              iconContainer.style.backgroundColor = iconBackgroundColor;
+            }
+
+            // Update state text
+            const stateElement = card.querySelector('.bubble-state');
+            if (stateElement) {
+              stateElement.textContent = `Temp ${tempLabel} • Humidity ${humidityLabel}`;
+            }
+          };
+
+          // Initial update
+          updateColors();
+
+          // Update when state changes
+          if (window.hass) {
+            const originalUpdate = this.hass;
+            Object.defineProperty(this, 'hass', {
+              set: function(value) {
+                originalUpdate = value;
+                setTimeout(updateColors, 0);
+              },
+              get: function() {
+                return originalUpdate;
+              }
+            });
+          }
+
+          // Periodic update as fallback
+          setInterval(updateColors, 5000);
+        })();
     sub_button: []
     button_action:
       tap_action:

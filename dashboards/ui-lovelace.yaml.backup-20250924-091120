@@ -4,648 +4,416 @@ views:
   path: overview
   icon: mdi:home
   theme: default
+  panel: true
   cards:
-  - type: vertical-stack
-    cards:
-    - type: custom:bubble-card
-      card_type: button
-      button_type: slider
-      entity: light.living_room
-      name: Living Room
-      icon: mdi:sofa
-      show_state: true
-      show_last_changed: false
-      show_attribute: true
-      attribute: brightness
-      slider_live_update: true
-      allow_light_slider_to_0: false
-      card_layout: large
-      sub_button:
-      - entity: binary_sensor.front_door_window_door_is_open
-        icon: mdi:door-closed
-        name: Door
-        show_state: false
-        show_background: true
-        show_icon: true
-        styles: |-
-          .bubble-sub-button {
-            {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
-              background-color: rgba(239, 83, 80, 0.3) !important;
-            {% else %}
-              background-color: rgba(76, 175, 80, 0.3) !important;
-            {% endif %}
-          }
-          .bubble-sub-button-icon {
-            --mdc-icon-size: 26px;
-          }
-          ha-icon {
-            {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
-              --card-mod-icon: mdi:door-open;
-              color: #ef5350 !important;
-            {% else %}
-              --card-mod-icon: mdi:door-closed;
-              color: #43a047 !important;
-            {% endif %}
-          }
-      - icon: mdi:dots-horizontal
-        show_background: false
-        tap_action:
-          action: navigate
-          navigation_path: '#living-room-lights'
-      button_action:
-        tap_action:
-          action: toggle
-        hold_action:
-          action: none
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.living_room
+    name: Living Room
+    icon: mdi:sofa
+    show_state: true
+    show_last_changed: false
+    show_attribute: true
+    attribute: brightness
+    slider_live_update: true
+    allow_light_slider_to_0: false
+    card_layout: large
+    sub_button:
+    - entity: binary_sensor.front_door_window_door_is_open
+      icon: mdi:door-closed
+      name: Door
+      show_state: false
+      show_background: true
+      show_icon: true
+      styles: |-
+        .bubble-sub-button {
+          {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
+            background-color: rgba(239, 83, 80, 0.3) !important;
+          {% else %}
+            background-color: rgba(76, 175, 80, 0.3) !important;
+          {% endif %}
+        }
+        .bubble-sub-button-icon {
+          --mdc-icon-size: 26px;
+        }
+        ha-icon {
+          {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
+            --card-mod-icon: mdi:door-open;
+            color: #ef5350 !important;
+          {% else %}
+            --card-mod-icon: mdi:door-closed;
+            color: #43a047 !important;
+          {% endif %}
+        }
+    - icon: mdi:dots-horizontal
+      show_background: false
+      tap_action:
+        action: navigate
+        navigation_path: '#living-room-lights'
+    button_action:
       tap_action:
         action: toggle
       hold_action:
-        action: navigate
-        navigation_path: '#living-room-lights'
-    - type: custom:bubble-card
-      card_type: button
-      button_type: state
-      entity: cover.garage_door
-      name: Garage
-      icon: mdi:garage-variant
-      show_state: true
-      show_last_changed: true
+        action: none
+    tap_action:
+      action: toggle
+    hold_action:
+      action: navigate
+      navigation_path: '#living-room-lights'
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: cover.garage_door
+    name: Garage
+    icon: mdi:garage-variant
+    show_state: true
+    show_last_changed: true
+    styles: |-
+      ha-card {
+        {% if is_state('cover.garage_door', 'open') %}
+          --bubble-button-background-color: rgba(41, 182, 246, 0.22) !important;
+          --bubble-button-icon-background-color: rgba(25, 118, 210, 0.65) !important;
+        {% else %}
+          --bubble-button-background-color: rgba(120, 144, 156, 0.20) !important;
+          --bubble-button-icon-background-color: rgba(55, 71, 79, 0.55) !important;
+        {% endif %}
+      }
+      .bubble-icon {
+        {% if is_state('cover.garage_door', 'open') %}
+          color: #BBDEFB !important;
+        {% else %}
+          color: #ECEFF1 !important;
+        {% endif %}
+      }
+      .bubble-name,
+      .bubble-state {
+        {% if is_state('cover.garage_door', 'open') %}
+          color: #0D47A1 !important;
+        {% else %}
+          color: #37474F !important;
+        {% endif %}
+      }
+    sub_button:
+    - icon: mdi:arrow-up-bold-circle
+      name: Garage Door
+      show_background: true
+      tap_action:
+        action: call-service
+        service: cover.toggle
+        service_data:
+          entity_id: cover.garage_door
       styles: |-
-        ha-card {
+        .bubble-sub-button-icon {
           {% if is_state('cover.garage_door', 'open') %}
-            --bubble-button-background-color: rgba(41, 182, 246, 0.22) !important;
-            --bubble-button-icon-background-color: rgba(25, 118, 210, 0.65) !important;
+            transform: rotate(180deg);
+            color: #1565C0 !important;
           {% else %}
-            --bubble-button-background-color: rgba(120, 144, 156, 0.20) !important;
-            --bubble-button-icon-background-color: rgba(55, 71, 79, 0.55) !important;
+            transform: rotate(0deg);
+            color: #455A64 !important;
           {% endif %}
+          --mdc-icon-size: 26px;
         }
-        .bubble-icon {
-          {% if is_state('cover.garage_door', 'open') %}
-            color: #BBDEFB !important;
-          {% else %}
-            color: #ECEFF1 !important;
-          {% endif %}
-        }
-        .bubble-name,
-        .bubble-state {
+        .bubble-sub-button-name {
           {% if is_state('cover.garage_door', 'open') %}
             color: #0D47A1 !important;
           {% else %}
             color: #37474F !important;
           {% endif %}
+          font-size: 12px;
         }
-      sub_button:
-      - icon: mdi:arrow-up-bold-circle
-        name: Garage Door
-        show_background: true
-        tap_action:
-          action: call-service
-          service: cover.toggle
-          service_data:
-            entity_id: cover.garage_door
-        styles: |-
-          .bubble-sub-button-icon {
-            {% if is_state('cover.garage_door', 'open') %}
-              transform: rotate(180deg);
-              color: #1565C0 !important;
-            {% else %}
-              transform: rotate(0deg);
-              color: #455A64 !important;
-            {% endif %}
-            --mdc-icon-size: 26px;
-          }
-          .bubble-sub-button-name {
-            {% if is_state('cover.garage_door', 'open') %}
-              color: #0D47A1 !important;
-            {% else %}
-              color: #37474F !important;
-            {% endif %}
-            font-size: 12px;
-          }
-          .bubble-sub-button {
-            {% if is_state('cover.garage_door', 'open') %}
-              background-color: rgba(25, 118, 210, 0.22) !important;
-            {% else %}
-              background-color: rgba(120, 144, 156, 0.20) !important;
-            {% endif %}
-            border-radius: 16px;
-          }
-      button_action:
-        tap_action:
-          action: more-info
-        double_tap_action:
-          action: none
-        hold_action:
-          action: more-info
+        .bubble-sub-button {
+          {% if is_state('cover.garage_door', 'open') %}
+            background-color: rgba(25, 118, 210, 0.22) !important;
+          {% else %}
+            background-color: rgba(120, 144, 156, 0.20) !important;
+          {% endif %}
+          border-radius: 16px;
+        }
+    button_action:
       tap_action:
         action: more-info
+      double_tap_action:
+        action: none
       hold_action:
         action: more-info
-    - type: custom:bubble-card
-      card_type: button
-      button_type: state
-      entity: climate.my_ecobee
-      name: Dining Room
-      icon: mdi:home-thermometer
-      show_state: true
-      show_attribute: false
-      show_last_changed: false
-      styles: |-
-        /* Dynamic temperature-based background colors */
-        .bubble-button-card-container {
-          background: ${(() => {
-            const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-            const hvac = hass.states['climate.my_ecobee'];
-            const hvacAction = hvac?.attributes?.hvac_action;
-
-            // Use HVAC action colors if actively heating/cooling
-            if (hvacAction === 'heating') {
-              return 'rgba(239, 154, 154, 0.62)';
-            } else if (hvacAction === 'cooling') {
-              return 'rgba(144, 202, 249, 0.62)';
-            }
-
-            // Otherwise use temperature gradient with VERY bright colors
-            const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-              ? parseFloat(tempState.state) : 65;
-            const clamped = Math.max(50, Math.min(120, temp));
-            const ratio = (clamped - 50) / 70;
-            // Very bright blue (50°F) to very bright red (120°F)
-            const r = Math.round(0 + (255 * ratio));  // 0 -> 255 (pure blue to pure red)
-            const g = Math.round(100 + ((20 - 100) * ratio));  // 100 -> 20
-            const b = Math.round(255 + ((0 - 255) * ratio));  // 255 -> 0
-            return `rgba(${r}, ${g}, ${b}, 0.95)`;  // Nearly full opacity
-          })()} !important;
-        }
-
-        .bubble-icon-container {
-          background: ${(() => {
-            const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-            const hvac = hass.states['climate.my_ecobee'];
-            const hvacAction = hvac?.attributes?.hvac_action;
-
-            // Use HVAC action colors if actively heating/cooling
-            if (hvacAction === 'heating') {
-              return 'rgba(211, 47, 47, 0.80)';
-            } else if (hvacAction === 'cooling') {
-              return 'rgba(30, 136, 229, 0.80)';
-            }
-
-            // Otherwise use temperature gradient with MAXIMUM brightness
-            const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-              ? parseFloat(tempState.state) : 65;
-            const clamped = Math.max(50, Math.min(120, temp));
-            const ratio = (clamped - 50) / 70;
-            // Maximum brightness blue (50°F) to red (120°F)
-            const r = Math.round(0 + (255 * ratio));  // 0 -> 255
-            const g = Math.round(150 + ((0 - 150) * ratio));  // 150 -> 0
-            const b = Math.round(255 + ((0 - 255) * ratio));  // 255 -> 0
-            return `rgba(${r}, ${g}, ${b}, 1.0)`;  // Full opacity
-          })()} !important;
-        }
-
-        /* Update state text to show temp and humidity */
-        ${(() => {
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: climate.my_ecobee
+    name: Dining Room
+    icon: mdi:home-thermometer
+    show_state: true
+    show_attribute: false
+    show_last_changed: false
+    styles: |-
+      /* Dynamic temperature-based background colors */
+      .bubble-button-card-container {
+        background: ${(() => {
           const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-          const humState = hass.states['sensor.my_ecobee_current_humidity'];
+          const hvac = hass.states['climate.my_ecobee'];
+          const hvacAction = hvac?.attributes?.hvac_action;
 
-          const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-            ? Math.round(parseFloat(tempState.state)) + '°F'
-            : 'N/A';
-
-          const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-            ? Math.round(parseFloat(humState.state)) + '%'
-            : 'N/A';
-
-          // Update the state element directly
-          if (card) {
-            const stateEl = card.querySelector('.bubble-state');
-            if (stateEl) {
-              stateEl.textContent = `${tempVal} • ${humVal}`;
-            }
+          // Use HVAC action colors if actively heating/cooling
+          if (hvacAction === 'heating') {
+            return 'rgba(239, 154, 154, 0.62)';
+          } else if (hvacAction === 'cooling') {
+            return 'rgba(144, 202, 249, 0.62)';
           }
 
-          return ''; // Return empty CSS rule
-        })()}
+          // Otherwise use temperature gradient
+          const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
+            ? parseFloat(tempState.state) : 65;
+          const clamped = Math.max(50, Math.min(120, temp));
+          const ratio = (clamped - 50) / 70;
+          const r = Math.round(30 + (181 * ratio));
+          const g = Math.round(136 + ((47 - 136) * ratio));
+          const b = Math.round(229 + ((47 - 229) * ratio));
+          return `rgba(${r}, ${g}, ${b}, 0.62)`;
+        })()} !important;
+      }
 
-        /* Static styles */
-        .bubble-icon {
-          color: rgba(238, 238, 238, 0.95) !important;
+      .bubble-icon-container {
+        background: ${(() => {
+          const tempState = hass.states['sensor.my_ecobee_current_temperature'];
+          const hvac = hass.states['climate.my_ecobee'];
+          const hvacAction = hvac?.attributes?.hvac_action;
+
+          // Use HVAC action colors if actively heating/cooling
+          if (hvacAction === 'heating') {
+            return 'rgba(211, 47, 47, 0.80)';
+          } else if (hvacAction === 'cooling') {
+            return 'rgba(30, 136, 229, 0.80)';
+          }
+
+          // Otherwise use temperature gradient
+          const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
+            ? parseFloat(tempState.state) : 65;
+          const clamped = Math.max(50, Math.min(120, temp));
+          const ratio = (clamped - 50) / 70;
+          const r = Math.round(30 + (181 * ratio));
+          const g = Math.round(136 + ((47 - 136) * ratio));
+          const b = Math.round(229 + ((47 - 229) * ratio));
+          return `rgba(${r}, ${g}, ${b}, 0.80)`;
+        })()} !important;
+      }
+
+      /* Update state text to show temp and humidity */
+      ${(() => {
+        const tempState = hass.states['sensor.my_ecobee_current_temperature'];
+        const humState = hass.states['sensor.my_ecobee_current_humidity'];
+
+        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
+          ? Math.round(parseFloat(tempState.state)) + '°F'
+          : 'N/A';
+
+        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
+          ? Math.round(parseFloat(humState.state)) + '%'
+          : 'N/A';
+
+        // Update the state element directly
+        if (card) {
+          const stateEl = card.querySelector('.bubble-state');
+          if (stateEl) {
+            stateEl.textContent = `${tempVal} • ${humVal}`;
+          }
         }
 
-        .bubble-name {
-          color: #1a1a1a !important;
-        }
+        return ''; // Return empty CSS rule
+      })()}
 
-        .bubble-state {
+      /* Static styles */
+      .bubble-icon {
+        color: rgba(238, 238, 238, 0.95) !important;
+      }
+
+      .bubble-name {
+        color: #1a1a1a !important;
+      }
+
+      .bubble-state {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1a1a1a !important;
+        position: relative;
+      }
+    sub_button:
+    - icon: mdi:thermostat
+      name: Thermostat
+      show_background: true
+      show_name: false
+      tap_action:
+        action: navigate
+        navigation_path: '#dining-room-thermostat'
+      styles: |-
+        {% set hvac_action = state_attr('climate.my_ecobee', 'hvac_action') %}
+        .bubble-sub-button {
+          {% if hvac_action == 'heating' %}
+            background-color: rgba(229, 115, 115, 0.28) !important;
+          {% elif hvac_action == 'cooling' %}
+            background-color: rgba(100, 181, 246, 0.28) !important;
+          {% else %}
+            background-color: rgba(120, 144, 156, 0.20) !important;
+          {% endif %}
+          border-radius: 16px;
+        }
+        .bubble-sub-button-icon {
+          {% if hvac_action == 'heating' %}
+            color: #C62828 !important;
+          {% elif hvac_action == 'cooling' %}
+            color: #1565C0 !important;
+          {% else %}
+            color: #546E7A !important;
+          {% endif %}
+          --mdc-icon-size: 26px;
+        }
+        .bubble-sub-button-name {
+          {% if hvac_action == 'heating' %}
+            color: #B71C1C !important;
+          {% elif hvac_action == 'cooling' %}
+            color: #0D47A1 !important;
+          {% else %}
+            color: #37474F !important;
+          {% endif %}
           font-size: 12px;
-          font-weight: 600;
-          color: #1a1a1a !important;
-          position: relative;
         }
-      sub_button:
-      - icon: mdi:thermostat
-        name: Thermostat
-        show_background: true
-        show_name: false
-        tap_action:
-          action: navigate
-          navigation_path: '#dining-room-thermostat'
-        styles: |-
-          {% set hvac_action = state_attr('climate.my_ecobee', 'hvac_action') %}
-          .bubble-sub-button {
-            {% if hvac_action == 'heating' %}
-              background-color: rgba(229, 115, 115, 0.28) !important;
-            {% elif hvac_action == 'cooling' %}
-              background-color: rgba(100, 181, 246, 0.28) !important;
-            {% else %}
-              background-color: rgba(120, 144, 156, 0.20) !important;
-            {% endif %}
-            border-radius: 16px;
-          }
-          .bubble-sub-button-icon {
-            {% if hvac_action == 'heating' %}
-              color: #C62828 !important;
-            {% elif hvac_action == 'cooling' %}
-              color: #1565C0 !important;
-            {% else %}
-              color: #546E7A !important;
-            {% endif %}
-            --mdc-icon-size: 26px;
-          }
-          .bubble-sub-button-name {
-            {% if hvac_action == 'heating' %}
-              color: #B71C1C !important;
-            {% elif hvac_action == 'cooling' %}
-              color: #0D47A1 !important;
-            {% else %}
-              color: #37474F !important;
-            {% endif %}
-            font-size: 12px;
-          }
-      button_action:
-        tap_action:
-          action: more-info
-        double_tap_action:
-          action: none
-        hold_action:
-          action: more-info
+    button_action:
       tap_action:
         action: more-info
+      double_tap_action:
+        action: none
       hold_action:
         action: more-info
-    - type: custom:bubble-card
-      card_type: button
-      button_type: state
-      entity: sensor.server_closet_air_temperature
-      name: Server Closet
-      icon: mdi:server
-      show_state: true
-      show_attribute: false
-      show_last_changed: false
-      styles: |
-        /* Dynamic temperature-based background colors */
-        .bubble-button-card-container {
-          background: ${(() => {
-            const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
-            const clamped = Math.max(50, Math.min(120, temp));
-            const ratio = (clamped - 50) / 70;
-            // VERY bright blue (50°F) to VERY bright red (120°F)
-            const r = Math.round(0 + (255 * ratio));  // 0 -> 255 (pure blue to pure red)
-            const g = Math.round(100 + ((20 - 100) * ratio));  // 100 -> 20
-            const b = Math.round(255 + ((0 - 255) * ratio));  // 255 -> 0
-            return `rgba(${r}, ${g}, ${b}, 0.95)`;  // Nearly full opacity
-          })()} !important;
-        }
-
-        .bubble-icon-container {
-          background: ${(() => {
-            const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
-            const clamped = Math.max(50, Math.min(120, temp));
-            const ratio = (clamped - 50) / 70;
-            // MAXIMUM brightness blue (50°F) to red (120°F) for icon
-            const r = Math.round(0 + (255 * ratio));  // 0 -> 255
-            const g = Math.round(150 + ((0 - 150) * ratio));  // 150 -> 0
-            const b = Math.round(255 + ((0 - 255) * ratio));  // 255 -> 0
-            return `rgba(${r}, ${g}, ${b}, 1.0)`;  // Full opacity
-          })()} !important;
-        }
-
-        /* Update state text to show temp and humidity */
-        ${(() => {
-          const tempState = hass.states['sensor.server_closet_air_temperature'];
-          const humState = hass.states['sensor.server_closet_humidity'];
-
-          const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-            ? Math.round(parseFloat(tempState.state)) + '°F'
-            : 'N/A';
-
-          const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-            ? Math.round(parseFloat(humState.state)) + '%'
-            : 'N/A';
-
-          // Update the state element directly
-          if (card) {
-            const stateEl = card.querySelector('.bubble-state');
-            if (stateEl) {
-              stateEl.textContent = `${tempVal} • ${humVal}`;
-            }
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: sensor.server_closet_air_temperature
+    name: Server Closet
+    icon: mdi:server
+    show_state: true
+    show_attribute: false
+    show_last_changed: false
+    styles: |
+      /* Dynamic temperature-based background colors */
+      .bubble-button-card-container {
+        background: ${(() => {
+          const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
+          const clamped = Math.max(50, Math.min(120, temp));
+          const ratio = (clamped - 50) / 70;
+          const r = Math.round(30 + (181 * ratio));
+          const g = Math.round(136 + ((47 - 136) * ratio));
+          const b = Math.round(229 + ((47 - 229) * ratio));
+          return `rgba(${r}, ${g}, ${b}, 0.62)`;
+        })()} !important;
+      }
+      
+      .bubble-icon-container {
+        background: ${(() => {
+          const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
+          const clamped = Math.max(50, Math.min(120, temp));
+          const ratio = (clamped - 50) / 70;
+          const r = Math.round(30 + (181 * ratio));
+          const g = Math.round(136 + ((47 - 136) * ratio));
+          const b = Math.round(229 + ((47 - 229) * ratio));
+          return `rgba(${r}, ${g}, ${b}, 0.80)`;
+        })()} !important;
+      }
+      
+      /* Update state text to show temp and humidity */
+      ${(() => {
+        const tempState = hass.states['sensor.server_closet_air_temperature'];
+        const humState = hass.states['sensor.server_closet_humidity'];
+        
+        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state) 
+          ? Math.round(parseFloat(tempState.state)) + '°F' 
+          : 'N/A';
+        
+        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
+          ? Math.round(parseFloat(humState.state)) + '%'
+          : 'N/A';
+        
+        // Update the state element directly
+        if (card) {
+          const stateEl = card.querySelector('.bubble-state');
+          if (stateEl) {
+            stateEl.textContent = `${tempVal} • ${humVal}`;
           }
-
-          return ''; // Return empty CSS rule
-        })()}
-
-        /* Static styles */
-        .bubble-icon {
-          color: rgba(238, 238, 238, 0.95) !important;
         }
-
-        .bubble-name {
-          color: #1a1a1a !important;
-        }
-
-        .bubble-state {
-          font-size: 12px;
-          font-weight: 600;
-          color: #1a1a1a !important;
-          position: relative;
-        }
-
-        .bubble-action,
-        .bubble-button,
-        .bubble-wrapper,
-        .bubble-action-enabled {
-          pointer-events: none !important;
-        }
-      sub_button: []
-      button_action:
-        tap_action:
-          action: none
-        hold_action:
-          action: none
-        double_tap_action:
-          action: none
+        
+        return ''; // Return empty CSS rule
+      })()}
+      
+      /* Static styles */
+      .bubble-icon {
+        color: rgba(238, 238, 238, 0.95) !important;
+      }
+      
+      .bubble-name {
+        color: #1a1a1a !important;
+      }
+      
+      .bubble-state {
+        font-size: 12px;
+        font-weight: 600;
+        color: #1a1a1a !important;
+        position: relative;
+      }
+      
+      .bubble-action,
+      .bubble-button,
+      .bubble-wrapper,
+      .bubble-action-enabled {
+        pointer-events: none !important;
+      }
+    sub_button: []
+    button_action:
       tap_action:
         action: none
       hold_action:
         action: none
-    # Main Bedroom
-    - type: custom:bubble-card
-      card_type: button
-      button_type: slider
-      entity: light.master_bedroom
-      name: Main Bedroom
-      icon: mdi:bed
-      show_state: true
-      show_last_changed: false
-      show_attribute: true
-      attribute: brightness
-      slider_live_update: true
-      allow_light_slider_to_0: false
-      card_layout: large
-      sub_button:
-      - icon: mdi:dots-horizontal
-        show_background: false
-        tap_action:
-          action: navigate
-          navigation_path: '#main-bedroom-lights'
-      button_action:
-        tap_action:
-          action: toggle
-        hold_action:
-          action: none
+      double_tap_action:
+        action: none
+    tap_action:
+      action: none
+    hold_action:
+      action: none
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.master_bedroom
+    name: Main Bedroom
+    icon: mdi:bed
+    show_state: true
+    show_last_changed: false
+    show_attribute: true
+    attribute: brightness
+    slider_live_update: true
+    allow_light_slider_to_0: false
+    card_layout: large
+    sub_button:
+    - icon: mdi:dots-horizontal
+      show_background: false
+      tap_action:
+        action: navigate
+        navigation_path: '#main-bedroom-lights'
+    button_action:
       tap_action:
         action: toggle
       hold_action:
-        action: navigate
-        navigation_path: '#main-bedroom-lights'
-    # Water Sensors
-    - type: custom:bubble-card
-      card_type: separator
-      name: Water Sensors
-      icon: mdi:water
-    # Water sensor grid - 2 columns, 6 actual sensors
-    - type: grid
-      columns: 2
-      square: false
-      cards:
-      # Crawl Space
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.crawl_space_water_leak_detected
-        name: "🏠 Crawl Space"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.crawl_space_water_leak_detected']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.crawl_space_water_leak_detected']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.crawl_space_water_leak_detected']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.crawl_space_water_leak_detected']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-      # Main Bathroom Sink
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.leak_sensor_water_leak_detected
-        name: "🚿 Main Bathroom"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.leak_sensor_water_leak_detected']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-      # Kitchen Sink
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.sink_leak_sensor_water_leak_detected
-        name: "🍳 Kitchen Sink"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-      # Side Bathroom Sink
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.sink_leak_sensor_water_leak_detected_2
-        name: "🚿 Side Bathroom"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected_2']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected_2']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected_2']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.sink_leak_sensor_water_leak_detected_2']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-      # Refrigerator
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.refrigerator_leak_sensor_water_leak_detected
-        name: "🧊 Refrigerator"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.refrigerator_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.refrigerator_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.refrigerator_leak_sensor_water_leak_detected']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.refrigerator_leak_sensor_water_leak_detected']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
-      # Server Closet
-      - type: custom:bubble-card
-        card_type: button
-        button_type: state
-        entity: binary_sensor.server_closet_moisture_alarm
-        name: "🖥️ Server Closet"
-        icon: mdi:water
-        show_state: true
-        show_last_changed: false
-        styles: |
-          .bubble-button-card-container {
-            background: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
-              ? 'rgba(244, 67, 54, 0.9)'
-              : 'rgba(76, 175, 80, 0.2)'} !important;
-            ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
-              ? 'animation: pulse-leak 2s infinite;'
-              : ''}
-          }
-          .bubble-icon-container {
-            background: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
-              ? 'rgba(211, 47, 47, 1.0)'
-              : 'rgba(76, 175, 80, 0.5)'} !important;
-          }
-          .bubble-icon {
-            color: white !important;
-          }
-          .bubble-name {
-            color: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
-              ? '#d32f2f'
-              : '#2e7d32'} !important;
-            font-weight: 600;
-          }
-          @keyframes pulse-leak {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-          }
+        action: none
+    tap_action:
+      action: toggle
+    hold_action:
+      action: navigate
+      navigation_path: '#main-bedroom-lights'
   - type: vertical-stack
     cards:
     # Living Room: Single popup with navigation sub-buttons

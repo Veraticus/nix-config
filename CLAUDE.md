@@ -20,7 +20,20 @@ This is a flake-based Nix configuration managing multiple systems:
 **IMPORTANT**: After making changes to any Nix configuration files (including hooks), you MUST run `update` to apply the changes to the current system. Changes won't take effect until the system is rebuilt!
 
 ### Home Assistant API Access
-Use a long-lived access token stored in your user config:
+
+#### Using hass-cli (Recommended)
+A CLI tool `hass-cli` is available for easy Home Assistant interaction:
+- **Already configured**: Token is automatically loaded from `~/.config/home-assistant/token`
+- **Common commands**:
+  - `hass-cli state list` - List all entities
+  - `hass-cli state list | grep water` - Find water/leak sensors
+  - `hass-cli state get <entity_id>` - Get detailed entity state
+  - `hass-cli service call <service>` - Call Home Assistant services
+  - `hass-cli --help` - See all available commands
+- **Output formats**: Use `-o json` for JSON, `-o yaml` for YAML, `-o table` for table format
+
+#### Direct API Access
+For direct API calls when needed:
 - Token location: `~/.config/home-assistant/token` (respects `XDG_CONFIG_HOME`)
 - Usage: Use this token in the Authorization header when making API calls to Home Assistant
 - Example: `curl -H "Authorization: Bearer $(cat ~/.config/home-assistant/token)" http://localhost:8123/api/states`

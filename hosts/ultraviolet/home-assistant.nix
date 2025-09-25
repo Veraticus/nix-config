@@ -365,12 +365,12 @@ in
     '';
   };
   
-  # Provide version-controlled Lovelace layout
-  environment.etc."hass-ui-lovelace.yaml" = {
-    mode = "0644";
+  # Provide version-controlled dashboard structure
+  environment.etc."hass-dashboards" = {
+    mode = "0755";
     user = "hass";
     group = "hass";
-    source = ../../dashboards/ui-lovelace.yaml;
+    source = ../../dashboards;
   };
 
   # Setup secrets file on startup and sync Lovelace YAML
@@ -383,9 +383,13 @@ in
       echo "Created secrets.yaml - please edit it with your actual values"
     fi
 
-    # Deploy ui-lovelace.yaml from the Nix store on every start
-    cp /etc/hass-ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
-    chmod 644 /var/lib/hass/ui-lovelace.yaml
+    # Deploy dashboard structure from the Nix store on every start
+    rm -rf /var/lib/hass/dashboards
+    cp -r /etc/hass-dashboards /var/lib/hass/dashboards
+    chmod -R 644 /var/lib/hass/dashboards
+    chown -R hass:hass /var/lib/hass/dashboards
+    # Create symlink for main dashboard file
+    ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
   '';
 
   # Backup service for Home Assistant

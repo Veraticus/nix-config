@@ -1,0 +1,94 @@
+type: custom:bubble-card
+card_type: pop-up
+hash: '#main-bedroom-lights-scenes'
+name: Main Bedroom Lights
+icon: mdi:bed
+back_open: false
+close_by_clicking_outside: true
+bg_opacity: '88'
+bg_blur: '14'
+margin_top_mobile: '0'
+margin_top_desktop: '0'
+width_desktop: 540px
+is_sidebar_hidden: false
+auto_close: 60000
+show_header: true
+sub_button:
+- icon: mdi:tune
+  name: Control
+  tap_action:
+    action: navigate
+    navigation_path: '#main-bedroom-lights'
+- icon: mdi:palette
+  name: Scenes
+  tap_action:
+    action: navigate
+    navigation_path: '#main-bedroom-lights-scenes'
+- icon: mdi:lightbulb
+  name: Lights
+  tap_action:
+    action: navigate
+    navigation_path: '#main-bedroom-lights-lights'
+cards:
+- type: custom:bubble-card
+  card_type: separator
+  name: Hue Scenes
+  icon: mdi:palette
+- type: custom:auto-entities
+  card:
+    type: grid
+    columns: 4
+    square: false
+  card_param: cards
+  filter:
+    template: |-
+      {% set scenes = states.scene | selectattr('entity_id', 'match', 'scene.master_bedroom_') | list %}
+      {% for scene in scenes | sort(attribute='attributes.friendly_name') %}
+        {%- set scene_name = scene.attributes.friendly_name | replace('Master Bedroom ', '') | replace('Master bedroom ', '') | replace('Main Bedroom ', '') | replace('Main bedroom ', '') -%}
+        {%- set icon_map = {
+          'Heather': 'mdi:flower',
+          'Read': 'mdi:book-open',
+          'Chinatown': 'mdi:lantern',
+          'Goodnight little lady': 'mdi:sleep',
+          'Dimmed': 'mdi:brightness-3',
+          'Bright': 'mdi:brightness-7',
+          'Concentrate': 'mdi:target',
+          'Energize': 'mdi:lightning-bolt',
+          'Relax': 'mdi:spa',
+          'Nightlight': 'mdi:weather-night',
+          'Halloween': 'mdi:halloween',
+          'Xmas': 'mdi:pine-tree',
+          'Arctic aurora': 'mdi:aurora',
+          'Spring blossom': 'mdi:flower',
+          'Tropical twilight': 'mdi:palm-tree',
+          'Savanna sunset': 'mdi:weather-sunset',
+          'Nebula': 'mdi:creation',
+          'Rainbow': 'mdi:looks',
+          'Ibiza': 'mdi:party-popper',
+          'Sweden': 'mdi:flag',
+          'Sunday morning': 'mdi:coffee',
+          'Champagne': 'mdi:glass-flute',
+          'Lavender': 'mdi:flower-outline',
+          'Peach': 'mdi:fruit-cherries',
+          'Circle': 'mdi:circle',
+          'Blue white': 'mdi:snowflake'
+        } -%}
+        {%- set icon = icon_map.get(scene_name, 'mdi:palette') -%}
+        {
+          "type": "custom:bubble-card",
+          "card_type": "button",
+          "button_type": "name",
+          "name": "{{ scene_name }}",
+          "icon": "{{ icon }}",
+          "entity": "{{ scene.entity_id }}",
+          "card_layout": "normal",
+          "styles": "ha-card { height: 36px !important; } .bubble-container { height: 36px !important; } .bubble-name { font-size: 11px !important; } .bubble-icon-container { min-width: 28px !important; min-height: 28px !important; margin: 4px !important; } .bubble-icon { --mdc-icon-size: 18px !important; }",
+          "button_action": {
+            "tap_action": {
+              "action": "call-service",
+              "service": "scene.turn_on",
+              "service_data": {"entity_id": "{{ scene.entity_id }}"}
+            }
+          }
+        }{%- if not loop.last -%},{%- endif -%}
+      {% endfor %}

@@ -1,0 +1,96 @@
+# YAML anchors for reusable card patterns
+
+# Door sensor sub-button template
+door_sensor_styles: &door_sensor_styles |-
+  .bubble-sub-button {
+    {% if is_state(entity_id, 'on') %}
+      background-color: rgba(239, 83, 80, 0.3) !important;
+    {% else %}
+      background-color: rgba(76, 175, 80, 0.3) !important;
+    {% endif %}
+  }
+  .bubble-sub-button-icon {
+    --mdc-icon-size: 26px;
+    color: ${hass.states[entity_id].state === 'on' ? '#ef5350' : '#43a047'} !important;
+  }
+
+# Water sensor card template
+water_sensor_styles: &water_sensor_styles |
+  .bubble-button-card-container {
+    background: ${hass.states[entity_id]?.state === 'on'
+      ? 'rgba(244, 67, 54, 0.9)'
+      : 'rgba(76, 175, 80, 0.2)'} !important;
+    ${hass.states[entity_id]?.state === 'on'
+      ? 'animation: pulse-leak 2s infinite;'
+      : ''}
+  }
+  .bubble-icon-container {
+    background: ${hass.states[entity_id]?.state === 'on'
+      ? 'rgba(211, 47, 47, 1.0)'
+      : 'rgba(76, 175, 80, 0.5)'} !important;
+  }
+  .bubble-icon {
+    color: white !important;
+  }
+  .bubble-name {
+    color: ${hass.states[entity_id]?.state === 'on'
+      ? '#d32f2f'
+      : '#2e7d32'} !important;
+    font-weight: 600;
+  }
+  @keyframes pulse-leak {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+
+# Light slider button template
+light_slider_options: &light_slider_options
+  type: custom:bubble-card
+  card_type: button
+  button_type: slider
+  show_state: true
+  show_attribute: true
+  attribute: brightness
+  slider_live_update: true
+  allow_light_slider_to_0: true
+  sub_button: []
+  button_action:
+    tap_action:
+      action: toggle
+    hold_action:
+      action: none
+
+# Scene button template for compact grid
+scene_button_styles: &scene_button_styles "ha-card { height: 36px !important; } .bubble-container { height: 36px !important; } .bubble-name { font-size: 11px !important; } .bubble-icon-container { min-width: 28px !important; min-height: 28px !important; margin: 4px !important; } .bubble-icon { --mdc-icon-size: 18px !important; }"
+
+# Common popup navigation sub-buttons for light rooms
+light_room_nav: &light_room_nav
+- icon: mdi:tune
+  name: Control
+  tap_action:
+    action: navigate
+    navigation_path: '#ROOM_NAME-lights'
+- icon: mdi:palette
+  name: Scenes
+  tap_action:
+    action: navigate
+    navigation_path: '#ROOM_NAME-lights-scenes'
+- icon: mdi:lightbulb
+  name: Lights
+  tap_action:
+    action: navigate
+    navigation_path: '#ROOM_NAME-lights-lights'
+
+# Common popup settings
+popup_base: &popup_base
+  card_type: pop-up
+  back_open: false
+  close_by_clicking_outside: true
+  bg_opacity: '88'
+  bg_blur: '14'
+  margin_top_mobile: '0'
+  margin_top_desktop: '0'
+  width_desktop: 540px
+  is_sidebar_hidden: false
+  auto_close: 60000
+  show_header: true

@@ -28,8 +28,6 @@ views:
         show_background: true
         show_icon: true
         styles: |-
-          ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.front_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
           .bubble-sub-button {
             {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
               background-color: rgba(239, 83, 80, 0.3) !important;
@@ -39,7 +37,15 @@ views:
           }
           .bubble-sub-button-icon {
             --mdc-icon-size: 26px;
-            color: ${hass.states[\'binary_sensor.front_door_window_door_is_open\'].state === \'on\' ? \'#ef5350\' : \'#43a047\'} !important;
+          }
+          ha-icon {
+            {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
+              --card-mod-icon: mdi:door-open;
+              color: #ef5350 !important;
+            {% else %}
+              --card-mod-icon: mdi:door-closed;
+              color: #43a047 !important;
+            {% endif %}
           }
       - icon: mdi:dots-horizontal
         show_background: false
@@ -74,8 +80,6 @@ views:
         show_background: true
         show_icon: true
         styles: |-
-          ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.kitchen_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
           .bubble-sub-button {
             {% if is_state('binary_sensor.kitchen_door_window_door_is_open', 'on') %}
               background-color: rgba(239, 83, 80, 0.3) !important;
@@ -85,7 +89,15 @@ views:
           }
           .bubble-sub-button-icon {
             --mdc-icon-size: 26px;
-            color: ${hass.states[\'binary_sensor.kitchen_door_window_door_is_open\'].state === \'on\' ? \'#ef5350\' : \'#43a047\'} !important;
+          }
+          ha-icon {
+            {% if is_state('binary_sensor.kitchen_door_window_door_is_open', 'on') %}
+              --card-mod-icon: mdi:door-open;
+              color: #ef5350 !important;
+            {% else %}
+              --card-mod-icon: mdi:door-closed;
+              color: #43a047 !important;
+            {% endif %}
           }
       button_action:
         tap_action:
@@ -114,8 +126,6 @@ views:
         show_background: true
         show_icon: true
         styles: |-
-          ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.back_deck_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
           .bubble-sub-button {
             {% if is_state('binary_sensor.back_deck_door_window_door_is_open', 'on') %}
               background-color: rgba(239, 83, 80, 0.3) !important;
@@ -125,7 +135,15 @@ views:
           }
           .bubble-sub-button-icon {
             --mdc-icon-size: 22px;
-            color: ${hass.states[\'binary_sensor.back_deck_door_window_door_is_open\'].state === \'on\' ? \'#ef5350\' : \'#43a047\'} !important;
+          }
+          ha-icon {
+            {% if is_state('binary_sensor.back_deck_door_window_door_is_open', 'on') %}
+              --card-mod-icon: mdi:door-open;
+              color: #ef5350 !important;
+            {% else %}
+              --card-mod-icon: mdi:door-closed;
+              color: #43a047 !important;
+            {% endif %}
           }
       - entity: binary_sensor.side_back_deck_door_window_door_is_open
         icon: mdi:door-closed
@@ -134,8 +152,6 @@ views:
         show_background: true
         show_icon: true
         styles: |-
-          ${subButtonIcon[1].setAttribute("icon", hass.states['binary_sensor.side_back_deck_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
           .bubble-sub-button {
             {% if is_state('binary_sensor.side_back_deck_door_window_door_is_open', 'on') %}
               background-color: rgba(239, 83, 80, 0.3) !important;
@@ -145,7 +161,15 @@ views:
           }
           .bubble-sub-button-icon {
             --mdc-icon-size: 22px;
-            color: ${hass.states[\'binary_sensor.side_back_deck_door_window_door_is_open\'].state === \'on\' ? \'#ef5350\' : \'#43a047\'} !important;
+          }
+          ha-icon {
+            {% if is_state('binary_sensor.side_back_deck_door_window_door_is_open', 'on') %}
+              --card-mod-icon: mdi:door-open;
+              color: #ef5350 !important;
+            {% else %}
+              --card-mod-icon: mdi:door-closed;
+              color: #43a047 !important;
+            {% endif %}
           }
       button_action:
         tap_action:
@@ -174,8 +198,6 @@ views:
         show_background: true
         show_icon: true
         styles: |-
-          ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.sliding_door_window_door_is_open'].state === 'on' ? 'mdi:door-sliding-open' : 'mdi:door-sliding')}
-
           .bubble-sub-button {
             {% if is_state('binary_sensor.sliding_door_window_door_is_open', 'on') %}
               background-color: rgba(239, 83, 80, 0.3) !important;
@@ -185,7 +207,15 @@ views:
           }
           .bubble-sub-button-icon {
             --mdc-icon-size: 26px;
-            color: ${hass.states[\'binary_sensor.sliding_door_window_door_is_open\'].state === \'on\' ? \'#ef5350\' : \'#43a047\'} !important;
+          }
+          ha-icon {
+            {% if is_state('binary_sensor.sliding_door_window_door_is_open', 'on') %}
+              --card-mod-icon: mdi:door-sliding-open;
+              color: #ef5350 !important;
+            {% else %}
+              --card-mod-icon: mdi:door-sliding;
+              color: #43a047 !important;
+            {% endif %}
           }
       button_action:
         tap_action:
@@ -780,6 +810,8 @@ views:
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
           }
+  - type: vertical-stack
+    cards:
     # Living Room: Single popup with navigation sub-buttons
     - type: custom:bubble-card
       card_type: pop-up
@@ -840,22 +872,24 @@ views:
         hold_action:
           action: none
   # Living Room: Scenes popup
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#living-room-lights-scenes'
-    name: Living Room Lights
-    icon: mdi:sofa
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-    show_header: true
-    sub_button:
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#living-room-lights-scenes'
+      name: Living Room Lights
+      icon: mdi:sofa
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+      show_header: true
+      sub_button:
       - icon: mdi:tune
         name: Control
         tap_action:
@@ -871,17 +905,17 @@ views:
         tap_action:
           action: navigate
           navigation_path: '#living-room-lights-lights'
-  - type: custom:bubble-card
-    card_type: separator
-    name: Hue Scenes
-    icon: mdi:palette
-  - type: custom:auto-entities
-    card:
-      type: grid
-      columns: 4
-      square: false
-    card_param: cards
-    filter:
+    - type: custom:bubble-card
+      card_type: separator
+      name: Hue Scenes
+      icon: mdi:palette
+    - type: custom:auto-entities
+      card:
+        type: grid
+        columns: 4
+        square: false
+      card_param: cards
+      filter:
         template: |-
           {% set scenes = states.scene | selectattr('entity_id', 'match', 'scene.living_room_') | list %}
           {% for scene in scenes | sort(attribute='attributes.friendly_name') %}
@@ -933,22 +967,24 @@ views:
             }{%- if not loop.last -%},{%- endif -%}
           {% endfor %}
   # Living Room: Individual Lights popup
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#living-room-lights-lights'
-    name: Living Room Lights
-    icon: mdi:sofa
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-    show_header: true
-    sub_button:
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#living-room-lights-lights'
+      name: Living Room Lights
+      icon: mdi:sofa
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+      show_header: true
+      sub_button:
       - icon: mdi:tune
         name: Control
         tap_action:
@@ -964,16 +1000,16 @@ views:
         tap_action:
           action: navigate
           navigation_path: '#living-room-lights-lights'
-  - type: custom:bubble-card
-    card_type: separator
-    name: Individual Lights
-    icon: mdi:lightbulb
-  - type: custom:auto-entities
-    card:
-      type: vertical-stack
-    card_param: cards
-    filter:
-      include:
+    - type: custom:bubble-card
+      card_type: separator
+      name: Individual Lights
+      icon: mdi:lightbulb
+    - type: custom:auto-entities
+      card:
+        type: vertical-stack
+      card_param: cards
+      filter:
+        include:
         - area: Living Room
           domain: light
           options:
@@ -996,23 +1032,25 @@ views:
       sort:
         method: friendly_name
   # Main Bedroom vertical stack
-  # Main Bedroom: Room page (Control)
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#main-bedroom-lights'
-    name: Main Bedroom Lights
-    icon: mdi:bed
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-    show_header: true
-    sub_button:
+  - type: vertical-stack
+    cards:
+    # Main Bedroom: Room page (Control)
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#main-bedroom-lights'
+      name: Main Bedroom Lights
+      icon: mdi:bed
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+      show_header: true
+      sub_button:
       - icon: mdi:tune
         name: Control
         tap_action:
@@ -1028,49 +1066,51 @@ views:
         tap_action:
           action: navigate
           navigation_path: '#main-bedroom-lights-lights'
-  - type: custom:bubble-card
-    card_type: separator
-    name: Room Control
-    icon: mdi:lightbulb-group
-  - type: custom:bubble-card
-    card_type: button
-    button_type: slider
-    entity: light.master_bedroom
-    name: All Lights
-    icon: mdi:lightbulb-group
-    show_state: true
-    show_attribute: true
-    attribute: brightness
-    slider_live_update: true
-    allow_light_slider_to_0: true
-    sub_button:
-    - entity: light.master_bedroom
-      icon: mdi:palette
-      name: Color
-      tap_action:
-        action: more-info
-    button_action:
-      tap_action:
-        action: toggle
-      hold_action:
-        action: none
+    - type: custom:bubble-card
+      card_type: separator
+      name: Room Control
+      icon: mdi:lightbulb-group
+    - type: custom:bubble-card
+      card_type: button
+      button_type: slider
+      entity: light.master_bedroom
+      name: All Lights
+      icon: mdi:lightbulb-group
+      show_state: true
+      show_attribute: true
+      attribute: brightness
+      slider_live_update: true
+      allow_light_slider_to_0: true
+      sub_button:
+      - entity: light.master_bedroom
+        icon: mdi:palette
+        name: Color
+        tap_action:
+          action: more-info
+      button_action:
+        tap_action:
+          action: toggle
+        hold_action:
+          action: none
   # Main Bedroom: Individual Lights popup
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#main-bedroom-lights-lights'
-    name: Main Bedroom Lights
-    icon: mdi:bed
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-    show_header: true
-    sub_button:
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#main-bedroom-lights-lights'
+      name: Main Bedroom Lights
+      icon: mdi:bed
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+      show_header: true
+      sub_button:
       - icon: mdi:tune
         name: Control
         tap_action:
@@ -1086,16 +1126,16 @@ views:
         tap_action:
           action: navigate
           navigation_path: '#main-bedroom-lights-lights'
-  - type: custom:bubble-card
-    card_type: separator
-    name: Individual Lights
-    icon: mdi:lightbulb
-  - type: custom:auto-entities
-    card:
-      type: vertical-stack
-    card_param: cards
-    filter:
-      include:
+    - type: custom:bubble-card
+      card_type: separator
+      name: Individual Lights
+      icon: mdi:lightbulb
+    - type: custom:auto-entities
+      card:
+        type: vertical-stack
+      card_param: cards
+      filter:
+        include:
         - entity_id: light.bedroom_ceiling_1
           options:
             type: custom:bubble-card
@@ -1163,22 +1203,24 @@ views:
       sort:
         method: friendly_name
   # Main Bedroom: Scenes popup
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#main-bedroom-lights-scenes'
-    name: Main Bedroom Lights
-    icon: mdi:bed
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-    show_header: true
-    sub_button:
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#main-bedroom-lights-scenes'
+      name: Main Bedroom Lights
+      icon: mdi:bed
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+      show_header: true
+      sub_button:
       - icon: mdi:tune
         name: Control
         tap_action:
@@ -1194,17 +1236,17 @@ views:
         tap_action:
           action: navigate
           navigation_path: '#main-bedroom-lights-lights'
-  - type: custom:bubble-card
-    card_type: separator
-    name: Hue Scenes
-    icon: mdi:palette
-  - type: custom:auto-entities
-    card:
-      type: grid
-      columns: 4
-      square: false
-    card_param: cards
-    filter:
+    - type: custom:bubble-card
+      card_type: separator
+      name: Hue Scenes
+      icon: mdi:palette
+    - type: custom:auto-entities
+      card:
+        type: grid
+        columns: 4
+        square: false
+      card_param: cards
+      filter:
         template: |-
           {% set scenes = states.scene | selectattr('entity_id', 'match', 'scene.master_bedroom_') | list %}
           {% for scene in scenes | sort(attribute='attributes.friendly_name') %}
@@ -1256,37 +1298,39 @@ views:
               }
             }{%- if not loop.last -%},{%- endif -%}
           {% endfor %}
-  - type: custom:bubble-card
-    card_type: pop-up
-    hash: '#dining-room-thermostat'
-    name: Dining Room Thermostat
-    icon: mdi:thermostat
-    back_open: false
-    close_by_clicking_outside: true
-    bg_opacity: '88'
-    bg_blur: '14'
-    margin_top_mobile: '0'
-    margin_top_desktop: '0'
-    width_desktop: 540px
-    is_sidebar_hidden: false
-    auto_close: 60000
-  - type: custom:bubble-card
-    card_type: separator
-    name: Climate Control
-    icon: mdi:thermostat-box
-  - type: thermostat
-    entity: climate.my_ecobee
-  - type: custom:bubble-card
-    card_type: separator
-    name: Environment
-    icon: mdi:weather-partly-cloudy
-  - type: custom:auto-entities
-    card:
-      type: entities
-      state_color: true
-    card_param: entities
-    filter:
-      include:
+  - type: vertical-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: pop-up
+      hash: '#dining-room-thermostat'
+      name: Dining Room Thermostat
+      icon: mdi:thermostat
+      back_open: false
+      close_by_clicking_outside: true
+      bg_opacity: '88'
+      bg_blur: '14'
+      margin_top_mobile: '0'
+      margin_top_desktop: '0'
+      width_desktop: 540px
+      is_sidebar_hidden: false
+      auto_close: 60000
+    - type: custom:bubble-card
+      card_type: separator
+      name: Climate Control
+      icon: mdi:thermostat-box
+    - type: thermostat
+      entity: climate.my_ecobee
+    - type: custom:bubble-card
+      card_type: separator
+      name: Environment
+      icon: mdi:weather-partly-cloudy
+    - type: custom:auto-entities
+      card:
+        type: entities
+        state_color: true
+      card_param: entities
+      filter:
+        include:
         - entity_id: sensor.my_ecobee_current_temperature
           options:
             name: Air Temperature

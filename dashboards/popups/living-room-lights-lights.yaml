@@ -1,0 +1,63 @@
+type: custom:bubble-card
+card_type: pop-up
+hash: '#living-room-lights-lights'
+name: Living Room Lights
+icon: mdi:sofa
+back_open: false
+close_by_clicking_outside: true
+bg_opacity: '88'
+bg_blur: '14'
+margin_top_mobile: '0'
+margin_top_desktop: '0'
+width_desktop: 540px
+is_sidebar_hidden: false
+auto_close: 60000
+show_header: true
+sub_button:
+- icon: mdi:tune
+  name: Control
+  tap_action:
+    action: navigate
+    navigation_path: '#living-room-lights'
+- icon: mdi:palette
+  name: Scenes
+  tap_action:
+    action: navigate
+    navigation_path: '#living-room-lights-scenes'
+- icon: mdi:lightbulb
+  name: Lights
+  tap_action:
+    action: navigate
+    navigation_path: '#living-room-lights-lights'
+cards:
+- type: custom:bubble-card
+  card_type: separator
+  name: Individual Lights
+  icon: mdi:lightbulb
+- type: custom:auto-entities
+  card:
+    type: vertical-stack
+  card_param: cards
+  filter:
+    include:
+      - area: Living Room
+        domain: light
+        options:
+          type: custom:bubble-card
+          card_type: button
+          button_type: slider
+          show_state: true
+          show_attribute: true
+          attribute: brightness
+          slider_live_update: true
+          allow_light_slider_to_0: true
+          sub_button: []
+          button_action:
+            tap_action:
+              action: toggle
+            hold_action:
+              action: none
+    exclude:
+    - entity_id: light.living_room
+    sort:
+      method: friendly_name

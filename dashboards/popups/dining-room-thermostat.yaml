@@ -1,39 +1,41 @@
-type: custom:bubble-card
-card_type: pop-up
-hash: '#dining-room-thermostat'
-name: Dining Room Thermostat
-icon: mdi:thermostat
-back_open: false
-close_by_clicking_outside: true
-bg_opacity: '88'
-bg_blur: '14'
-margin_top_mobile: '0'
-margin_top_desktop: '0'
-width_desktop: 540px
-is_sidebar_hidden: false
-auto_close: 60000
+type: vertical-stack
 cards:
-- type: custom:bubble-card
-  card_type: separator
-  name: Climate Control
-  icon: mdi:thermostat-box
-- type: thermostat
-  entity: climate.my_ecobee
-- type: custom:bubble-card
-  card_type: separator
-  name: Environment
-  icon: mdi:weather-partly-cloudy
-- type: custom:auto-entities
-  card:
-    type: entities
-    state_color: true
-  card_param: entities
-  filter:
-    include:
-      - entity_id: sensor.my_ecobee_current_temperature
-        options:
-          name: Air Temperature
-      - entity_id: sensor.my_ecobee_current_humidity
-        options:
-          name: Humidity
-    show_empty: false
+  - type: custom:bubble-card
+    card_type: pop-up
+    hash: '#dining-room-thermostat'
+    name: Dining Room Thermostat
+    icon: mdi:thermostat
+    back_open: false
+    close_by_clicking_outside: true
+    bg_opacity: '88'
+    bg_blur: '14'
+    margin_top_mobile: '0'
+    margin_top_desktop: '0'
+    width_desktop: 540px
+    is_sidebar_hidden: false
+    background_update: false
+    auto_close: 60000
+  - type: custom:bubble-card
+    card_type: separator
+    name: Climate Control
+    icon: mdi:thermostat-box
+  - type: thermostat
+    entity: climate.my_ecobee
+  - type: custom:bubble-card
+    card_type: separator
+    name: Environment
+    icon: mdi:weather-partly-cloudy
+  - type: custom:auto-entities
+    card:
+      type: entities
+      state_color: true
+    card_param: entities
+    filter:
+      include:
+        - entity_id: sensor.my_ecobee_current_temperature
+          options:
+            name: Air Temperature
+        - entity_id: sensor.my_ecobee_current_humidity
+          options:
+            name: Humidity
+      show_empty: false

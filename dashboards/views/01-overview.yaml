@@ -20,14 +20,11 @@ cards:
     card_layout: large
     sub_button:
     - entity: binary_sensor.front_door_window_door_is_open
-      icon: mdi:door-closed
       name: Door
       show_state: false
       show_background: true
       show_icon: true
       styles: |-
-        ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.front_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
         .bubble-sub-button {
           {% if is_state('binary_sensor.front_door_window_door_is_open', 'on') %}
             background-color: rgba(239, 83, 80, 0.3) !important;
@@ -66,14 +63,11 @@ cards:
     card_layout: large
     sub_button:
     - entity: binary_sensor.kitchen_door_window_door_is_open
-      icon: mdi:door-closed
       name: Door
       show_state: false
       show_background: true
       show_icon: true
       styles: |-
-        ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.kitchen_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
         .bubble-sub-button {
           {% if is_state('binary_sensor.kitchen_door_window_door_is_open', 'on') %}
             background-color: rgba(239, 83, 80, 0.3) !important;
@@ -106,14 +100,11 @@ cards:
     card_layout: large
     sub_button:
     - entity: binary_sensor.back_deck_door_window_door_is_open
-      icon: mdi:door-closed
       name: Back
       show_state: false
       show_background: true
       show_icon: true
       styles: |-
-        ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.back_deck_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
         .bubble-sub-button {
           {% if is_state('binary_sensor.back_deck_door_window_door_is_open', 'on') %}
             background-color: rgba(239, 83, 80, 0.3) !important;
@@ -126,14 +117,11 @@ cards:
           color: ${hass.states['binary_sensor.back_deck_door_window_door_is_open'].state === 'on' ? '#ef5350' : '#43a047'} !important;
         }
     - entity: binary_sensor.side_back_deck_door_window_door_is_open
-      icon: mdi:door-closed
       name: Side
       show_state: false
       show_background: true
       show_icon: true
       styles: |-
-        ${subButtonIcon[1].setAttribute("icon", hass.states['binary_sensor.side_back_deck_door_window_door_is_open'].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed')}
-
         .bubble-sub-button {
           {% if is_state('binary_sensor.side_back_deck_door_window_door_is_open', 'on') %}
             background-color: rgba(239, 83, 80, 0.3) !important;
@@ -166,14 +154,11 @@ cards:
     card_layout: large
     sub_button:
     - entity: binary_sensor.sliding_door_window_door_is_open
-      icon: mdi:door-sliding
       name: Sliding Door
       show_state: false
       show_background: true
       show_icon: true
       styles: |-
-        ${subButtonIcon[0].setAttribute("icon", hass.states['binary_sensor.sliding_door_window_door_is_open'].state === 'on' ? 'mdi:door-sliding-open' : 'mdi:door-sliding')}
-
         .bubble-sub-button {
           {% if is_state('binary_sensor.sliding_door_window_door_is_open', 'on') %}
             background-color: rgba(239, 83, 80, 0.3) !important;
@@ -337,29 +322,7 @@ cards:
         })()} !important;
       }
 
-      /* Update state text to show temp and humidity */
-      ${(() => {
-        const tempState = hass.states['sensor.my_ecobee_current_temperature'];
-        const humState = hass.states['sensor.my_ecobee_current_humidity'];
-
-        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-          ? Math.round(parseFloat(tempState.state)) + '°F'
-          : 'N/A';
-
-        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-          ? Math.round(parseFloat(humState.state)) + '%'
-          : 'N/A';
-
-        // Update the state element directly
-        if (card) {
-          const stateEl = card.querySelector('.bubble-state');
-          if (stateEl) {
-            stateEl.textContent = `${tempVal} • ${humVal}`;
-          }
-        }
-
-        return ''; // Return empty CSS rule
-      })()}
+      /* Avoid DOM mutations in styles for performance */
 
       /* Static styles */
       .bubble-icon {
@@ -464,29 +427,7 @@ cards:
         })()} !important;
       }
 
-      /* Update state text to show temp and humidity */
-      ${(() => {
-        const tempState = hass.states['sensor.server_closet_air_temperature'];
-        const humState = hass.states['sensor.server_closet_humidity'];
-
-        const tempVal = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
-          ? Math.round(parseFloat(tempState.state)) + '°F'
-          : 'N/A';
-
-        const humVal = humState?.state && !['unknown', 'unavailable'].includes(humState.state)
-          ? Math.round(parseFloat(humState.state)) + '%'
-          : 'N/A';
-
-        // Update the state element directly
-        if (card) {
-          const stateEl = card.querySelector('.bubble-state');
-          if (stateEl) {
-            stateEl.textContent = `${tempVal} • ${humVal}`;
-          }
-        }
-
-        return ''; // Return empty CSS rule
-      })()}
+      /* Avoid DOM mutations in styles for performance */
 
       /* Static styles */
       .bubble-icon {
@@ -552,6 +493,78 @@ cards:
     hold_action:
       action: navigate
       navigation_path: '#main-bedroom-lights'
+  # Laundry Room
+  - type: custom:bubble-card
+    card_type: button
+    button_type: name
+    name: Laundry Room
+    icon: mdi:washing-machine
+    show_state: false
+    show_last_changed: false
+    show_attribute: false
+    card_layout: large
+    sub_button:
+    - icon: mdi:washing-machine
+      name: Washer
+      show_state: false
+      show_background: true
+      show_icon: true
+      tap_action:
+        action: navigate
+        navigation_path: '#laundry-washer'
+      styles: |-
+        ${(() => {
+          const st = hass.states['sensor.washer_current_status']?.state || 'unknown';
+          const remRaw = hass.states['sensor.washer_remaining_time']?.state;
+          const totRaw = hass.states['sensor.washer_total_time']?.state;
+          const isNum = (v) => v !== undefined && v !== null && !isNaN(parseFloat(v));
+          const rem = isNum(remRaw) ? parseFloat(remRaw) : NaN;
+          const tot = isNum(totRaw) ? parseFloat(totRaw) : NaN;
+          const progress = (!isNaN(rem) && !isNaN(tot) && tot > 0) ? Math.max(0, Math.min(1, rem / tot)) : 0;
+          const s = (arr => arr.some(k => st.toLowerCase().includes(k)))(['run','running','wash','rinse','spin','tumble','on','start','pre']) && st.toLowerCase() !== 'power_off';
+          const bg = s ? 'rgba(100, 181, 246, 0.25)' : 'rgba(120, 144, 156, 0.20)';
+          let css = '';
+          css += `.bubble-sub-button { border: 3px solid transparent; border-radius: 16px; background: linear-gradient(${bg}), conic-gradient(#2196F3 calc(${progress} * 360deg), rgba(33,150,243,0.12) 0) !important; background-clip: padding-box, border-box; ${s ? 'animation: jiggle 0.6s ease-in-out infinite alternate;' : ''} }`;
+          css += `.bubble-sub-button-icon { --mdc-icon-size: 26px; color: ${s ? '#1565C0' : '#546E7A'} !important; }`;
+          css += `.bubble-sub-button-name { color: ${s ? '#0D47A1' : '#37474F'} !important; }`;
+          css += `@keyframes jiggle { from { transform: translateY(0px) rotate(-1deg); } to { transform: translateY(-1px) rotate(1deg); } }`;
+          return css;
+        })()}
+    - icon: mdi:tumble-dryer
+      name: Dryer
+      show_state: false
+      show_background: true
+      show_icon: true
+      tap_action:
+        action: navigate
+        navigation_path: '#laundry-dryer'
+      styles: |-
+        ${(() => {
+          const st = hass.states['sensor.dryer_current_status']?.state || 'unknown';
+          const remRaw = hass.states['sensor.dryer_remaining_time']?.state;
+          const totRaw = hass.states['sensor.dryer_total_time']?.state;
+          const isNum = (v) => v !== undefined && v !== null && !isNaN(parseFloat(v));
+          const rem = isNum(remRaw) ? parseFloat(remRaw) : NaN;
+          const tot = isNum(totRaw) ? parseFloat(totRaw) : NaN;
+          const progress = (!isNaN(rem) && !isNaN(tot) && tot > 0) ? Math.max(0, Math.min(1, rem / tot)) : 0;
+          const s = (arr => arr.some(k => st.toLowerCase().includes(k)))(['run','running','dry','tumble','on','start','pre']) && st.toLowerCase() !== 'power_off';
+          const bg = s ? 'rgba(100, 181, 246, 0.25)' : 'rgba(120, 144, 156, 0.20)';
+          let css = '';
+          css += `.bubble-sub-button { border: 3px solid transparent; border-radius: 16px; background: linear-gradient(${bg}), conic-gradient(#2196F3 calc(${progress} * 360deg), rgba(33,150,243,0.12) 0) !important; background-clip: padding-box, border-box; ${s ? 'animation: jiggle 0.6s ease-in-out infinite alternate;' : ''} }`;
+          css += `.bubble-sub-button-icon { --mdc-icon-size: 26px; color: ${s ? '#1565C0' : '#546E7A'} !important; }`;
+          css += `.bubble-sub-button-name { color: ${s ? '#0D47A1' : '#37474F'} !important; }`;
+          css += `@keyframes jiggle { from { transform: translateY(0px) rotate(-1deg); } to { transform: translateY(-1px) rotate(1deg); } }`;
+          return css;
+        })()}
+    button_action:
+      tap_action:
+        action: none
+      hold_action:
+        action: none
+    tap_action:
+      action: none
+    hold_action:
+      action: none
   # Water Sensors
   - type: custom:bubble-card
     card_type: separator
@@ -778,7 +791,7 @@ cards:
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
         }
-# Popups - included as separate cards in the view
+  # Popups - included as separate cards in the view
 - !include ../popups/living-room-lights.yaml
 - !include ../popups/living-room-lights-scenes.yaml
 - !include ../popups/living-room-lights-lights.yaml
@@ -786,3 +799,5 @@ cards:
 - !include ../popups/main-bedroom-lights-lights.yaml
 - !include ../popups/main-bedroom-lights-scenes.yaml
 - !include ../popups/dining-room-thermostat.yaml
+- !include ../popups/laundry-washer.yaml
+- !include ../popups/laundry-dryer.yaml

@@ -365,13 +365,7 @@ in
     '';
   };
   
-  # Provide version-controlled dashboard structure
-  environment.etc."hass-dashboards" = {
-    mode = "0755";
-    user = "hass";
-    group = "hass";
-    source = ../../dashboards;
-  };
+  # Dashboard files are handled directly in preStart script
 
   # Setup secrets file on startup and sync Lovelace YAML
   systemd.services.home-assistant.preStart = lib.mkAfter ''
@@ -383,14 +377,20 @@ in
       echo "Created secrets.yaml - please edit it with your actual values"
     fi
 
-    # Deploy dashboard structure from the Nix store on every start
+    # Deploy dashboard structure from the Nix config on every start
     rm -rf /var/lib/hass/dashboards
-    cp -r /etc/hass-dashboards /var/lib/hass/dashboards
-    chmod -R 644 /var/lib/hass/dashboards
-    chown -R hass:hass /var/lib/hass/dashboards
+    mkdir -p /var/lib/hass/dashboards
+    cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
+    find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
+    find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
+    # Files already have correct ownership since service runs as hass user
     # Create symlink for main dashboard file
     ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
   '';
+
+  # Ensure Home Assistant restarts when dashboard sources change,
+  # so the preStart sync copies new/updated YAML (e.g., new popups)
+  systemd.services.home-assistant.restartTriggers = [ ../../dashboards ];
 
   # Backup service for Home Assistant
   systemd.services.home-assistant-backup = {

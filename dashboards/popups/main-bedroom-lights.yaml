@@ -1,58 +1,60 @@
-type: custom:bubble-card
-card_type: pop-up
-hash: '#main-bedroom-lights'
-name: Main Bedroom Lights
-icon: mdi:bed
-back_open: false
-close_by_clicking_outside: true
-bg_opacity: '88'
-bg_blur: '14'
-margin_top_mobile: '0'
-margin_top_desktop: '0'
-width_desktop: 540px
-is_sidebar_hidden: false
-auto_close: 60000
-show_header: true
-sub_button:
-- icon: mdi:tune
-  name: Control
-  tap_action:
-    action: navigate
-    navigation_path: '#main-bedroom-lights'
-- icon: mdi:palette
-  name: Scenes
-  tap_action:
-    action: navigate
-    navigation_path: '#main-bedroom-lights-scenes'
-- icon: mdi:lightbulb
-  name: Lights
-  tap_action:
-    action: navigate
-    navigation_path: '#main-bedroom-lights-lights'
+type: vertical-stack
 cards:
-- type: custom:bubble-card
-  card_type: separator
-  name: Room Control
-  icon: mdi:lightbulb-group
-- type: custom:bubble-card
-  card_type: button
-  button_type: slider
-  entity: light.master_bedroom
-  name: All Lights
-  icon: mdi:lightbulb-group
-  show_state: true
-  show_attribute: true
-  attribute: brightness
-  slider_live_update: true
-  allow_light_slider_to_0: true
-  sub_button:
-  - entity: light.master_bedroom
-    icon: mdi:palette
-    name: Color
-    tap_action:
-      action: more-info
-  button_action:
-    tap_action:
-      action: toggle
-    hold_action:
-      action: none
+  - type: custom:bubble-card
+    card_type: pop-up
+    hash: '#main-bedroom-lights'
+    name: Main Bedroom Lights
+    icon: mdi:bed
+    back_open: false
+    close_by_clicking_outside: true
+    bg_opacity: '88'
+    bg_blur: '14'
+    margin_top_mobile: '0'
+    margin_top_desktop: '0'
+    width_desktop: 540px
+    is_sidebar_hidden: false
+    background_update: false
+    auto_close: 60000
+    show_header: true
+    sub_button:
+    - icon: mdi:tune
+      name: Control
+      tap_action:
+        action: navigate
+        navigation_path: '#main-bedroom-lights'
+    - icon: mdi:palette
+      name: Scenes
+      tap_action:
+        action: navigate
+        navigation_path: '#main-bedroom-lights-scenes'
+    - icon: mdi:lightbulb
+      name: Lights
+      tap_action:
+        action: navigate
+        navigation_path: '#main-bedroom-lights-lights'
+  - type: custom:bubble-card
+    card_type: separator
+    name: Room Control
+    icon: mdi:lightbulb-group
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.master_bedroom
+    name: All Lights
+    icon: mdi:lightbulb-group
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    slider_live_update: true
+    allow_light_slider_to_0: true
+    sub_button:
+    - entity: light.master_bedroom
+      icon: mdi:palette
+      name: Color
+      tap_action:
+        action: more-info
+    button_action:
+      tap_action:
+        action: toggle
+      hold_action:
+        action: none

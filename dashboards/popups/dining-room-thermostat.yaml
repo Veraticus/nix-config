@@ -1,4 +1,7 @@
 type: vertical-stack
+card_mod:
+  style: |
+    :host { display: none !important; }
 cards:
   - type: custom:bubble-card
     card_type: pop-up
@@ -12,7 +15,7 @@ cards:
     margin_top_mobile: '0'
     margin_top_desktop: '0'
     width_desktop: 540px
-    is_sidebar_hidden: false
+    is_sidebar_hidden: true
     background_update: false
     auto_close: 60000
   - type: custom:bubble-card

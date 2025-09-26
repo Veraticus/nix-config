@@ -2,9 +2,19 @@ title: Overview
 path: overview
 icon: mdi:home
 theme: default
+panel: true
 cards:
 - type: vertical-stack
   cards:
+  - !include ../popups/living-room-lights.yaml
+  - !include ../popups/living-room-lights-scenes.yaml
+  - !include ../popups/living-room-lights-lights.yaml
+  - !include ../popups/main-bedroom-lights.yaml
+  - !include ../popups/main-bedroom-lights-lights.yaml
+  - !include ../popups/main-bedroom-lights-scenes.yaml
+  - !include ../popups/dining-room-thermostat.yaml
+  - !include ../popups/laundry-washer.yaml
+  - !include ../popups/laundry-dryer.yaml
   - type: custom:bubble-card
     card_type: button
     button_type: slider
@@ -339,6 +349,31 @@ cards:
         color: #1a1a1a !important;
         position: relative;
       }
+      ${(() => {
+        if (!card) return '';
+        const stateEl = card.querySelector('.bubble-state');
+        if (!stateEl) return '';
+        const fmt = (id, suffix) => {
+          const st = hass.states[id];
+          const v = st?.state;
+          if (!v || ['unknown','unavailable'].includes(v)) return 'N/A';
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? `${Math.round(n)}${suffix}` : `${v}${suffix}`;
+        };
+        const render = () => {
+          const t = fmt('sensor.my_ecobee_current_temperature','°F');
+          const h = fmt('sensor.my_ecobee_current_humidity','%');
+          const txt = `${t} • ${h}`;
+          if (stateEl.textContent !== txt) stateEl.textContent = txt;
+        };
+        render();
+        if (!card.dataset.drTicker) {
+          card.dataset.drTicker = '1';
+          card._drInterval && clearInterval(card._drInterval);
+          card._drInterval = setInterval(render, 5000);
+        }
+        return '';
+      })()}
     sub_button:
     - icon: mdi:thermostat
       name: Thermostat
@@ -444,6 +479,31 @@ cards:
         color: #1a1a1a !important;
         position: relative;
       }
+      ${(() => {
+        if (!card) return '';
+        const stateEl = card.querySelector('.bubble-state');
+        if (!stateEl) return '';
+        const fmt = (id, suffix) => {
+          const st = hass.states[id];
+          const v = st?.state;
+          if (!v || ['unknown','unavailable'].includes(v)) return 'N/A';
+          const n = parseFloat(v);
+          return Number.isFinite(n) ? `${Math.round(n)}${suffix}` : `${v}${suffix}`;
+        };
+        const render = () => {
+          const t = fmt('sensor.server_closet_air_temperature','°F');
+          const h = fmt('sensor.server_closet_humidity','%');
+          const txt = `${t} • ${h}`;
+          if (stateEl.textContent !== txt) stateEl.textContent = txt;
+        };
+        render();
+        if (!card.dataset.scTicker) {
+          card.dataset.scTicker = '1';
+          card._scInterval && clearInterval(card._scInterval);
+          card._scInterval = setInterval(render, 5000);
+        }
+        return '';
+      })()}
 
       .bubble-action,
       .bubble-button,
@@ -791,13 +851,4 @@ cards:
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
         }
-  # Popups - included as separate cards in the view
-- !include ../popups/living-room-lights.yaml
-- !include ../popups/living-room-lights-scenes.yaml
-- !include ../popups/living-room-lights-lights.yaml
-- !include ../popups/main-bedroom-lights.yaml
-- !include ../popups/main-bedroom-lights-lights.yaml
-- !include ../popups/main-bedroom-lights-scenes.yaml
-- !include ../popups/dining-room-thermostat.yaml
-- !include ../popups/laundry-washer.yaml
-- !include ../popups/laundry-dryer.yaml
+  # Popups are preloaded at top via hidden conditional wrapper

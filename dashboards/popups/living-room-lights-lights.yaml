@@ -1,4 +1,7 @@
 type: vertical-stack
+card_mod:
+  style: |
+    :host { display: none !important; }
 cards:
   - type: custom:bubble-card
     card_type: pop-up

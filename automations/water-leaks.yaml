@@ -1,0 +1,261 @@
+- id: water_leak_push_notify
+  alias: "Water leak: push notify Josh"
+  description: Send a push notification to Josh's iPhone when any leak sensor reports ON
+  mode: single
+  trigger:
+    # Explicit list of known leak sensors; add more here as installed
+    - platform: state
+      entity_id: binary_sensor.crawl_space_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.leak_sensor_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.sink_leak_sensor_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.sink_leak_sensor_water_leak_detected_2
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.refrigerator_leak_sensor_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.water_leak_xs_sensor_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+  variables:
+    leak_name: >-
+      {{ area_name(trigger.entity_id) if area_name(trigger.entity_id) else state_attr(trigger.entity_id, 'friendly_name') }}
+  action:
+    - service: notify.mobile_app_spire
+      data:
+        title: "Water Leak Detected"
+        message: >-
+          Leak detected{{ ' in ' ~ leak_name if leak_name else '' }} ({{ trigger.entity_id }}). Please check immediately.
+        data:
+          push:
+            interruption-level: time-sensitive
+          url: /lovelace/overview
+          actions:
+            - action: LEAK_ACK
+              title: Acknowledge
+            - action: LEAK_SNOOZE_15
+              title: Snooze 15m
+            - action: LEAK_SNOOZE_60
+              title: Snooze 60m
+
+- id: water_leak_tts_initial
+  alias: "Water leak: initial TTS on Sonos (any time)"
+  description: Speak a TTS alert on Sonos Move immediately when a leak is detected.
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id:
+        - binary_sensor.crawl_space_water_leak_detected
+        - binary_sensor.leak_sensor_water_leak_detected
+        - binary_sensor.sink_leak_sensor_water_leak_detected
+        - binary_sensor.sink_leak_sensor_water_leak_detected_2
+        - binary_sensor.refrigerator_leak_sensor_water_leak_detected
+        - binary_sensor.water_leak_xs_sensor_water_leak_detected
+      to: 'on'
+      for: '00:00:05'
+  variables:
+    leak_name: >-
+      {{ area_name(trigger.entity_id) if area_name(trigger.entity_id) else state_attr(trigger.entity_id, 'friendly_name') }}
+    tts_msg: >-
+      {{ 'Water leak detected' ~ (' in ' ~ leak_name if leak_name) ~ '. Please check immediately.' }}
+  condition:
+    - condition: state
+      entity_id: input_boolean.leak_alert_tts_enabled
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.leak_alert_acknowledged
+      state: 'off'
+    - condition: state
+      entity_id: timer.leak_alert_snooze
+      state: 'idle'
+  action:
+    - service: sonos.snapshot
+      target:
+        entity_id: media_player.sonos_move
+      data:
+        with_group: false
+    - service: media_player.volume_set
+      target:
+        entity_id: media_player.sonos_move
+      data:
+        volume_level: "{{ states('input_number.leak_alert_tts_volume') | float(0.35) }}"
+    - service: tts.speak
+      target:
+        entity_id: tts.piper
+      data:
+        cache: false
+        media_player_entity_id: media_player.sonos_move
+        message: "{{ tts_msg }}"
+    - delay: '00:00:08'
+    - service: sonos.restore
+      target:
+        entity_id: media_player.sonos_move
+
+- id: water_leak_tts_repeat
+  alias: "Water leak: repeat TTS until acknowledged or snoozed"
+  description: Every 2 minutes, re-announce leaks if still active, not acknowledged, and not snoozed.
+  mode: single
+  trigger:
+    - platform: time_pattern
+      minutes: "/2"
+  variables:
+    leak_entities:
+      - binary_sensor.crawl_space_water_leak_detected
+      - binary_sensor.leak_sensor_water_leak_detected
+      - binary_sensor.sink_leak_sensor_water_leak_detected
+      - binary_sensor.sink_leak_sensor_water_leak_detected_2
+      - binary_sensor.refrigerator_leak_sensor_water_leak_detected
+      - binary_sensor.water_leak_xs_sensor_water_leak_detected
+    leak_on_names: >-
+      {% set ns = namespace(items=[]) %}
+      {% for e in leak_entities %}
+        {% if states(e) == 'on' %}
+          {% set nm = area_name(e) if area_name(e) else state_attr(e, 'friendly_name') %}
+          {% set ns.items = ns.items + [ nm if nm else e ] %}
+        {% endif %}
+      {% endfor %}
+      {{ ns.items | join(', ') }}
+    tts_msg: >-
+      {{ 'Water leak detected' ~ (' in ' ~ leak_on_names if leak_on_names) ~ '. Please check immediately.' }}
+  condition:
+    - condition: state
+      entity_id: input_boolean.leak_alert_tts_enabled
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.leak_alert_acknowledged
+      state: 'off'
+    - condition: state
+      entity_id: timer.leak_alert_snooze
+      state: 'idle'
+    - condition: template
+      value_template: >-
+        {{ leak_on_names | length > 0 }}
+  action:
+    - service: sonos.snapshot
+      target:
+        entity_id: media_player.sonos_move
+      data:
+        with_group: false
+    - service: media_player.volume_set
+      target:
+        entity_id: media_player.sonos_move
+      data:
+        volume_level: "{{ states('input_number.leak_alert_tts_volume') | float(0.35) }}"
+    - service: tts.speak
+      target:
+        entity_id: tts.piper
+      data:
+        cache: false
+        media_player_entity_id: media_player.sonos_move
+        message: "{{ tts_msg }}"
+    - delay: '00:00:08'
+    - service: sonos.restore
+      target:
+        entity_id: media_player.sonos_move
+
+- id: water_leak_ack_action
+  alias: "Water leak: acknowledge via mobile action"
+  trigger:
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: LEAK_ACK
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.leak_alert_acknowledged
+
+- id: water_leak_snooze15_action
+  alias: "Water leak: snooze 15m via mobile action"
+  trigger:
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: LEAK_SNOOZE_15
+  action:
+    - service: timer.start
+      target:
+        entity_id: timer.leak_alert_snooze
+      data:
+        duration: '00:15:00'
+
+- id: water_leak_snooze60_action
+  alias: "Water leak: snooze 60m via mobile action"
+  trigger:
+    - platform: event
+      event_type: mobile_app_notification_action
+      event_data:
+        action: LEAK_SNOOZE_60
+  action:
+    - service: timer.start
+      target:
+        entity_id: timer.leak_alert_snooze
+      data:
+        duration: '01:00:00'
+
+- id: water_leak_ack_button
+  alias: "Water leak: acknowledge via input button"
+  trigger:
+    - platform: state
+      entity_id: input_button.leak_acknowledge
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.leak_alert_acknowledged
+
+- id: water_leak_snooze15_button
+  alias: "Water leak: snooze 15m via input button"
+  trigger:
+    - platform: state
+      entity_id: input_button.leak_snooze_15
+  action:
+    - service: timer.start
+      target:
+        entity_id: timer.leak_alert_snooze
+      data:
+        duration: '00:15:00'
+
+- id: water_leak_snooze60_button
+  alias: "Water leak: snooze 60m via input button"
+  trigger:
+    - platform: state
+      entity_id: input_button.leak_snooze_60
+  action:
+    - service: timer.start
+      target:
+        entity_id: timer.leak_alert_snooze
+      data:
+        duration: '01:00:00'
+
+- id: water_leak_clear_reset
+  alias: "Water leak: reset acknowledgement when all leaks are clear"
+  trigger:
+    - platform: template
+      value_template: >-
+        {{
+          states('binary_sensor.crawl_space_water_leak_detected') == 'off' and
+          states('binary_sensor.leak_sensor_water_leak_detected') == 'off' and
+          states('binary_sensor.sink_leak_sensor_water_leak_detected') == 'off' and
+          states('binary_sensor.sink_leak_sensor_water_leak_detected_2') == 'off' and
+          states('binary_sensor.refrigerator_leak_sensor_water_leak_detected') == 'off' and
+          states('binary_sensor.water_leak_xs_sensor_water_leak_detected') == 'off'
+        }}
+      for: '00:05:00'
+  action:
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.leak_alert_acknowledged
+    - service: timer.cancel
+      target:
+        entity_id: timer.leak_alert_snooze

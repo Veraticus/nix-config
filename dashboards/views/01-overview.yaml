@@ -815,26 +815,26 @@ cards:
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
         }
-    # Server Closet
+    # Attic
     - type: custom:bubble-card
       card_type: button
       button_type: state
-      entity: binary_sensor.server_closet_moisture_alarm
-      name: "🖥️ Server Closet"
+      entity: binary_sensor.water_leak_xs_sensor_water_leak_detected
+      name: "⬆️ Attic"
       icon: mdi:water
       show_state: true
       show_last_changed: false
       styles: |
         .bubble-button-card-container {
-          background: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
+          background: ${hass.states['binary_sensor.water_leak_xs_sensor_water_leak_detected']?.state === 'on'
             ? 'rgba(244, 67, 54, 0.9)'
             : 'rgba(76, 175, 80, 0.2)'} !important;
-          ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
+          ${hass.states['binary_sensor.water_leak_xs_sensor_water_leak_detected']?.state === 'on'
             ? 'animation: pulse-leak 2s infinite;'
             : ''}
         }
         .bubble-icon-container {
-          background: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
+          background: ${hass.states['binary_sensor.water_leak_xs_sensor_water_leak_detected']?.state === 'on'
             ? 'rgba(211, 47, 47, 1.0)'
             : 'rgba(76, 175, 80, 0.5)'} !important;
         }
@@ -842,7 +842,7 @@ cards:
           color: white !important;
         }
         .bubble-name {
-          color: ${hass.states['binary_sensor.server_closet_moisture_alarm']?.state === 'on'
+          color: ${hass.states['binary_sensor.water_leak_xs_sensor_water_leak_detected']?.state === 'on'
             ? '#d32f2f'
             : '#2e7d32'} !important;
           font-weight: 600;

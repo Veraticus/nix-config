@@ -122,7 +122,8 @@ in
         country = "US";
         # External access via Cloudflare Tunnel
         external_url = "https://home.husbuddies.gay";
-        internal_url = "http://localhost:8123";
+        # Use LAN-reachable IP so speakers (e.g., Sonos) can fetch TTS audio
+        internal_url = "http://172.31.0.200:8123";
 
         # Multi-factor authentication configuration
         auth_mfa_modules = [
@@ -216,6 +217,55 @@ in
         ];
       };
 
+      # Controls for leak alert TTS behavior
+      input_boolean = {
+        leak_alert_tts_enabled = {
+          name = "Leak alert speech";
+          icon = "mdi:volume-high";
+          initial = true;
+        };
+        leak_alert_acknowledged = {
+          name = "Leak alert acknowledged";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+      };
+
+      input_number = {
+        leak_alert_tts_volume = {
+          name = "Leak alert TTS volume";
+          icon = "mdi:volume-medium";
+          unit_of_measurement = "";
+          min = 0.0;
+          max = 1.0;
+          step = 0.05;
+          mode = "slider";
+          initial = 0.35;
+        };
+      };
+
+      input_button = {
+        leak_acknowledge = {
+          name = "Acknowledge leak";
+          icon = "mdi:check";
+        };
+        leak_snooze_15 = {
+          name = "Snooze leak 15m";
+          icon = "mdi:alarm-snooze";
+        };
+        leak_snooze_60 = {
+          name = "Snooze leak 60m";
+          icon = "mdi:alarm-snooze";
+        };
+      };
+
+      timer = {
+        leak_alert_snooze = {
+          name = "Leak alert snooze";
+          duration = "00:15:00";
+        };
+      };
+
       # Logging
       logger = {
         default = "warning";
@@ -246,7 +296,8 @@ in
       # };
 
       # Automation engine (keep automations in UI for easy editing)
-      automation = "!include automations.yaml";
+      # Use Git-tracked, directory-merged automations
+      automation = "!include_dir_merge_list automations";
       script = "!include scripts.yaml";
       scene = "!include scenes.yaml";
     };
@@ -386,11 +437,23 @@ in
     # Files already have correct ownership since service runs as hass user
     # Create symlink for main dashboard file
     ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
+
+    # Sync Git-managed automations directory (merged list include)
+    rm -rf /var/lib/hass/automations
+    mkdir -p /var/lib/hass/automations
+${lib.optionalString (builtins.pathExists ../../automations) ''
+    cp -r ${../../automations}/* /var/lib/hass/automations/
+    find /var/lib/hass/automations -type f -exec chmod 644 {} \;
+    find /var/lib/hass/automations -type d -exec chmod 755 {} \;
+''}
+${lib.optionalString (!(builtins.pathExists ../../automations)) ''
+    echo "No automations directory found in Nix repo; skipping copy"
+''}
   '';
 
   # Ensure Home Assistant restarts when dashboard sources change,
   # so the preStart sync copies new/updated YAML (e.g., new popups)
-  systemd.services.home-assistant.restartTriggers = [ ../../dashboards ];
+  systemd.services.home-assistant.restartTriggers = [ ../../dashboards ../../automations ];
 
   # Backup service for Home Assistant
   systemd.services.home-assistant-backup = {

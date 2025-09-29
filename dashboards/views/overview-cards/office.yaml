@@ -1,0 +1,50 @@
+type: custom:bubble-card
+card_type: button
+button_type: name
+name: Office
+icon: mdi:desk
+show_state: false
+show_last_changed: false
+show_attribute: false
+card_layout: large
+sub_button:
+# Office Door
+- entity: binary_sensor.office_door
+  name: Door
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.office_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 22px;
+      color: ${hass.states['binary_sensor.office_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+# Office Deck Window (dynamic)
+- entity: binary_sensor.office_deck_window
+  name: Deck Window
+  icon: mdi:window-closed
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    ${(() => {
+      const s = hass.states['binary_sensor.office_deck_window']?.state === 'on';
+      const bg = s ? 'rgba(100, 181, 246, 0.28)' : 'rgba(76, 175, 80, 0.30)';
+      const color = s ? '#1E88E5' : '#43a047';
+      // This is the 2nd sub-button in Office card (index 1)
+      if (subButtonIcon && subButtonIcon[1]) {
+        subButtonIcon[1].setAttribute('icon', s ? 'mdi:window-open' : 'mdi:window-closed');
+      }
+      return `
+        .bubble-sub-button { background-color: ${bg} !important; }
+        .bubble-sub-button-icon { --mdc-icon-size: 22px; color: ${color} !important; }
+      `;
+    })()}
+

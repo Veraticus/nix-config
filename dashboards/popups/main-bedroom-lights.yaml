@@ -42,7 +42,7 @@ cards:
   - type: custom:bubble-card
     card_type: button
     button_type: slider
-    entity: light.master_bedroom
+    entity: light.main_bedroom
     name: All Lights
     icon: mdi:lightbulb-group
     show_state: true
@@ -51,7 +51,7 @@ cards:
     slider_live_update: true
     allow_light_slider_to_0: true
     sub_button:
-    - entity: light.master_bedroom
+    - entity: light.main_bedroom
       icon: mdi:palette
       name: Color
       tap_action:

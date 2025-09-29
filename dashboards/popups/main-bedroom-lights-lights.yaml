@@ -45,7 +45,7 @@ cards:
     card_param: cards
     filter:
       include:
-        - entity_id: light.bedroom_ceiling_1
+        - entity_id: light.main_bedroom_ceiling_1
           options:
             type: custom:bubble-card
             card_type: button
@@ -61,7 +61,7 @@ cards:
                 action: toggle
               hold_action:
                 action: none
-        - entity_id: light.bedroom_ceiling_2
+        - entity_id: light.main_bedroom_ceiling_2
           options:
             type: custom:bubble-card
             card_type: button
@@ -77,7 +77,7 @@ cards:
                 action: toggle
               hold_action:
                 action: none
-        - entity_id: light.justin_bedside_table
+        - entity_id: light.main_bedroom_lamp_justin
           options:
             type: custom:bubble-card
             card_type: button
@@ -93,7 +93,7 @@ cards:
                 action: toggle
               hold_action:
                 action: none
-        - entity_id: light.josh_bedside_table
+        - entity_id: light.main_bedroom_lamp_josh
           options:
             type: custom:bubble-card
             card_type: button

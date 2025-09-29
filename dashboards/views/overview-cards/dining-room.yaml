@@ -1,0 +1,137 @@
+type: custom:bubble-card
+card_type: button
+button_type: state
+entity: climate.my_ecobee
+name: Dining Room
+icon: mdi:home-thermometer
+show_state: true
+show_attribute: false
+show_last_changed: false
+styles: |-
+  /* Dynamic temperature-based background colors */
+  .bubble-button-card-container {
+    background: ${(() => {
+      const tempState = hass.states['sensor.my_ecobee_current_temperature'];
+      const hvac = hass.states['climate.my_ecobee'];
+      const hvacAction = hvac?.attributes?.hvac_action;
+
+      if (hvacAction === 'heating') {
+        return 'rgba(255, 190, 190, 0.72)';
+      } else if (hvacAction === 'cooling') {
+        return 'rgba(187, 222, 251, 0.72)';
+      }
+
+      const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
+        ? parseFloat(tempState.state) : 65;
+      const clamped = Math.max(50, Math.min(120, temp));
+      const ratio = (clamped - 50) / 70;
+      let r = Math.round(0 + (255 * ratio));
+      let g = Math.round(100 + ((20 - 100) * ratio));
+      let b = Math.round(255 + ((0 - 255) * ratio));
+      const lf = 0.25; // brighten toward white
+      r = Math.round(r + (255 - r) * lf);
+      g = Math.round(g + (255 - g) * lf);
+      b = Math.round(b + (255 - b) * lf);
+      return `rgba(${r}, ${g}, ${b}, 0.95)`;
+    })()} !important;
+  }
+
+  .bubble-icon-container {
+    background: ${(() => {
+      const tempState = hass.states['sensor.my_ecobee_current_temperature'];
+      const hvac = hass.states['climate.my_ecobee'];
+      const hvacAction = hvac?.attributes?.hvac_action;
+      if (hvacAction === 'heating') {
+        return 'rgba(244, 94, 80, 0.95)';
+      } else if (hvacAction === 'cooling') {
+        return 'rgba(66, 165, 245, 0.95)';
+      }
+      const temp = tempState?.state && !['unknown', 'unavailable'].includes(tempState.state)
+        ? parseFloat(tempState.state) : 65;
+      const clamped = Math.max(50, Math.min(120, temp));
+      const ratio = (clamped - 50) / 70;
+      let r = Math.round(0 + (255 * ratio));
+      let g = Math.round(150 + ((0 - 150) * ratio));
+      let b = Math.round(255 + ((0 - 255) * ratio));
+      const lf = 0.25; // brighten toward white
+      r = Math.round(r + (255 - r) * lf);
+      g = Math.round(g + (255 - g) * lf);
+      b = Math.round(b + (255 - b) * lf);
+      return `rgba(${r}, ${g}, ${b}, 1.0)`;
+    })()} !important;
+  }
+
+  .bubble-icon {
+    color: rgba(238, 238, 238, 0.95) !important;
+  }
+  .bubble-name { color: #1a1a1a !important; }
+  .bubble-state {
+    font-size: 12px; font-weight: 600; color: #1a1a1a !important; position: relative;
+  }
+  ${(() => {
+    if (!card) return '';
+    const stateEl = card.querySelector('.bubble-state');
+    if (!stateEl) return '';
+    const fmt = (id, suffix) => {
+      const st = hass.states[id];
+      const v = st?.state;
+      if (!v || ['unknown','unavailable'].includes(v)) return 'N/A';
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? `${Math.round(n)}${suffix}` : `${v}${suffix}`;
+    };
+    const render = () => {
+      const t = fmt('sensor.my_ecobee_current_temperature','°F');
+      const h = fmt('sensor.my_ecobee_current_humidity','%');
+      const txt = `${t} • ${h}`;
+      if (stateEl.textContent !== txt) stateEl.textContent = txt;
+    };
+    render();
+    if (!card.dataset.drTicker) {
+      card.dataset.drTicker = '1';
+      card._drInterval && clearInterval(card._drInterval);
+      card._drInterval = setInterval(render, 5000);
+    }
+    return '';
+  })()}
+sub_button:
+- icon: mdi:thermostat
+  name: Thermostat
+  show_background: true
+  show_name: false
+  tap_action:
+    action: fire-dom-event
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: Dining Room Thermostat
+        content: !include ../../popup-content/dining-room-thermostat.yaml
+  styles: |-
+    {% set hvac_action = state_attr('climate.my_ecobee', 'hvac_action') %}
+    .bubble-sub-button {
+      {% if hvac_action == 'heating' %}
+        background-color: rgba(255, 138, 128, 0.36) !important;
+      {% elif hvac_action == 'cooling' %}
+        background-color: rgba(144, 202, 249, 0.36) !important;
+      {% else %}
+        background-color: rgba(120, 144, 156, 0.20) !important;
+      {% endif %}
+      border-radius: 16px;
+    }
+    .bubble-sub-button-icon {
+      {% if hvac_action == 'heating' %}
+        color: #EF5350 !important;
+      {% elif hvac_action == 'cooling' %}
+        color: #42A5F5 !important;
+      {% else %}
+        color: #546E7A !important;
+      {% endif %}
+      --mdc-icon-size: 26px;
+    }
+    .bubble-sub-button-name {
+      {% if hvac_action == 'heating' %}
+        color: #E53935 !important;
+      {% elif hvac_action == 'cooling' %}
+        color: #1E88E5 !important;
+      {% else %}
+        color: #37474F !important;
+      {% endif %}

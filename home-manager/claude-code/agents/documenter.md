@@ -1,6 +1,6 @@
 ---
 name: documenter
-model: opus
+model: sonnet
 description: Documentation generation specialist that creates comprehensive technical documentation, architecture diagrams, runbooks, and API specs from codebases. Automatically documents Nix configurations, Home Assistant setups, and distributed systems. Use after implementation or debugging to preserve knowledge.
 tools: Read, Write, Glob, Grep, Bash, TodoWrite
 ---

@@ -1,6 +1,6 @@
 ---
 name: ruby-implementer
-model: opus
+model: sonnet
 description: Ruby implementation specialist that writes idiomatic, elegant Ruby code following community best practices. Emphasizes readability, convention over configuration, and proper testing with RSpec/Minitest. Use for implementing Ruby code from plans, including Rails applications.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

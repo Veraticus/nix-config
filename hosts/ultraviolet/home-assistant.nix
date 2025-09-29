@@ -134,6 +134,23 @@ in
             name = "Authenticator app";
           }
         ];
+
+        # Entity customizations (friendly names for clarity in alerts)
+        customize = {
+          "binary_sensor.leak_laundry_room".friendly_name = "Laundry Room Leak";
+          "binary_sensor.leak_shed".friendly_name = "Shed Leak";
+          "binary_sensor.shed_door".friendly_name = "Shed Door";
+          "binary_sensor.office_deck_window".friendly_name = "Office Deck Window";
+          "binary_sensor.front_door".friendly_name = "Front Door";
+          "binary_sensor.kitchen_door".friendly_name = "Kitchen Door";
+          "binary_sensor.back_deck_door".friendly_name = "Back Deck Door";
+          "binary_sensor.back_deck_side_door".friendly_name = "Back Deck Side Door";
+          "binary_sensor.front_deck_sliding_door".friendly_name = "Front Deck Sliding Door";
+          "binary_sensor.office_door".friendly_name = "Office Door";
+          "binary_sensor.front_deck_left_window".friendly_name = "Front Deck Left Window";
+          "binary_sensor.front_deck_right_window".friendly_name = "Front Deck Right Window";
+          "binary_sensor.main_bedroom_side_window".friendly_name = "Main Bedroom Side Window";
+        };
       };
 
       # Define the home zone with a smaller radius (in meters)
@@ -217,6 +234,9 @@ in
         ];
       };
 
+      # Enable Browser Mod integration for dynamic popups
+      browser_mod = { };
+
       # Controls for leak alert TTS behavior
       input_boolean = {
         leak_alert_tts_enabled = {
@@ -226,6 +246,47 @@ in
         };
         leak_alert_acknowledged = {
           name = "Leak alert acknowledged";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        # Per-sensor acknowledgements to silence individual leak repeats
+        leak_ack_crawl_space = {
+          name = "Ack leak: Crawl Space";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_main_bathroom = {
+          name = "Ack leak: Main Bathroom";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_kitchen_sink = {
+          name = "Ack leak: Kitchen Sink";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_side_bathroom = {
+          name = "Ack leak: Side Bathroom";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_refrigerator = {
+          name = "Ack leak: Refrigerator";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_attic = {
+          name = "Ack leak: Attic";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_laundry = {
+          name = "Ack leak: Laundry";
+          icon = "mdi:check-circle";
+          initial = false;
+        };
+        leak_ack_shed = {
+          name = "Ack leak: Shed";
           icon = "mdi:check-circle";
           initial = false;
         };

@@ -1,0 +1,62 @@
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: separator
+    name: Washer Status
+    icon: mdi:information
+  - type: custom:bubble-card
+    card_type: button
+    button_type: state
+    entity: sensor.washer_current_status
+    name: Washer
+    icon: mdi:washing-machine
+    show_state: true
+    show_attribute: false
+    show_last_changed: true
+    styles: |-
+      .bubble-button-card-container {
+        background: ${(() => {
+          const st = hass.states['sensor.washer_current_status']?.state || 'unknown';
+          const active = ['run','running','wash','rinse','spin','tumble','dry','on','start','pre']
+            .some(k => st.toLowerCase().includes(k)) && st.toLowerCase() !== 'power_off';
+          return active ? 'rgba(100, 181, 246, 0.28)' : 'rgba(120, 144, 156, 0.20)';
+        })()} !important;
+      }
+      .bubble-icon-container {
+        background: ${(() => {
+          const st = hass.states['sensor.washer_current_status']?.state || 'unknown';
+          const active = ['run','running','wash','rinse','spin','tumble','dry','on','start','pre']
+            .some(k => st.toLowerCase().includes(k)) && st.toLowerCase() !== 'power_off';
+          return active ? 'rgba(25, 118, 210, 0.75)' : 'rgba(84, 110, 122, 0.55)';
+        })()} !important;
+      }
+      .bubble-icon { color: #ECEFF1 !important; }
+    sub_button:
+    - entity: sensor.washer_remaining_time
+      icon: mdi:timer-sand
+      name: Remaining
+      show_background: true
+      tap_action:
+        action: more-info
+      styles: |-
+        .bubble-sub-button { border-radius: 16px; }
+        .bubble-sub-button-icon { --mdc-icon-size: 22px; color: #1565C0 !important; }
+    - entity: sensor.washer_total_time
+      icon: mdi:timer
+      name: Total
+      show_background: true
+      tap_action:
+        action: more-info
+      styles: |-
+        .bubble-sub-button { border-radius: 16px; }
+        .bubble-sub-button-icon { --mdc-icon-size: 22px; color: #1565C0 !important; }
+    - entity: select.washer_operation
+      icon: mdi:cog
+      name: Program
+      show_background: true
+      tap_action:
+        action: more-info
+      styles: |-
+        .bubble-sub-button { border-radius: 16px; }
+        .bubble-sub-button-icon { --mdc-icon-size: 22px; color: #1565C0 !important; }
+

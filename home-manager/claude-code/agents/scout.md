@@ -1,6 +1,6 @@
 ---
 name: scout
-model: opus
+model: sonnet
 description: Reference material scout that intelligently identifies and fetches the most relevant libraries, SDKs, and documentation needed for a feature. Makes smart curation decisions and fetches only high-value materials into ./reference. Use BEFORE the analyzer to gather external resources.
 tools: Bash, WebSearch, WebFetch, Write
 ---

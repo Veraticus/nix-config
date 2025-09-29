@@ -1,6 +1,6 @@
 ---
 name: devops-implementer
-model: opus
+model: sonnet
 description: DevOps implementation specialist that writes robust shell scripts, optimized Dockerfiles, and CI/CD pipelines. Emphasizes security-first practices, error handling, and production readiness. Use for implementing container solutions, automation scripts, and infrastructure code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

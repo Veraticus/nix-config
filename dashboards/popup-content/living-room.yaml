@@ -1,0 +1,29 @@
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: separator
+    name: Room Control
+    icon: mdi:lightbulb-group
+  - type: custom:bubble-card
+    card_type: button
+    button_type: slider
+    entity: light.living_room
+    name: All Lights
+    icon: mdi:lightbulb-group
+    show_state: true
+    show_attribute: true
+    attribute: brightness
+    slider_live_update: true
+    allow_light_slider_to_0: true
+    sub_button:
+    - entity: light.living_room
+      icon: mdi:palette
+      name: Color
+      tap_action:
+        action: more-info
+    button_action:
+      tap_action:
+        action: toggle
+      hold_action:
+        action: none
+

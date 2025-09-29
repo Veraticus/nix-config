@@ -1,0 +1,57 @@
+type: custom:bubble-card
+card_type: button
+button_type: slider
+entity: light.main_bedroom
+name: Main Bedroom
+icon: mdi:bed
+show_state: true
+show_last_changed: false
+show_attribute: true
+attribute: brightness
+slider_live_update: true
+allow_light_slider_to_0: false
+card_layout: large
+sub_button:
+# Main Bedroom Side Window (dynamic)
+- entity: binary_sensor.main_bedroom_side_window
+  name: Side Window
+  icon: mdi:window-closed
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    ${(() => {
+      const s = hass.states['binary_sensor.main_bedroom_side_window']?.state === 'on';
+      const bg = s ? 'rgba(100, 181, 246, 0.28)' : 'rgba(76, 175, 80, 0.30)';
+      const color = s ? '#1E88E5' : '#43a047';
+      // This is the 1st sub-button on this card (index 0)
+      if (subButtonIcon && subButtonIcon[0]) {
+        subButtonIcon[0].setAttribute('icon', s ? 'mdi:window-open' : 'mdi:window-closed');
+      }
+      return `
+        .bubble-sub-button { background-color: ${bg} !important; }
+        .bubble-sub-button-icon { --mdc-icon-size: 22px; color: ${color} !important; }
+      `;
+    })()}
+- icon: mdi:dots-horizontal
+  show_background: true
+  tap_action:
+    action: fire-dom-event
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: Main Bedroom Lights
+        content: !include ../../popup-content/main-bedroom.yaml
+  hold_action:
+    action: navigate
+    navigation_path: '#main-bedroom-lights'
+button_action:
+  tap_action:
+    action: toggle
+  hold_action:
+    action: none
+tap_action:
+  action: toggle
+hold_action:
+  action: navigate
+  navigation_path: '#main-bedroom-lights'

@@ -1,6 +1,6 @@
 ---
 name: go-implementer
-model: opus
+model: sonnet
 description: Go implementation specialist that writes idiomatic, high-quality Go code following strict best practices. Emphasizes dependency injection, small interfaces, concrete types, and proper concurrency patterns. Use for implementing Go code from plans.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

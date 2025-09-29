@@ -1,6 +1,6 @@
 ---
 name: commander
-model: opus
+model: sonnet
 description: Transparent workflow commander that coordinates multi-agent tasks with frequent status reports and honest progress updates. Executes complex workflows while maintaining visibility, checking in at decision points, and explicitly reporting any shortcuts or assumptions. Use for multi-step features, refactoring, or complex debugging workflows.
 tools: Task, TodoWrite, Read, Bash, Grep
 ---

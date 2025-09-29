@@ -1,0 +1,75 @@
+type: custom:bubble-card
+card_type: button
+button_type: state
+entity: sensor.server_closet_air_temperature
+name: Server Closet
+icon: mdi:server
+show_state: true
+show_attribute: false
+show_last_changed: false
+styles: |
+  /* Dynamic temperature-based background colors */
+  .bubble-button-card-container {
+    background: ${(() => {
+      const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
+      const clamped = Math.max(50, Math.min(120, temp));
+      const ratio = (clamped - 50) / 70;
+      let r = Math.round(0 + (255 * ratio));
+      let g = Math.round(100 + ((20 - 100) * ratio));
+      let b = Math.round(255 + ((0 - 255) * ratio));
+      const lf = 0.25; // brighten toward white
+      r = Math.round(r + (255 - r) * lf);
+      g = Math.round(g + (255 - g) * lf);
+      b = Math.round(b + (255 - b) * lf);
+      return `rgba(${r}, ${g}, ${b}, 0.95)`;
+    })()} !important;
+  }
+
+  .bubble-icon-container {
+    background: ${(() => {
+      const temp = parseFloat(hass.states['sensor.server_closet_air_temperature']?.state || '65') || 65;
+      const clamped = Math.max(50, Math.min(120, temp));
+      const ratio = (clamped - 50) / 70;
+      let r = Math.round(0 + (255 * ratio));
+      let g = Math.round(150 + ((0 - 150) * ratio));
+      let b = Math.round(255 + ((0 - 255) * ratio));
+      const lf = 0.25; // brighten toward white
+      r = Math.round(r + (255 - r) * lf);
+      g = Math.round(g + (255 - g) * lf);
+      b = Math.round(b + (255 - b) * lf);
+      return `rgba(${r}, ${g}, ${b}, 1.0)`;
+    })()} !important;
+  }
+
+  .bubble-icon {
+    color: rgba(238, 238, 238, 0.95) !important;
+  }
+  .bubble-name { color: #1a1a1a !important; }
+  .bubble-state {
+    font-size: 12px; font-weight: 600; color: #1a1a1a !important; position: relative;
+  }
+  ${(() => {
+    if (!card) return '';
+    const stateEl = card.querySelector('.bubble-state');
+    if (!stateEl) return '';
+    const fmt = (id, suffix) => {
+      const st = hass.states[id];
+      const v = st?.state;
+      if (!v || ['unknown','unavailable'].includes(v)) return 'N/A';
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? `${Math.round(n)}${suffix}` : `${v}${suffix}`;
+    };
+    const render = () => {
+      const t = fmt('sensor.server_closet_air_temperature','°F');
+      const h = fmt('sensor.server_closet_humidity','%');
+      const txt = `${t} • ${h}`;
+      if (stateEl.textContent !== txt) stateEl.textContent = txt;
+    };
+    render();
+    if (!card.dataset.scTicker) {
+      card.dataset.scTicker = '1';
+      card._scInterval && clearInterval(card._scInterval);
+      card._scInterval = setInterval(render, 5000);
+    }
+    return '';
+  })()}

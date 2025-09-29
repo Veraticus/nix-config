@@ -1,6 +1,6 @@
 ---
 name: python-implementer
-model: opus
+model: sonnet
 description: Python implementation specialist that writes modern, type-safe Python with comprehensive type hints, async patterns, and production-ready error handling. Emphasizes Pythonic idioms, clean architecture, and thorough testing with pytest. Use for implementing Python code including FastAPI, Django, async applications, and data processing.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

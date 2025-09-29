@@ -1,6 +1,6 @@
 ---
 name: typescript-implementer
-model: opus
+model: sonnet
 description: TypeScript implementation specialist that writes type-safe, modern TypeScript code with strict mode. Emphasizes proper typing, no any types, functional patterns, and clean architecture. Use for implementing TypeScript/React/Node.js code from plans.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

@@ -5,27 +5,35 @@
   trigger:
     # Explicit list of known leak sensors; add more here as installed
     - platform: state
-      entity_id: binary_sensor.crawl_space_water_leak_detected
+      entity_id: binary_sensor.leak_crawl_space
       to: 'on'
       for: '00:00:05'
     - platform: state
-      entity_id: binary_sensor.leak_sensor_water_leak_detected
+      entity_id: binary_sensor.leak_main_bathroom
       to: 'on'
       for: '00:00:05'
     - platform: state
-      entity_id: binary_sensor.sink_leak_sensor_water_leak_detected
+      entity_id: binary_sensor.leak_kitchen_sink
       to: 'on'
       for: '00:00:05'
     - platform: state
-      entity_id: binary_sensor.sink_leak_sensor_water_leak_detected_2
+      entity_id: binary_sensor.leak_side_bathroom
       to: 'on'
       for: '00:00:05'
     - platform: state
-      entity_id: binary_sensor.refrigerator_leak_sensor_water_leak_detected
+      entity_id: binary_sensor.leak_refrigerator
       to: 'on'
       for: '00:00:05'
     - platform: state
-      entity_id: binary_sensor.water_leak_xs_sensor_water_leak_detected
+      entity_id: binary_sensor.leak_attic
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.leak_shed
+      to: 'on'
+      for: '00:00:05'
+    - platform: state
+      entity_id: binary_sensor.leak_laundry_room
       to: 'on'
       for: '00:00:05'
   variables:
@@ -56,12 +64,14 @@
   trigger:
     - platform: state
       entity_id:
-        - binary_sensor.crawl_space_water_leak_detected
-        - binary_sensor.leak_sensor_water_leak_detected
-        - binary_sensor.sink_leak_sensor_water_leak_detected
-        - binary_sensor.sink_leak_sensor_water_leak_detected_2
-        - binary_sensor.refrigerator_leak_sensor_water_leak_detected
-        - binary_sensor.water_leak_xs_sensor_water_leak_detected
+        - binary_sensor.leak_crawl_space
+        - binary_sensor.leak_main_bathroom
+        - binary_sensor.leak_kitchen_sink
+        - binary_sensor.leak_side_bathroom
+        - binary_sensor.leak_refrigerator
+        - binary_sensor.leak_attic
+        - binary_sensor.leak_shed
+        - binary_sensor.leak_laundry_room
       to: 'on'
       for: '00:00:05'
   variables:
@@ -111,23 +121,38 @@
       minutes: "/2"
   variables:
     leak_entities:
-      - binary_sensor.crawl_space_water_leak_detected
-      - binary_sensor.leak_sensor_water_leak_detected
-      - binary_sensor.sink_leak_sensor_water_leak_detected
-      - binary_sensor.sink_leak_sensor_water_leak_detected_2
-      - binary_sensor.refrigerator_leak_sensor_water_leak_detected
-      - binary_sensor.water_leak_xs_sensor_water_leak_detected
-    leak_on_names: >-
+      - binary_sensor.leak_crawl_space
+      - binary_sensor.leak_main_bathroom
+      - binary_sensor.leak_kitchen_sink
+      - binary_sensor.leak_side_bathroom
+      - binary_sensor.leak_refrigerator
+      - binary_sensor.leak_attic
+      - binary_sensor.leak_shed
+      - binary_sensor.leak_laundry_room
+    # Map sensors to their per-sensor ack booleans
+    ack_map: >-
+      {{ {
+        'binary_sensor.leak_crawl_space': 'input_boolean.leak_ack_crawl_space',
+        'binary_sensor.leak_main_bathroom': 'input_boolean.leak_ack_main_bathroom',
+        'binary_sensor.leak_kitchen_sink': 'input_boolean.leak_ack_kitchen_sink',
+        'binary_sensor.leak_side_bathroom': 'input_boolean.leak_ack_side_bathroom',
+        'binary_sensor.leak_refrigerator': 'input_boolean.leak_ack_refrigerator',
+        'binary_sensor.leak_attic': 'input_boolean.leak_ack_attic',
+        'binary_sensor.leak_shed': 'input_boolean.leak_ack_shed',
+        'binary_sensor.leak_laundry_room': 'input_boolean.leak_ack_laundry'
+      } }}
+    unacked_names: >-
       {% set ns = namespace(items=[]) %}
       {% for e in leak_entities %}
-        {% if states(e) == 'on' %}
+        {% set ack = ack_map[e] %}
+        {% if states(e) == 'on' and states(ack) != 'on' %}
           {% set nm = area_name(e) if area_name(e) else state_attr(e, 'friendly_name') %}
           {% set ns.items = ns.items + [ nm if nm else e ] %}
         {% endif %}
       {% endfor %}
       {{ ns.items | join(', ') }}
     tts_msg: >-
-      {{ 'Water leak detected' ~ (' in ' ~ leak_on_names if leak_on_names) ~ '. Please check immediately.' }}
+      {{ 'Water leak detected' ~ (' in ' ~ unacked_names if unacked_names) ~ '. Please check immediately.' }}
   condition:
     - condition: state
       entity_id: input_boolean.leak_alert_tts_enabled
@@ -140,7 +165,7 @@
       state: 'idle'
     - condition: template
       value_template: >-
-        {{ leak_on_names | length > 0 }}
+        {{ unacked_names | length > 0 }}
   action:
     - service: sonos.snapshot
       target:
@@ -175,6 +200,19 @@
     - service: input_boolean.turn_on
       target:
         entity_id: input_boolean.leak_alert_acknowledged
+
+- id: water_leak_ack_all_immediate
+  alias: "Water leak: Ack All immediate stop"
+  description: Stop current TTS/audio on Sonos when Ack All is pressed.
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: input_boolean.leak_alert_acknowledged
+      to: 'on'
+  action:
+    - service: media_player.media_stop
+      target:
+        entity_id: media_player.sonos_move
 
 - id: water_leak_snooze15_action
   alias: "Water leak: snooze 15m via mobile action"
@@ -244,12 +282,14 @@
     - platform: template
       value_template: >-
         {{
-          states('binary_sensor.crawl_space_water_leak_detected') == 'off' and
-          states('binary_sensor.leak_sensor_water_leak_detected') == 'off' and
-          states('binary_sensor.sink_leak_sensor_water_leak_detected') == 'off' and
-          states('binary_sensor.sink_leak_sensor_water_leak_detected_2') == 'off' and
-          states('binary_sensor.refrigerator_leak_sensor_water_leak_detected') == 'off' and
-          states('binary_sensor.water_leak_xs_sensor_water_leak_detected') == 'off'
+          states('binary_sensor.leak_crawl_space') == 'off' and
+          states('binary_sensor.leak_main_bathroom') == 'off' and
+          states('binary_sensor.leak_kitchen_sink') == 'off' and
+          states('binary_sensor.leak_side_bathroom') == 'off' and
+          states('binary_sensor.leak_refrigerator') == 'off' and
+          states('binary_sensor.leak_attic') == 'off' and
+          states('binary_sensor.leak_shed') == 'off' and
+          states('binary_sensor.leak_laundry_room') == 'off'
         }}
       for: '00:05:00'
   action:
@@ -259,3 +299,14 @@
     - service: timer.cancel
       target:
         entity_id: timer.leak_alert_snooze
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+          - input_boolean.leak_ack_crawl_space
+          - input_boolean.leak_ack_main_bathroom
+          - input_boolean.leak_ack_kitchen_sink
+          - input_boolean.leak_ack_side_bathroom
+          - input_boolean.leak_ack_refrigerator
+          - input_boolean.leak_ack_attic
+          - input_boolean.leak_ack_shed
+          - input_boolean.leak_ack_laundry

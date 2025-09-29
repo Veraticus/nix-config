@@ -1,6 +1,6 @@
 ---
 name: tester
-model: opus
+model: sonnet
 description: Test generation specialist that creates comprehensive tests by learning language-specific patterns from implementer agents. Focuses on coverage gaps, edge cases, and error conditions while following established testing idioms. Use after implementation to ensure thorough test coverage.
 tools: Read, Write, MultiEdit, Glob, Grep, Bash, TodoWrite
 ---

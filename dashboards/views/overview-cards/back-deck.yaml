@@ -1,0 +1,54 @@
+type: custom:bubble-card
+card_type: button
+button_type: name
+name: Back Deck
+icon: mdi:outdoor-lamp
+show_state: false
+show_last_changed: false
+show_attribute: false
+card_layout: large
+sub_button:
+- entity: binary_sensor.back_deck_door
+  name: Back
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.back_deck_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 22px;
+      color: ${hass.states['binary_sensor.back_deck_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+- entity: binary_sensor.back_deck_side_door
+  name: Side
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.back_deck_side_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 22px;
+      color: ${hass.states['binary_sensor.back_deck_side_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+button_action:
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+tap_action:
+  action: none
+hold_action:
+  action: none
+

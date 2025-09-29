@@ -1,6 +1,6 @@
 ---
 name: validator
-model: opus
+model: sonnet
 description: Code validation specialist that performs comprehensive quality checks across all languages. Runs tests, linters, formatters, and security scans to ensure code meets quality standards. Acts as final quality gate with objective, evidence-based validation. Use after any implementation to verify quality.
 tools: Read, Glob, Grep, Bash, TodoWrite
 ---

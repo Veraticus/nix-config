@@ -1,6 +1,6 @@
 ---
 name: debugger
-model: opus
+model: sonnet
 description: Distributed systems debugging specialist that correlates failures across Nix, Home Assistant, Kubernetes, AWS, and other complex systems. Performs systematic root cause analysis through log correlation, state reconstruction, and hypothesis testing. Use when troubleshooting failures, performance issues, or unexpected behavior.
 tools: Read, Bash, Grep, Glob, WebSearch, TodoWrite
 ---

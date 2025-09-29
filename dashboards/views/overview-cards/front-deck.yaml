@@ -1,0 +1,77 @@
+type: custom:bubble-card
+card_type: button
+button_type: name
+name: Front Deck
+icon: mdi:outdoor-lamp
+show_state: false
+show_last_changed: false
+show_attribute: false
+card_layout: large
+sub_button:
+- entity: binary_sensor.front_deck_sliding_door
+  name: Sliding Door
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.front_deck_sliding_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 26px;
+      color: ${hass.states['binary_sensor.front_deck_sliding_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+- entity: binary_sensor.front_deck_left_window
+  name: Left Window
+  icon: mdi:window-closed
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    ${(() => {
+      const s = hass.states['binary_sensor.front_deck_left_window']?.state === 'on';
+      const bg = s ? 'rgba(100, 181, 246, 0.28)' : 'rgba(76, 175, 80, 0.30)';
+      const color = s ? '#1E88E5' : '#43a047';
+      // This is the 2nd sub-button on this card (index 1)
+      if (subButtonIcon && subButtonIcon[1]) {
+        subButtonIcon[1].setAttribute('icon', s ? 'mdi:window-open' : 'mdi:window-closed');
+      }
+      return `
+        .bubble-sub-button { background-color: ${bg} !important; }
+        .bubble-sub-button-icon { --mdc-icon-size: 26px; color: ${color} !important; }
+      `;
+    })()}
+- entity: binary_sensor.front_deck_right_window
+  name: Right Window
+  icon: mdi:window-closed
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    ${(() => {
+      const s = hass.states['binary_sensor.front_deck_right_window']?.state === 'on';
+      const bg = s ? 'rgba(100, 181, 246, 0.28)' : 'rgba(76, 175, 80, 0.30)';
+      const color = s ? '#1E88E5' : '#43a047';
+      // This is the 3rd sub-button on this card (index 2)
+      if (subButtonIcon && subButtonIcon[2]) {
+        subButtonIcon[2].setAttribute('icon', s ? 'mdi:window-open' : 'mdi:window-closed');
+      }
+      return `
+        .bubble-sub-button { background-color: ${bg} !important; }
+        .bubble-sub-button-icon { --mdc-icon-size: 26px; color: ${color} !important; }
+      `;
+    })()}
+button_action:
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+tap_action:
+  action: none
+hold_action:
+  action: none
+

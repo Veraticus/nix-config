@@ -1,6 +1,6 @@
 ---
 name: analyzer
-model: opus
+model: sonnet
 description: Deep codebase researcher and implementation planner. Thoroughly explores existing code, reference projects, and documentation to create detailed implementation plans. Use when starting any feature, integration, or significant change.
 tools: Read, Grep, Glob, Bash, TodoWrite
 ---

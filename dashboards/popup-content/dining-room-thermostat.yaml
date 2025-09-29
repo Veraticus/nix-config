@@ -1,0 +1,27 @@
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: separator
+    name: Climate Control
+    icon: mdi:thermostat-box
+  - type: thermostat
+    entity: climate.my_ecobee
+  - type: custom:bubble-card
+    card_type: separator
+    name: Environment
+    icon: mdi:weather-partly-cloudy
+  - type: custom:auto-entities
+    card:
+      type: entities
+      state_color: true
+    card_param: entities
+    filter:
+      include:
+        - entity_id: sensor.my_ecobee_current_temperature
+          options:
+            name: Air Temperature
+        - entity_id: sensor.my_ecobee_current_humidity
+          options:
+            name: Humidity
+      show_empty: false
+

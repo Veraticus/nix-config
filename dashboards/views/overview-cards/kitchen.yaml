@@ -1,0 +1,37 @@
+type: custom:bubble-card
+card_type: button
+button_type: name
+name: Kitchen
+icon: mdi:silverware-fork-knife
+show_state: false
+show_last_changed: false
+show_attribute: false
+card_layout: large
+sub_button:
+- entity: binary_sensor.kitchen_door
+  name: Door
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.kitchen_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 26px;
+      color: ${hass.states['binary_sensor.kitchen_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+button_action:
+  tap_action:
+    action: none
+  hold_action:
+    action: none
+tap_action:
+  action: none
+hold_action:
+  action: none
+

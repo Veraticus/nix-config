@@ -1,0 +1,53 @@
+type: custom:bubble-card
+card_type: button
+button_type: slider
+entity: light.living_room
+name: Living Room
+icon: mdi:sofa
+show_state: true
+show_last_changed: false
+show_attribute: true
+attribute: brightness
+slider_live_update: true
+allow_light_slider_to_0: false
+card_layout: large
+sub_button:
+- entity: binary_sensor.front_door
+  name: Door
+  show_state: false
+  show_background: true
+  show_icon: true
+  styles: |-
+    .bubble-sub-button {
+      {% if is_state('binary_sensor.front_door', 'on') %}
+        background-color: rgba(239, 83, 80, 0.3) !important;
+      {% else %}
+        background-color: rgba(76, 175, 80, 0.3) !important;
+      {% endif %}
+    }
+    .bubble-sub-button-icon {
+      --mdc-icon-size: 26px;
+      color: ${hass.states['binary_sensor.front_door'].state === 'on' ? '#ef5350' : '#43a047'} !important;
+    }
+- icon: mdi:dots-horizontal
+  show_background: true
+  tap_action:
+    action: fire-dom-event
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: Living Room Lights
+        content: !include ../../popup-content/living-room.yaml
+  hold_action:
+    action: navigate
+    navigation_path: '#living-room-lights'
+button_action:
+  tap_action:
+    action: toggle
+  hold_action:
+    action: none
+tap_action:
+  action: toggle
+hold_action:
+  action: navigate
+  navigation_path: '#living-room-lights'

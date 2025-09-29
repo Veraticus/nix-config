@@ -16,7 +16,7 @@ cards:
   - !include ./overview-cards/office.yaml
   - !include ./overview-cards/server-closet.yaml
   - !include ./overview-cards/back-deck.yaml
-  # Garage Door - Simplified for maximum reliability
+  # Garage Door - Single toggle button (reliable, no JS/animation)
   - type: custom:bubble-card
     card_type: button
     button_type: state
@@ -52,14 +52,12 @@ cards:
         {% endif %}
       }
     sub_button:
-    # OPEN button - shown when door is closed
     - entity: cover.garage_door
-      icon: mdi:arrow-up-bold-circle
-      name: Open
+      icon: mdi:garage-open
       show_background: true
       tap_action:
         action: call-service
-        service: cover.open_cover
+        service: cover.toggle
         target:
           entity_id: cover.garage_door
       hold_action:
@@ -68,125 +66,32 @@ cards:
         target:
           entity_id: cover.garage_door
       styles: |-
-        {% set s = states('cover.garage_door') %}
-        .bubble-sub-button {
-          {% if s == 'closed' %}
-            display: flex !important;
-            background-color: rgba(120, 144, 156, 0.20) !important;
-          {% else %}
-            display: none !important;
-          {% endif %}
-          border-radius: 16px;
-        }
-        .bubble-sub-button-icon {
-          color: #455A64 !important;
-          --mdc-icon-size: 26px;
-        }
-        .bubble-sub-button-name {
-          color: #37474F !important;
-          font-size: 12px;
-        }
-    # CLOSE button - shown when door is open
-    - entity: cover.garage_door
-      icon: mdi:arrow-down-bold-circle
-      name: Close
-      show_background: true
-      tap_action:
-        action: call-service
-        service: cover.close_cover
-        target:
-          entity_id: cover.garage_door
-      hold_action:
-        action: call-service
-        service: cover.stop_cover
-        target:
-          entity_id: cover.garage_door
-      styles: |-
-        {% set s = states('cover.garage_door') %}
-        .bubble-sub-button {
-          {% if s == 'open' %}
-            display: flex !important;
-            background-color: rgba(25, 118, 210, 0.22) !important;
-          {% else %}
-            display: none !important;
-          {% endif %}
-          border-radius: 16px;
-        }
-        .bubble-sub-button-icon {
-          color: #1565C0 !important;
-          --mdc-icon-size: 26px;
-        }
-        .bubble-sub-button-name {
-          color: #0D47A1 !important;
-          font-size: 12px;
-        }
-    # OPENING status - shown during opening transition
-    - entity: cover.garage_door
-      icon: mdi:progress-upload
-      name: Opening...
-      show_background: true
-      tap_action:
-        action: call-service
-        service: cover.stop_cover
-        target:
-          entity_id: cover.garage_door
-      styles: |-
-        {% set s = states('cover.garage_door') %}
-        .bubble-sub-button {
-          {% if s == 'opening' %}
-            display: flex !important;
-            background-color: rgba(25, 118, 210, 0.22) !important;
-          {% else %}
-            display: none !important;
-          {% endif %}
-          border-radius: 16px;
-          pointer-events: auto !important;
-        }
-        .bubble-sub-button-icon {
-          color: #1565C0 !important;
-          --mdc-icon-size: 26px;
-        }
-        .bubble-sub-button-name {
-          color: #0D47A1 !important;
-          font-size: 12px;
-        }
-    # CLOSING status - shown during closing transition
-    - entity: cover.garage_door
-      icon: mdi:progress-download
-      name: Closing...
-      show_background: true
-      tap_action:
-        action: call-service
-        service: cover.stop_cover
-        target:
-          entity_id: cover.garage_door
-      styles: |-
-        {% set s = states('cover.garage_door') %}
-        .bubble-sub-button {
-          {% if s == 'closing' %}
-            display: flex !important;
-            background-color: rgba(120, 144, 156, 0.20) !important;
-          {% else %}
-            display: none !important;
-          {% endif %}
-          border-radius: 16px;
-          pointer-events: auto !important;
-        }
-        .bubble-sub-button-icon {
-          color: #455A64 !important;
-          --mdc-icon-size: 26px;
-        }
-        .bubble-sub-button-name {
-          color: #37474F !important;
-          font-size: 12px;
-        }
+        ${(() => {
+          const st = hass.states['cover.garage_door']?.state || 'unknown';
+          let icon = 'mdi:help-circle';
+          if (st === 'open') icon = 'mdi:arrow-down-bold-circle';
+          else if (st === 'closed') icon = 'mdi:arrow-up-bold-circle';
+          else if (st === 'opening') icon = 'mdi:progress-upload';
+          else if (st === 'closing') icon = 'mdi:progress-download';
+
+          if (subButtonIcon && subButtonIcon[0]) {
+            subButtonIcon[0].setAttribute('icon', icon);
+          }
+
+          const isOpen = ['open', 'opening'].includes(st);
+          const bg = isOpen ? 'rgba(25, 118, 210, 0.22)' : 'rgba(120, 144, 156, 0.20)';
+          const color = isOpen ? '#1565C0' : '#455A64';
+
+          return `
+            .bubble-sub-button { background-color: ${bg} !important; border-radius: 16px; }
+            .bubble-sub-button-icon { color: ${color} !important; --mdc-icon-size: 26px; }
+          `;
+        })()}
     button_action:
       tap_action:
         action: more-info
-      double_tap_action:
-        action: none
       hold_action:
-        action: more-info
+        action: none
     tap_action:
       action: more-info
     hold_action:

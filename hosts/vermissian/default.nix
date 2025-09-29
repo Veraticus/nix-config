@@ -422,6 +422,7 @@ in
 
       gcc
       gnumake
+      grpcurl
       nodejs
       uv
       protobuf

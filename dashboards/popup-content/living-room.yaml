@@ -144,7 +144,8 @@ cards:
                 options:
                   type: custom:bubble-card
                   card_type: button
-                  button_type: name
+                  show_name: true
+                  show_icon: true
                   card_layout: normal
                   styles: |-
                     ha-card { height: 48px !important; }

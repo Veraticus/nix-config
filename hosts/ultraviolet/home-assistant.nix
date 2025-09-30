@@ -320,6 +320,29 @@ in
         };
       };
 
+      input_select = {
+        living_room_popup_view = {
+          name = "Living Room Popup View";
+          icon = "mdi:view-dashboard";
+          options = [
+            "control"
+            "scenes"
+            "lights"
+          ];
+          initial = "control";
+        };
+        main_bedroom_popup_view = {
+          name = "Main Bedroom Popup View";
+          icon = "mdi:view-dashboard";
+          options = [
+            "control"
+            "scenes"
+            "lights"
+          ];
+          initial = "control";
+        };
+      };
+
       timer = {
         leak_alert_snooze = {
           name = "Leak alert snooze";

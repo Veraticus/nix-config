@@ -1,6 +1,6 @@
 - id: water_leak_push_notify
   alias: "Water leak: push notify Josh"
-  description: Send a push notification to Josh's iPhone when any leak sensor reports ON
+  description: Send a critical push notification to Josh's iPhone when any leak sensor reports ON
   mode: single
   trigger:
     # Explicit list of known leak sensors; add more here as installed
@@ -39,16 +39,28 @@
   variables:
     leak_name: >-
       {{ area_name(trigger.entity_id) if area_name(trigger.entity_id) else state_attr(trigger.entity_id, 'friendly_name') }}
+  condition:
+    - condition: state
+      entity_id: input_boolean.leak_alert_acknowledged
+      state: 'off'
+    - condition: state
+      entity_id: timer.leak_alert_snooze
+      state: 'idle'
   action:
     - service: notify.mobile_app_spire
       data:
-        title: "Water Leak Detected"
+        title: "🚨 WATER LEAK DETECTED"
         message: >-
-          Leak detected{{ ' in ' ~ leak_name if leak_name else '' }} ({{ trigger.entity_id }}). Please check immediately.
+          {{ leak_name if leak_name else 'Unknown location' }}: Water detected! Check immediately.
         data:
-          push:
-            interruption-level: time-sensitive
+          tag: "leak_alert"
           url: /lovelace/overview
+          push:
+            interruption-level: critical
+            sound:
+              name: "default"
+              critical: 1
+              volume: 1.0
           actions:
             - action: LEAK_ACK
               title: Acknowledge
@@ -200,6 +212,19 @@
     - service: input_boolean.turn_on
       target:
         entity_id: input_boolean.leak_alert_acknowledged
+    - service: notify.mobile_app_spire
+      data:
+        message: "clear_notification"
+        data:
+          tag: "leak_alert"
+    - service: notify.mobile_app_spire
+      data:
+        title: "✓ Leak Alert Acknowledged"
+        message: "Please address the water leak immediately"
+        data:
+          tag: "leak_ack_confirmation"
+          push:
+            interruption-level: active
 
 - id: water_leak_ack_all_immediate
   alias: "Water leak: Ack All immediate stop"
@@ -227,6 +252,19 @@
         entity_id: timer.leak_alert_snooze
       data:
         duration: '00:15:00'
+    - service: notify.mobile_app_spire
+      data:
+        message: "clear_notification"
+        data:
+          tag: "leak_alert"
+    - service: notify.mobile_app_spire
+      data:
+        title: "⏸ Leak Alerts Snoozed"
+        message: "Alerts snoozed for 15 minutes"
+        data:
+          tag: "leak_snooze_confirmation"
+          push:
+            interruption-level: passive
 
 - id: water_leak_snooze60_action
   alias: "Water leak: snooze 60m via mobile action"
@@ -241,6 +279,19 @@
         entity_id: timer.leak_alert_snooze
       data:
         duration: '01:00:00'
+    - service: notify.mobile_app_spire
+      data:
+        message: "clear_notification"
+        data:
+          tag: "leak_alert"
+    - service: notify.mobile_app_spire
+      data:
+        title: "⏸ Leak Alerts Snoozed"
+        message: "Alerts snoozed for 60 minutes"
+        data:
+          tag: "leak_snooze_confirmation"
+          push:
+            interruption-level: passive
 
 - id: water_leak_ack_button
   alias: "Water leak: acknowledge via input button"
@@ -310,3 +361,16 @@
           - input_boolean.leak_ack_attic
           - input_boolean.leak_ack_shed
           - input_boolean.leak_ack_laundry
+    - service: notify.mobile_app_spire
+      data:
+        message: "clear_notification"
+        data:
+          tag: "leak_alert"
+    - service: notify.mobile_app_spire
+      data:
+        title: "✓ Water Leak Resolved"
+        message: "All leak sensors are now dry"
+        data:
+          tag: "leak_resolved"
+          push:
+            interruption-level: active

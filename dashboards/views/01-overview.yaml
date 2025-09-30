@@ -6,7 +6,7 @@ panel: true
 cards:
 - type: vertical-stack
   cards:
-  # Popups: include hidden pop-up definitions so hash navigation works
+  # Room cards
   - !include ./overview-cards/front-deck.yaml
   - !include ./overview-cards/living-room.yaml
   - !include ./overview-cards/main-bedroom.yaml
@@ -154,7 +154,8 @@ cards:
     sub_button:
     - entity: input_boolean.leak_alert_acknowledged
       icon: mdi:check-all
-      name: Ack All
+      name: Acknowledge
+      show_name: true
       show_background: true
       tap_action:
         action: call-service
@@ -193,23 +194,53 @@ cards:
             }
           }
           const actionable = unacked > 0 && !globalAck;
-          // name text
-          if (subButtonName && subButtonName[0]) {
-            subButtonName[0].textContent = actionable ? 'Acknowledge' : (active === 0 ? 'No Sensors Active' : 'Acknowledged');
+          const isAcknowledged = globalAck || (active > 0 && unacked === 0);
+
+          // Update icon and text based on state
+          if (subButtonIcon && subButtonIcon[0]) {
+            subButtonIcon[0].setAttribute('icon', isAcknowledged ? 'mdi:check-circle' : 'mdi:alert-circle');
           }
-          // icon color + background and pointer events
-          const bg = actionable ? 'rgba(229, 115, 115, 0.28)' : 'rgba(120, 144, 156, 0.20)';
-          const color = actionable ? '#C62828' : '#546E7A';
+          if (subButtonName && subButtonName[0]) {
+            if (active === 0) {
+              subButtonName[0].textContent = 'No Leaks';
+            } else if (isAcknowledged) {
+              subButtonName[0].textContent = '✓ Acknowledged';
+            } else {
+              subButtonName[0].textContent = `Acknowledge (${unacked})`;
+            }
+          }
+
+          // Color coding: red for actionable, green for acknowledged, gray for idle
+          const bg = actionable ? 'rgba(229, 115, 115, 0.35)' :
+                     isAcknowledged ? 'rgba(76, 175, 80, 0.30)' :
+                     'rgba(120, 144, 156, 0.20)';
+          const color = actionable ? '#C62828' :
+                       isAcknowledged ? '#2e7d32' :
+                       '#546E7A';
           const ptr = actionable ? 'auto' : 'none';
+
           return `
-            .bubble-sub-button { background-color: ${bg} !important; border-radius: 16px; pointer-events: ${ptr} !important; }
-            .bubble-sub-button-icon { color: ${color} !important; --mdc-icon-size: 24px; }
-            .bubble-sub-button-name { color: #37474F !important; }
+            .bubble-sub-button {
+              background-color: ${bg} !important;
+              border-radius: 16px;
+              pointer-events: ${ptr} !important;
+              min-width: 120px !important;
+            }
+            .bubble-sub-button-icon {
+              color: ${color} !important;
+              --mdc-icon-size: 22px;
+            }
+            .bubble-sub-button-name {
+              color: ${color} !important;
+              font-weight: 600 !important;
+              font-size: 13px !important;
+            }
           `;
         })()}
     - entity: timer.leak_alert_snooze
       icon: mdi:alarm-snooze
       name: Snooze 15m
+      show_name: true
       show_background: true
       tap_action:
         action: call-service
@@ -231,27 +262,60 @@ cards:
           ];
           const globalAck = hass.states['input_boolean.leak_alert_acknowledged']?.state === 'on';
           const snoozeState = hass.states['timer.leak_alert_snooze']?.state || 'idle';
+          const timer = hass.states['timer.leak_alert_snooze'];
           let active = 0;
           for (const e of leaks) if (hass.states[e]?.state === 'on') active++;
           const actionable = active > 0 && !globalAck && snoozeState === 'idle';
-          const isSnoozed = snoozeState !== 'idle';
-          // label
-          if (subButtonName && subButtonName[1]) {
-            subButtonName[1].textContent = isSnoozed ? 'Snoozed' : (actionable ? 'Snooze 15m' : (active === 0 ? 'No Sensors Active' : 'Acknowledged'));
+          const isSnoozed = snoozeState === 'active';
+
+          // Update icon and text
+          if (subButtonIcon && subButtonIcon[1]) {
+            subButtonIcon[1].setAttribute('icon', isSnoozed ? 'mdi:alarm-check' : 'mdi:alarm-snooze');
           }
-          // visuals and pointer
-          const bg = actionable ? 'rgba(255, 183, 77, 0.28)' : 'rgba(120, 144, 156, 0.20)';
-          const color = actionable ? '#EF6C00' : '#546E7A';
+          if (subButtonName && subButtonName[1]) {
+            if (isSnoozed) {
+              const remaining = timer?.attributes?.remaining || '';
+              subButtonName[1].textContent = `⏸ Snoozed ${remaining}`;
+            } else if (active === 0) {
+              subButtonName[1].textContent = 'No Leaks';
+            } else if (globalAck) {
+              subButtonName[1].textContent = 'Acknowledged';
+            } else {
+              subButtonName[1].textContent = 'Snooze 15m';
+            }
+          }
+
+          // Color coding
+          const bg = isSnoozed ? 'rgba(156, 39, 176, 0.30)' :
+                     actionable ? 'rgba(255, 183, 77, 0.35)' :
+                     'rgba(120, 144, 156, 0.20)';
+          const color = isSnoozed ? '#6A1B9A' :
+                       actionable ? '#EF6C00' :
+                       '#546E7A';
           const ptr = actionable ? 'auto' : 'none';
+
           return `
-            .bubble-sub-button { background-color: ${bg} !important; border-radius: 16px; pointer-events: ${ptr} !important; }
-            .bubble-sub-button-icon { color: ${color} !important; --mdc-icon-size: 24px; }
-            .bubble-sub-button-name { color: #37474F !important; }
+            .bubble-sub-button {
+              background-color: ${bg} !important;
+              border-radius: 16px;
+              pointer-events: ${ptr} !important;
+              min-width: 120px !important;
+            }
+            .bubble-sub-button-icon {
+              color: ${color} !important;
+              --mdc-icon-size: 22px;
+            }
+            .bubble-sub-button-name {
+              color: ${color} !important;
+              font-weight: 600 !important;
+              font-size: 13px !important;
+            }
           `;
         })()}
     - entity: timer.leak_alert_snooze
       icon: mdi:alarm-snooze
       name: Snooze 60m
+      show_name: true
       show_background: true
       tap_action:
         action: call-service
@@ -273,22 +337,54 @@ cards:
           ];
           const globalAck = hass.states['input_boolean.leak_alert_acknowledged']?.state === 'on';
           const snoozeState = hass.states['timer.leak_alert_snooze']?.state || 'idle';
+          const timer = hass.states['timer.leak_alert_snooze'];
           let active = 0;
           for (const e of leaks) if (hass.states[e]?.state === 'on') active++;
           const actionable = active > 0 && !globalAck && snoozeState === 'idle';
-          const isSnoozed = snoozeState !== 'idle';
-          // label
-          if (subButtonName && subButtonName[2]) {
-            subButtonName[2].textContent = isSnoozed ? 'Snoozed' : (actionable ? 'Snooze 60m' : (active === 0 ? 'No Sensors Active' : 'Acknowledged'));
+          const isSnoozed = snoozeState === 'active';
+
+          // Update icon and text
+          if (subButtonIcon && subButtonIcon[2]) {
+            subButtonIcon[2].setAttribute('icon', isSnoozed ? 'mdi:alarm-check' : 'mdi:alarm-snooze');
           }
-          // visuals and pointer
-          const bg = actionable ? 'rgba(255, 183, 77, 0.28)' : 'rgba(120, 144, 156, 0.20)';
-          const color = actionable ? '#EF6C00' : '#546E7A';
+          if (subButtonName && subButtonName[2]) {
+            if (isSnoozed) {
+              const remaining = timer?.attributes?.remaining || '';
+              subButtonName[2].textContent = `⏸ Snoozed ${remaining}`;
+            } else if (active === 0) {
+              subButtonName[2].textContent = 'No Leaks';
+            } else if (globalAck) {
+              subButtonName[2].textContent = 'Acknowledged';
+            } else {
+              subButtonName[2].textContent = 'Snooze 60m';
+            }
+          }
+
+          // Color coding
+          const bg = isSnoozed ? 'rgba(156, 39, 176, 0.30)' :
+                     actionable ? 'rgba(255, 183, 77, 0.35)' :
+                     'rgba(120, 144, 156, 0.20)';
+          const color = isSnoozed ? '#6A1B9A' :
+                       actionable ? '#EF6C00' :
+                       '#546E7A';
           const ptr = actionable ? 'auto' : 'none';
+
           return `
-            .bubble-sub-button { background-color: ${bg} !important; border-radius: 16px; pointer-events: ${ptr} !important; }
-            .bubble-sub-button-icon { color: ${color} !important; --mdc-icon-size: 24px; }
-            .bubble-sub-button-name { color: #37474F !important; }
+            .bubble-sub-button {
+              background-color: ${bg} !important;
+              border-radius: 16px;
+              pointer-events: ${ptr} !important;
+              min-width: 120px !important;
+            }
+            .bubble-sub-button-icon {
+              color: ${color} !important;
+              --mdc-icon-size: 22px;
+            }
+            .bubble-sub-button-name {
+              color: ${color} !important;
+              font-weight: 600 !important;
+              font-size: 13px !important;
+            }
           `;
         })()}
   # Water sensor grid - 2 columns, 6 actual sensors

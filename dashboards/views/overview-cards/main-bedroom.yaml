@@ -42,9 +42,6 @@ sub_button:
       data:
         title: Main Bedroom Lights
         content: !include ../../popup-content/main-bedroom.yaml
-  hold_action:
-    action: navigate
-    navigation_path: '#main-bedroom-lights'
 button_action:
   tap_action:
     action: toggle

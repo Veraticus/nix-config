@@ -38,9 +38,6 @@ sub_button:
       data:
         title: Living Room Lights
         content: !include ../../popup-content/living-room.yaml
-  hold_action:
-    action: navigate
-    navigation_path: '#living-room-lights'
 button_action:
   tap_action:
     action: toggle

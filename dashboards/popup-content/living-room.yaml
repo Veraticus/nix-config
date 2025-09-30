@@ -1,29 +1,200 @@
 type: vertical-stack
 cards:
-  - type: custom:bubble-card
-    card_type: separator
-    name: Room Control
-    icon: mdi:lightbulb-group
-  - type: custom:bubble-card
-    card_type: button
-    button_type: slider
-    entity: light.living_room
-    name: All Lights
-    icon: mdi:lightbulb-group
-    show_state: true
-    show_attribute: true
-    attribute: brightness
-    slider_live_update: true
-    allow_light_slider_to_0: true
-    sub_button:
-    - entity: light.living_room
+  # Header Navigation Buttons
+  - type: horizontal-stack
+    cards:
+    - type: custom:bubble-card
+      card_type: button
+      button_type: name
+      name: Room Control
+      icon: mdi:tune
+      card_layout: normal
+      styles: |-
+        ha-card {
+          {% if is_state('input_select.living_room_popup_view', 'control') %}
+            background: rgba(76, 175, 80, 0.3) !important;
+          {% else %}
+            background: rgba(255, 255, 255, 0.05) !important;
+          {% endif %}
+        }
+        .bubble-name {
+          {% if is_state('input_select.living_room_popup_view', 'control') %}
+            font-weight: 600 !important;
+            color: #43a047 !important;
+          {% endif %}
+        }
+      button_action:
+        tap_action:
+          action: call-service
+          service: input_select.select_option
+          service_data:
+            entity_id: input_select.living_room_popup_view
+            option: control
+    - type: custom:bubble-card
+      card_type: button
+      button_type: name
+      name: Scenes
       icon: mdi:palette
-      name: Color
-      tap_action:
-        action: more-info
-    button_action:
-      tap_action:
-        action: toggle
-      hold_action:
-        action: none
+      card_layout: normal
+      styles: |-
+        ha-card {
+          {% if is_state('input_select.living_room_popup_view', 'scenes') %}
+            background: rgba(76, 175, 80, 0.3) !important;
+          {% else %}
+            background: rgba(255, 255, 255, 0.05) !important;
+          {% endif %}
+        }
+        .bubble-name {
+          {% if is_state('input_select.living_room_popup_view', 'scenes') %}
+            font-weight: 600 !important;
+            color: #43a047 !important;
+          {% endif %}
+        }
+      button_action:
+        tap_action:
+          action: call-service
+          service: input_select.select_option
+          service_data:
+            entity_id: input_select.living_room_popup_view
+            option: scenes
+    - type: custom:bubble-card
+      card_type: button
+      button_type: name
+      name: Lights
+      icon: mdi:lightbulb
+      card_layout: normal
+      styles: |-
+        ha-card {
+          {% if is_state('input_select.living_room_popup_view', 'lights') %}
+            background: rgba(76, 175, 80, 0.3) !important;
+          {% else %}
+            background: rgba(255, 255, 255, 0.05) !important;
+          {% endif %}
+        }
+        .bubble-name {
+          {% if is_state('input_select.living_room_popup_view', 'lights') %}
+            font-weight: 600 !important;
+            color: #43a047 !important;
+          {% endif %}
+        }
+      button_action:
+        tap_action:
+          action: call-service
+          service: input_select.select_option
+          service_data:
+            entity_id: input_select.living_room_popup_view
+            option: lights
 
+  # Room Control Section (conditional)
+  - type: conditional
+    conditions:
+      - entity: input_select.living_room_popup_view
+        state: control
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:bubble-card
+          card_type: separator
+          name: Room Control
+          icon: mdi:lightbulb-group
+        - type: custom:bubble-card
+          card_type: button
+          button_type: slider
+          entity: light.living_room
+          name: All Lights
+          icon: mdi:lightbulb-group
+          show_state: true
+          show_attribute: true
+          attribute: brightness
+          slider_live_update: true
+          allow_light_slider_to_0: true
+          sub_button:
+          - entity: light.living_room
+            icon: mdi:palette
+            name: Color
+            tap_action:
+              action: more-info
+          button_action:
+            tap_action:
+              action: toggle
+            hold_action:
+              action: none
+
+  # Scenes Section (conditional)
+  - type: conditional
+    conditions:
+      - entity: input_select.living_room_popup_view
+        state: scenes
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:bubble-card
+          card_type: separator
+          name: Hue Scenes
+          icon: mdi:palette
+        - type: custom:auto-entities
+          card:
+            type: grid
+            columns: 2
+            square: false
+          card_param: cards
+          filter:
+            include:
+              - entity_id: scene.living_room_*
+                options:
+                  type: custom:bubble-card
+                  card_type: button
+                  button_type: name
+                  card_layout: normal
+                  styles: |-
+                    ha-card { height: 48px !important; }
+                    .bubble-container { height: 48px !important; }
+                    .bubble-name { font-size: 14px !important; }
+                    .bubble-icon-container { min-width: 36px !important; min-height: 36px !important; margin: 6px !important; }
+                    .bubble-icon { --mdc-icon-size: 22px !important; }
+                  tap_action:
+                    action: call-service
+                    service: scene.turn_on
+                    service_data:
+                      entity_id: this.entity_id
+          sort:
+            method: friendly_name
+
+  # Individual Lights Section (conditional)
+  - type: conditional
+    conditions:
+      - entity: input_select.living_room_popup_view
+        state: lights
+    card:
+      type: vertical-stack
+      cards:
+        - type: custom:bubble-card
+          card_type: separator
+          name: Individual Lights
+          icon: mdi:lightbulb
+        - type: custom:auto-entities
+          card:
+            type: vertical-stack
+          card_param: cards
+          filter:
+            include:
+              - area: Living Room
+                domain: light
+                options:
+                  type: custom:bubble-card
+                  card_type: button
+                  button_type: slider
+                  show_state: true
+                  show_attribute: true
+                  attribute: brightness
+                  slider_live_update: true
+                  allow_light_slider_to_0: true
+                  button_action:
+                    tap_action:
+                      action: toggle
+                    hold_action:
+                      action: none
+            exclude:
+              - entity_id: light.living_room
+          sort:
+            method: friendly_name

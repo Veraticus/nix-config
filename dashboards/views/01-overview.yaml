@@ -136,6 +136,44 @@ cards:
             .bubble-sub-button-icon { --mdc-icon-size: 22px; color: ${color} !important; }
           `;
         })()}
+  - type: custom:bubble-card
+    card_type: button
+    button_type: name
+    name: Gallery
+    icon: mdi:door
+    show_state: false
+    show_last_changed: false
+    show_attribute: false
+    card_layout: large
+    sub_button:
+    - entity: binary_sensor.gallery_door
+      name: Door
+      icon: mdi:door-closed
+      show_state: false
+      show_background: true
+      show_icon: true
+      styles: |-
+        ${(() => {
+          const s = hass.states['binary_sensor.gallery_door']?.state === 'on';
+          const bg = s ? 'rgba(255, 183, 77, 0.28)' : 'rgba(76, 175, 80, 0.30)';
+          const color = s ? '#FB8C00' : '#43a047';
+          if (subButtonIcon && subButtonIcon[0]) {
+            subButtonIcon[0].setAttribute('icon', s ? 'mdi:door-open' : 'mdi:door-closed');
+          }
+          return `
+            .bubble-sub-button { background-color: ${bg} !important; }
+            .bubble-sub-button-icon { --mdc-icon-size: 22px; color: ${color} !important; }
+          `;
+        })()}
+    button_action:
+      tap_action:
+        action: more-info
+      hold_action:
+        action: none
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
   # Water Sensors
   - type: custom:bubble-card
     card_type: separator

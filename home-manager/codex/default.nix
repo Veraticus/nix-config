@@ -5,10 +5,28 @@
   pkgs,
   ...
 }:
+let
+  notifierPath = "${config.home.homeDirectory}/.codex/hooks/ntfy-notifier.sh";
+  projectPath = "${config.home.homeDirectory}/nix-config";
+  codexConfig = ''
+model = "gpt-5-codex"
+model_reasoning_effort = "high"
+
+[projects."${projectPath}"]
+trust_level = "trusted"
+
+notify = ["${notifierPath}"]
+
+[tui]
+notifications = true
+'';
+in
 {
-  # Install Node.js to enable npm
+  # Install dependencies required by Codex and the notifier
   home.packages = with pkgs; [
     nodejs_24
+    jq
+    curl
   ];
 
   # Add npm global bin to PATH for user-installed packages
@@ -26,11 +44,25 @@
     PATH="${pkgs.nodejs_24}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:$PATH"
     export NPM_CONFIG_PREFIX="$HOME/.npm-global"
 
-    if ! npm list -g @openai/codex >/dev/null 2>&1; then
-      echo "Installing OpenAI Codex..."
+    if ! command -v codex >/dev/null 2>&1; then
+      echo "Installing Codex CLI..."
       npm install -g @openai/codex
     else
-      echo "OpenAI Codex is already installed"
+      echo "Codex CLI is already installed at $(which codex)"
     fi
   '';
+
+  # Deploy Codex configuration and ntfy notifier
+  home.file = {
+    ".codex/hooks/ntfy-notifier.sh" = {
+      source = ./hooks/ntfy-notifier.sh;
+      executable = true;
+      force = true;
+    };
+
+    ".codex/config.toml" = {
+      text = codexConfig;
+      force = true;
+    };
+  };
 }

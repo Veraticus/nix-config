@@ -12,10 +12,10 @@ let
 model = "gpt-5-codex"
 model_reasoning_effort = "high"
 
+notify = ["${notifierPath}"]
+
 [projects."${projectPath}"]
 trust_level = "trusted"
-
-notify = ["${notifierPath}"]
 
 [tui]
 notifications = true

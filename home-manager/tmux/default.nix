@@ -88,13 +88,26 @@ in
         # Enable true color support
         set -ga terminal-overrides ",xterm-256color:Tc"
         set -ga terminal-overrides ",xterm-kitty:Tc"
+        # Eternal Terminal presents itself as a screen(1) derivative, so make
+        # sure tmux still drives it with truecolor sequences.
+        set -ga terminal-overrides ",screen-256color:Tc"
+        set -ga terminal-overrides ",screen:Tc"
         set -as terminal-features ",xterm-256color:RGB"
         set -as terminal-features ",xterm-kitty:RGB"
+        set -as terminal-features ",screen-256color:RGB"
+        set -as terminal-features ",screen:RGB"
         
         # Ensure proper color rendering
         set -g default-terminal "xterm-256color"
         set -ag terminal-overrides ",xterm*:RGB"
+        set -ag terminal-overrides ",screen*:RGB"
         
+        # Allow TUIs to detect terminal capabilities accurately
+        set -ga update-environment "COLORTERM"
+        set -ga update-environment "TERM_PROGRAM"
+        set -ga update-environment "TERM_PROGRAM_VERSION"
+        set -g allow-passthrough on
+
         # General Settings
         setw -g pane-base-index 1
         set -g renumber-windows on
@@ -104,13 +117,6 @@ in
         setw -g automatic-rename on
         setw -g allow-rename on
         set -g automatic-rename-format '#{pane_title}'
-        
-        # Update environment variables in new shells
-        # Explicitly exclude CLAUDE_CODE_NTFY_WRAPPED from being passed to child shells
-        set -g update-environment "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION WINDOWID XAUTHORITY TMUX_DEVSPACE"
-        
-        # Set default command to unset CLAUDE_CODE_NTFY_WRAPPED before starting the shell
-        set -g default-command "unset CLAUDE_CODE_NTFY_WRAPPED; exec $SHELL"
         
         # Simple terminal title
         set -g set-titles-string "#S:#I:#W"

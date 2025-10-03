@@ -2,13 +2,16 @@
 
 {
   # Devspace host configuration - for running ON ultraviolet
-  programs.zsh.shellAliases = {
+  programs.zsh.shellAliases = let
+    attachDevspace = name:
+      "if tmux has-session -t ${name} >/dev/null 2>&1; then tmux set-environment -t ${name} -g TMUX_DEVSPACE ${name}; else tmux new-session -d -s ${name} -e TMUX_DEVSPACE=${name}; fi; exec tmux attach-session -t ${name}";
+  in {
     # Local tmux session aliases - attach or create with TMUX_DEVSPACE set
-    mercury = "tmux attach-session -t mercury 2>/dev/null || (tmux new-session -d -s mercury && tmux set-environment -t mercury TMUX_DEVSPACE mercury && tmux attach-session -t mercury)";
-    venus = "tmux attach-session -t venus 2>/dev/null || (tmux new-session -d -s venus && tmux set-environment -t venus TMUX_DEVSPACE venus && tmux attach-session -t venus)";
-    earth = "tmux attach-session -t earth 2>/dev/null || (tmux new-session -d -s earth && tmux set-environment -t earth TMUX_DEVSPACE earth && tmux attach-session -t earth)";
-    mars = "tmux attach-session -t mars 2>/dev/null || (tmux new-session -d -s mars && tmux set-environment -t mars TMUX_DEVSPACE mars && tmux attach-session -t mars)";
-    jupiter = "tmux attach-session -t jupiter 2>/dev/null || (tmux new-session -d -s jupiter && tmux set-environment -t jupiter TMUX_DEVSPACE jupiter && tmux attach-session -t jupiter)";
+    mercury = attachDevspace "mercury";
+    venus = attachDevspace "venus";
+    earth = attachDevspace "earth";
+    mars = attachDevspace "mars";
+    jupiter = attachDevspace "jupiter";
 
     # Status command to see what's running locally
     devspace-status = "tmux list-sessions 2>/dev/null || echo \"No active sessions\"";

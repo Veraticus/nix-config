@@ -67,7 +67,6 @@ local githubRules = std.flattenArrays([
         ],
       },
       actions: {
-        archive: if std.objectHas(notification, 'important') && notification.important then false else true,
         labels: ['github/' + notification.label],
         markImportant: if std.objectHas(notification, 'important') && notification.important then true else null,
       },
@@ -92,8 +91,6 @@ local rules =
         ],
       },
       actions: {
-        archive: true,
-        markRead: true,
         labels: ['auto-archived/old-unread'],
       },
     },
@@ -205,7 +202,6 @@ local rules =
       },
       actions: {
         labels: ['🛍️-shopping'],
-        archive: true,
         markImportant: false,
       },
     },
@@ -233,7 +229,6 @@ local rules =
       },
       actions: {
         labels: ['💬-social'],
-        archive: true,
       },
     },
 
@@ -418,7 +413,6 @@ local rules =
         ],
       },
       actions: {
-        archive: true,
         labels: ['calendar/accepted'],
       },
     },
@@ -428,7 +422,6 @@ local rules =
       filter: { to: 'josh+*@joshsymonds.com' },
       actions: {
         labels: ['plus-addressed'],
-        archive: true,
       },
     },
 
@@ -439,7 +432,6 @@ local rules =
       },
       actions: {
         labels: ['marketing-platform'],
-        archive: true,
         markImportant: false,
       },
     },
@@ -527,7 +519,6 @@ local rules =
       },
       actions: {
         labels: ['marketing-platform'],
-        archive: true,
         markImportant: false,
       },
     },
@@ -553,7 +544,6 @@ local rules =
       },
       actions: {
         labels: ['bulk'],
-        archive: true,
       },
     },
 
@@ -581,7 +571,6 @@ local rules =
       },
       actions: {
         labels: ['automated'],
-        archive: true,
       },
     },
 
@@ -602,7 +591,6 @@ local rules =
       },
       actions: {
         labels: ['📱-sms'],
-        archive: true,
         markImportant: false,
       },
     },

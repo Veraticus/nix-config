@@ -47,8 +47,6 @@ local hasTheWord(s) = { hasTheWord: s };
         ],
       },
       actions: {
-        archive: true,
-        markRead: true,
         labels: ['Old Archive'],
       },
     },
@@ -64,8 +62,6 @@ local hasTheWord(s) = { hasTheWord: s };
       },
       actions: {
         labels: ['GitHub', 'Notifications'],
-        markRead: false,
-        archive: false,
       },
     },
 
@@ -145,8 +141,6 @@ local hasTheWord(s) = { hasTheWord: s };
       },
       actions: {
         labels: ['CI/CD', 'Automated'],
-        archive: true,
-        markRead: true,
       },
     },
 

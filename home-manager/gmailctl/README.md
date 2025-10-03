@@ -151,6 +151,10 @@ To update your filters:
 - Don't edit files directly in `~/.gmailctl-*` directories (except for manual config updates)
 - Always use `diff` before `apply` to preview changes
 
+### Spark Compatibility
+
+Spark keys its inbox view and notifications off Gmail's `INBOX` label. The configs in `configs/` deliberately avoid using `archive` or `markRead` actions so messages stay visible to Spark while still getting labeled. If you customize these files, keep Spark happy by sticking to label/importance/star changes only.
+
 ## Troubleshooting
 
 ### "gmailctl.libsonnet not found" error

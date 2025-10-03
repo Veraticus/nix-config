@@ -26,6 +26,10 @@
     enableNixpkgsReleaseCheck = false;
     username = "joshsymonds";
 
+    sessionVariables = {
+      COLORTERM = lib.mkDefault "truecolor";
+    };
+
     packages = with pkgs; [
       coreutils-full
       curl

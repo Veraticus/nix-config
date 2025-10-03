@@ -47,6 +47,8 @@
   # Open firewall for ET
   networking.firewall.allowedTCPPorts = [ 2022 ];
 
+  services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
+
   # Automatic cleanup of stale browser/Playwright processes
   systemd.services.cleanup-stale-processes = {
     description = "Clean up stale browser and Playwright processes";

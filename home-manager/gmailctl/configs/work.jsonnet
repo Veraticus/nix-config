@@ -78,7 +78,6 @@ local githubRules = std.flattenArrays([
         ],
       },
       actions: {
-        archive: if std.objectHas(notification, 'important') && notification.important then false else true,
         labels: ['github/' + notification.label],
         markImportant: if std.objectHas(notification, 'important') && notification.important then true else null,
       },
@@ -99,8 +98,6 @@ local rules =
       },
       actions: {
         labels: ['devops/robot'],
-        archive: true,
-        markRead: true,  // Mark as read too
         markImportant: false,
       },
     },
@@ -116,8 +113,6 @@ local rules =
         ],
       },
       actions: {
-        archive: true,
-        markRead: true,
         labels: ['auto-archived/old-unread'],
       },
     },
@@ -219,8 +214,6 @@ local rules =
       },
       actions: {
         labels: ['monitoring/noise'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -263,7 +256,6 @@ local rules =
       },
       actions: {
         labels: ['tools/honeycomb'],
-        archive: true,
       },
     },
 
@@ -274,8 +266,6 @@ local rules =
       },
       actions: {
         labels: ['tools/cleary'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -305,7 +295,6 @@ local rules =
       },
       actions: {
         labels: ['security/scans'],
-        archive: true,
       },
     },
 
@@ -333,8 +322,6 @@ local rules =
       },
       actions: {
         labels: ['tools/jira'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -373,7 +360,6 @@ local rules =
         ],
       },
       actions: {
-        archive: true,
         labels: ['calendar/accepted'],
       },
     },
@@ -476,7 +462,6 @@ local rules =
       },
       actions: {
         labels: ['aws'],
-        archive: true,
       },
     },
 
@@ -496,8 +481,6 @@ local rules =
       },
       actions: {
         labels: ['tools/misc'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -516,8 +499,6 @@ local rules =
       },
       actions: {
         labels: ['recruiting'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -553,8 +534,6 @@ local rules =
       },
       actions: {
         labels: ['bulk'],
-        archive: true,
-        markRead: true,
       },
     },
 
@@ -587,8 +566,6 @@ local rules =
       },
       actions: {
         labels: ['automated'],
-        archive: true,
-        markRead: true,
       },
     },
 

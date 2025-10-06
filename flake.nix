@@ -33,8 +33,8 @@
     # Target Process MCP - Target Process API integration
     targetprocess-mcp.url = "github:Veraticus/targetprocess-mcp";
 
-    # Local Codex checkout (Rust implementation)
-    codex-src.url = "path:/home/joshsymonds/Personal/codex";
+    # Codex checkout (Rust implementation) - track GitHub fork
+    codex-src.url = "github:Veraticus/codex";
   };
 
   outputs = { nixpkgs, darwin, home-manager, self, ... }@inputs:

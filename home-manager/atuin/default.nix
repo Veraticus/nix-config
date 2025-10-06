@@ -4,5 +4,6 @@
     package = pkgs.atuin;
 
     enableZshIntegration = true;
+    daemon.enable = true;
   };
 }

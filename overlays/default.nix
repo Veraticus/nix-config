@@ -2,12 +2,22 @@
 { inputs, ... }:
 {
   # Single default overlay that combines everything
-  default = final: prev: {
+  default = final: prev:
+    let
+      codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
+      codexWrapper = final.writeShellScriptBin "codex" ''
+        exec ${codexTui}/bin/codex-tui "$@"
+      '';
+    in {
     # Import custom packages from the 'pkgs' directory
     inherit (import ../pkgs { pkgs = final; })
       myCaddy
       starlark-lsp
       nuclei;
+
+    # Codex packages from local checkout
+    codex-tui = codexTui;
+    codex = codexWrapper;
 
     home-assistant-tailwind = prev.home-assistant.overrideAttrs (old: {
       version = "${old.version}-tailwindfix";
@@ -55,7 +65,18 @@
   };
   
   # Legacy overlay references for backwards compatibility
-  additions = final: _prev: import ../pkgs { pkgs = final; };
+  additions = final: _prev:
+    let
+      codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
+      codexWrapper = final.writeShellScriptBin "codex" ''
+        exec ${codexTui}/bin/codex-tui "$@"
+      '';
+    in
+      (import ../pkgs { pkgs = final; })
+      // {
+        codex-tui = codexTui;
+        codex = codexWrapper;
+      };
   modifications = final: prev: { };  # Empty, kept for compatibility
   unstable-packages = final: prev: { };  # Empty, no longer needed since we use unstable as primary
 }

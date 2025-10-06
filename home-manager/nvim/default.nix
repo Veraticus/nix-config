@@ -3,8 +3,7 @@
     nodejs_24
     ripgrep
     fd
-    rustc
-    cargo
+    rustup
   ];
 
   programs.neovim = {

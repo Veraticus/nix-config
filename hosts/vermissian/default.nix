@@ -426,7 +426,17 @@ in
       nodejs
       uv
       protobuf
+      pkg-config
+      openssl
+      openssl.dev
     ];
+
+    variables = {
+      PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
+      OPENSSL_DIR = "${pkgs.openssl.out}";
+      OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
+      OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
+    };
 
     # SSH agent is now managed by systemd user service
   };

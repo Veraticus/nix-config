@@ -36,6 +36,8 @@
       prisma
       prisma-engines
       nodePackages.prisma
+
+      rustup # Rust toolchain manager
     ];
   };
 

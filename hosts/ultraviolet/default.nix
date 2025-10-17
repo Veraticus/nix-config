@@ -26,6 +26,9 @@ in
     
     # Wyoming Whisper STT service for Home Assistant voice
     ./wyoming-whisper.nix
+
+    # Obsidian WebDAV bridge backed by the NAS
+    ./obsidian-webdav.nix
     
     # Cloudflare Tunnel for secure external access
     ./cloudflare-tunnel.nix

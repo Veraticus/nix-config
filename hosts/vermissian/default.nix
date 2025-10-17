@@ -426,6 +426,8 @@ in
       nodejs
       uv
       protobuf
+      protoc-gen-go
+      protoc-gen-go-grpc
       pkg-config
       openssl
       openssl.dev

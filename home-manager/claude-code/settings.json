@@ -6,19 +6,19 @@
   "mcpServers": {
     "playwright": {
       "type": "stdio",
-      "command": "~/.claude/playwright-mcp-wrapper.sh",
+      "command": "~/.mcp/playwright-mcp-wrapper.sh",
       "args": [],
       "env": {}
     },
     "targetprocess": {
       "type": "stdio",
-      "command": "~/.claude/bin/targetprocess-mcp",
+      "command": "~/.mcp/bin/targetprocess-mcp",
       "args": [],
       "env": {}
     },
     "jira": {
       "type": "stdio",
-      "command": "~/.claude/jira-mcp-wrapper.sh",
+      "command": "~/.mcp/jira-mcp-wrapper.sh",
       "args": [],
       "env": {}
     }

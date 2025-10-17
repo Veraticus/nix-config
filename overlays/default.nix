@@ -5,8 +5,9 @@
   default = final: prev:
     let
       codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
+      codexCli = inputs.codex-src.packages.${final.system}.codex-cli;
       codexWrapper = final.writeShellScriptBin "codex" ''
-        exec ${codexTui}/bin/codex-tui "$@"
+        exec ${codexCli}/bin/codex "$@"
       '';
     in {
     # Import custom packages from the 'pkgs' directory
@@ -17,6 +18,7 @@
 
     # Codex packages from local checkout
     codex-tui = codexTui;
+    codex-cli = codexCli;
     codex = codexWrapper;
 
     home-assistant-tailwind = prev.home-assistant.overrideAttrs (old: {
@@ -68,13 +70,15 @@
   additions = final: _prev:
     let
       codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
+      codexCli = inputs.codex-src.packages.${final.system}.codex-cli;
       codexWrapper = final.writeShellScriptBin "codex" ''
-        exec ${codexTui}/bin/codex-tui "$@"
+        exec ${codexCli}/bin/codex "$@"
       '';
     in
       (import ../pkgs { pkgs = final; })
       // {
         codex-tui = codexTui;
+        codex-cli = codexCli;
         codex = codexWrapper;
       };
   modifications = final: prev: { };  # Empty, kept for compatibility

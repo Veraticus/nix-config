@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 # Wrapper script to run Playwright MCP server in FHS environment with steam-run
 # This allows Playwright's bundled browsers to work on NixOS
 

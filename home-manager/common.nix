@@ -11,6 +11,7 @@
     # You can also split up your configuration and import pieces of it here:
     ./atuin
     ./claude-code
+    ./mcp
     ./codex
     ./kitty
     ./nvim
@@ -104,6 +105,23 @@
 
       # Python package management
       uv
+    ];
+  };
+
+  programs.rbenv = {
+    enable = true;
+    enableBashIntegration = true;
+    enableZshIntegration = true;
+    plugins = [
+      {
+        name = "ruby-build";
+        src = pkgs.fetchFromGitHub {
+          owner = "rbenv";
+          repo = "ruby-build";
+          rev = "v20251008";
+          hash = "sha256-FZRp7O4YjDV+EOvwuaqWaQ6LfzL9vENBaIPot5G89Z0=";
+        };
+      }
     ];
   };
 

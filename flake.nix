@@ -71,6 +71,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
               home-manager.users.joshsymonds = import ./home-manager/hosts/ultraviolet.nix;
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "ultraviolet";
@@ -89,6 +90,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
               home-manager.users.joshsymonds = import ./home-manager/hosts/bluedesert.nix;
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "bluedesert";
@@ -107,6 +109,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
               home-manager.users.joshsymonds = import ./home-manager/hosts/echelon.nix;
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "echelon";
@@ -125,6 +128,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
               home-manager.users.joshsymonds = import ./home-manager/hosts/vermissian.nix;
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "vermissian";
@@ -145,6 +149,7 @@
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "backup";
               home-manager.users.joshsymonds = import ./home-manager/aarch64-darwin.nix;
               home-manager.extraSpecialArgs = mkSpecialArgs "aarch64-darwin" // {
                 hostname = "cloudbank";

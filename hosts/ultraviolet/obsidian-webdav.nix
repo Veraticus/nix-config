@@ -44,8 +44,7 @@ in
           --cache-dir ${cacheDir} \
           --vfs-cache-mode writes \
           --dir-cache-time 60m \
-          --poll-interval 2m \
-          --no-check-updates
+          --poll-interval 2m
       '';
       Restart = "on-failure";
       RestartSec = 5;

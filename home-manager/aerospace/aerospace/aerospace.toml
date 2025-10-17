@@ -37,7 +37,7 @@ default-root-container-orientation = 'auto'
 # Visual indent makes it easier to understand that containers of the same orientation are nested.
 # If you have 'enable-normalization-opposite-orientation-for-nested-containers' enabled then
 # there is no way to observe the indent
-indent-for-nested-containers-with-the-same-orientation = 30
+# indent-for-nested-containers-with-the-same-orientation = 30  # Deprecated in v0.19 - see https://github.com/nikitabobko/AeroSpace/issues/96
 
 # Possible values: (qwerty|dvorak)
 # See https://nikitabobko.github.io/AeroSpace/guide#key-mapping

@@ -11,18 +11,15 @@ let
 in
 {
   # Install Node.js to enable npm
-  home.packages =
-    with pkgs;
-    [
-      nodejs_24
-      # Dependencies for hooks and wrappers
-      yq
-      jq
-      ripgrep
-      # Include cc-tools binaries
-      cc-tools
-    ]
-    ;
+  home.packages = with pkgs; [
+    nodejs_24
+    # Dependencies for hooks and wrappers
+    yq
+    jq
+    ripgrep
+    # Include cc-tools binaries
+    cc-tools
+  ];
 
   # Add npm global bin to PATH for user-installed packages
   home.sessionPath = [
@@ -73,7 +70,20 @@ in
       ".claude/statsig/.keep".text = "";
       ".claude/commands/.keep".text = "";
     }
-    ;
+    // lib.optionalAttrs pkgs.stdenv.isLinux {
+      # Playwright MCP wrapper for steam-run (Linux only)
+      ".claude/playwright-mcp-wrapper.sh" = {
+        source = ./playwright-headless-wrapper.sh;
+        executable = true;
+      };
+    }
+    // lib.optionalAttrs pkgs.stdenv.isDarwin {
+      # Playwright MCP wrapper for macOS
+      ".claude/playwright-mcp-wrapper.sh" = {
+        source = ./playwright-macos-wrapper.sh;
+        executable = true;
+      };
+    };
 
   # Install Claude Code on activation
   home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''

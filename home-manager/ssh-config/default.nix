@@ -3,8 +3,7 @@
 {
   programs.ssh = {
     enable = true;
-    forwardAgent = true;
-    serverAliveInterval = 60;
+    enableDefaultConfig = false;
 
     extraConfig = ''
       # Enable Kitty terminal integration
@@ -37,6 +36,11 @@
     '';
 
     matchBlocks = {
+      "*" = {
+        forwardAgent = true;
+        serverAliveInterval = 60;
+      };
+
       "ultraviolet" = {
         hostname = "ultraviolet";
         user = "joshsymonds";

@@ -22,7 +22,7 @@ in
   ];
 
   # Add npm global bin to PATH for user-installed packages
-  home.sessionPath = [
+  home.sessionPath = lib.mkAfter [
     "$HOME/.npm-global/bin"
   ];
 

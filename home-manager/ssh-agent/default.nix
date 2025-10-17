@@ -55,7 +55,6 @@ in
   # SSH client configuration improvements
   programs.ssh = {
     enable = true;
-    addKeysToAgent = "yes";  # Automatically add keys to agent when used
     extraConfig = ''
       # Use the systemd/launchd managed SSH agent socket
       ${lib.optionalString pkgs.stdenv.isLinux ''
@@ -68,6 +67,10 @@ in
         IdentityAgent "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock"
       ''}
     '';
+  };
+
+  programs.ssh.matchBlocks."*" = {
+    addKeysToAgent = "yes";  # Automatically add keys to agent when used
   };
 
   # Linux: systemd user service for SSH agent

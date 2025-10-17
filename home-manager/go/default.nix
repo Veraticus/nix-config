@@ -10,8 +10,10 @@
   programs.go = {
     enable = true;
     package = pkgs.go_1_24;
-    goPath = "go";
-    goBin = "go/bin";
+    env = {
+      GOPATH = "${config.home.homeDirectory}/go";
+      GOBIN = "${config.home.homeDirectory}/go/bin";
+    };
   };
 
   # Go development tools
@@ -27,7 +29,6 @@
 
     # Testing tools
     gotestsum # Better test output
-    gocover-cobertura # Coverage reports
 
     # Documentation
     # godoc is included in go-tools

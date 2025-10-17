@@ -21,6 +21,13 @@
     codex-cli = codexCli;
     codex = codexWrapper;
 
+    # gocover-cobertura 1.3.0 fails to build with Go 1.24; rebuild with Go 1.23
+    gocover-cobertura = final.callPackage
+      (inputs.nixpkgs + "/pkgs/by-name/go/gocover-cobertura/package.nix")
+      {
+        buildGoModule = final.buildGo123Module;
+      };
+
     home-assistant-tailwind = prev.home-assistant.overrideAttrs (old: {
       version = "${old.version}-tailwindfix";
       __intentionallyOverridingVersion = true;

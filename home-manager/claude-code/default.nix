@@ -73,7 +73,7 @@ in
     // lib.optionalAttrs pkgs.stdenv.isLinux {
       # Playwright MCP wrapper for steam-run (Linux only)
       ".claude/playwright-mcp-wrapper.sh" = {
-        source = ./playwright-headless-wrapper.sh;
+        source = ../mcp/playwright-mcp-wrapper.sh;
         executable = true;
       };
     }

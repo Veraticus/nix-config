@@ -55,6 +55,7 @@ in
   # SSH client configuration improvements
   programs.ssh = {
     enable = true;
+    enableDefaultConfig = false;
     extraConfig = ''
       # Use the systemd/launchd managed SSH agent socket
       ${lib.optionalString pkgs.stdenv.isLinux ''

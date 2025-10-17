@@ -28,10 +28,10 @@ On the target machine, use the `update` alias or run directly:
 
 ```bash
 # macOS
-darwin-rebuild switch --flake ".#$(hostname -s)"
+darwin-rebuild switch --flake ".#$(hostname -s)" --option warn-dirty false
 
 # Linux
-sudo nixos-rebuild switch --flake ".#$(hostname)"
+sudo nixos-rebuild switch --flake ".#$(hostname)" --option warn-dirty false
 ```
 
 ### Update Flake Inputs
@@ -291,9 +291,8 @@ See [CLAUDE.md](./CLAUDE.md) for detailed testing procedures. Quick summary:
 nix flake check
 
 # Preview changes
-darwin-rebuild switch --flake ".#$(hostname -s)" --dry-run
+darwin-rebuild switch --flake ".#$(hostname -s)" --option warn-dirty false --dry-run
 
 # Build specific components
 nix build .#homeConfigurations."joshsymonds@$(hostname -s)".activationPackage
 ```
-

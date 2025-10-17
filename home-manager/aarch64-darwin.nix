@@ -15,6 +15,6 @@
     maple-mono.NF-CN-unhinted
   ];
 
-  programs.zsh.shellAliases.update = "sudo darwin-rebuild switch --flake \".#$(hostname -s)\"";
+  programs.zsh.shellAliases.update = "sudo darwin-rebuild switch --flake \".#$(hostname -s)\" --option warn-dirty false";
   programs.kitty.font.size = 13;
 }

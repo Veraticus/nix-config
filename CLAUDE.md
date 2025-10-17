@@ -13,8 +13,8 @@ This is a flake-based Nix configuration managing multiple systems:
 ## Common Commands
 
 ### System Rebuild Commands
-- **Linux (NixOS)**: `sudo nixos-rebuild switch --flake ".#$(hostname)"`
-- **macOS (darwin)**: `darwin-rebuild switch --flake ".#$(hostname -s)"`
+- **Linux (NixOS)**: `sudo nixos-rebuild switch --flake ".#$(hostname)" --option warn-dirty false`
+- **macOS (darwin)**: `darwin-rebuild switch --flake ".#$(hostname -s)" --option warn-dirty false`
 - **Shell alias**: `update` (configured in home-manager)
 
 **IMPORTANT**: After making changes to any Nix configuration files (including hooks), you MUST run `update` to apply the changes to the current system. Changes won't take effect until the system is rebuilt!
@@ -252,10 +252,10 @@ This is a common Nix gotcha - untracked files are invisible to flake evaluation!
 2. **Dry-run system changes** (preview without applying):
    ```bash
    # macOS
-   darwin-rebuild switch --flake ".#$(hostname -s)" --dry-run
+   darwin-rebuild switch --flake ".#$(hostname -s)" --option warn-dirty false --dry-run
    
    # Linux
-   sudo nixos-rebuild switch --flake ".#$(hostname)" --dry-run
+   sudo nixos-rebuild switch --flake ".#$(hostname)" --option warn-dirty false --dry-run
    ```
 
 3. **Build packages individually** (isolated testing):

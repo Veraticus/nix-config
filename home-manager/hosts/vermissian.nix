@@ -41,7 +41,7 @@
     ];
   };
 
-  programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\"";
+  programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false";
 
   systemd.user.startServices = "sd-switch";
 }

@@ -34,12 +34,12 @@ After creating the secret files:
 
 ### On ultraviolet:
 ```bash
-sudo nixos-rebuild switch --flake ".#ultraviolet"
+sudo nixos-rebuild switch --flake ".#ultraviolet" --option warn-dirty false
 ```
 
 ### On cloudbank:
 ```bash
-darwin-rebuild switch --flake ".#cloudbank"
+darwin-rebuild switch --flake ".#cloudbank" --option warn-dirty false
 ```
 
 ## Verification

@@ -76,9 +76,9 @@ check: lint test
 update:
 	@echo "Rebuilding system configuration..."
 	@if [ "$$(uname)" = "Darwin" ]; then \
-		darwin-rebuild switch --flake ".#$$(hostname -s)"; \
+		darwin-rebuild switch --flake ".#$$(hostname -s)" --option warn-dirty false; \
 	else \
-		sudo nixos-rebuild switch --flake ".#$$(hostname)"; \
+		sudo nixos-rebuild switch --flake ".#$$(hostname)" --option warn-dirty false; \
 	fi
 
 # Delegate to hooks Makefile

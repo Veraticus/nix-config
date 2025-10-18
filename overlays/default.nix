@@ -28,17 +28,6 @@
         buildGoModule = final.buildGo123Module;
       };
 
-    home-assistant-tailwind = prev.home-assistant.overrideAttrs (old: {
-      version = "${old.version}-tailwindfix";
-      __intentionallyOverridingVersion = true;
-      patches = (old.patches or []) ++ [
-        (final.fetchpatch {
-          url = "https://github.com/Veraticus/core/commit/02e91c66498ef8756e11cb121ffa12bfbe0c4f5c.patch";
-          hash = "sha256-9B7VpKT3FCRqz6OFDlLCX3vfc9GyRqIhUYXW+XPZ8Pg=";
-        })
-      ];
-    });
-    
     # Package modifications
     waybar = prev.waybar.overrideAttrs (oldAttrs: {
       mesonFlags = oldAttrs.mesonFlags ++ [ "-Dexperimental=true" ];

@@ -9,8 +9,8 @@
     # Automatic garbage collection
     gc = {
       automatic = true;
-      dates = "weekly";  # Run every Sunday at midnight
-      options = "--delete-older-than 14d";  # Keep derivations for 2 weeks
+      dates = "daily";  # Run every night
+      options = "--delete-older-than 3d";  # Keep derivations for 3 days
     };
     
     # Automatic store optimization (hard-linking identical files)

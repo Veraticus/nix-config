@@ -31,8 +31,8 @@ in
 
     gc = {
       automatic = true;
-      interval = { Weekday = 0; Hour = 0; Minute = 0; };
-      options = "--delete-older-than 30d";
+      interval = { Hour = 3; Minute = 30; };
+      options = "--delete-older-than 3d";
     };
 
     # Configure the nix registry

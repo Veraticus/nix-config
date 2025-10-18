@@ -59,8 +59,8 @@ in
     # Aggressive garbage collection for limited storage
     gc = {
       automatic = true;
-      dates = "weekly";
-      options = lib.mkForce "--delete-older-than 3d";  # Override common.nix setting
+      dates = "daily";
+      options = lib.mkForce "--delete-older-than 3d";  # Keep only 3 days of history
     };
 
     settings = {
@@ -111,9 +111,14 @@ in
     supportedFilesystems = [ "ntfs" ];
     kernelParams = [ ];
     loader = {
-      systemd-boot.enable = true;
-      efi.canTouchEfiVariables = true;
-      efi.efiSysMountPoint = "/boot";
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 8;
+      };
+      efi = {
+        canTouchEfiVariables = true;
+        efiSysMountPoint = "/boot";
+      };
     };
   };
 

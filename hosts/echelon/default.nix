@@ -57,6 +57,12 @@ in
     # Making legacy nix commands consistent as well, awesome!
     nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
+    gc = {
+      automatic = true;
+      dates = "daily";
+      options = "--delete-older-than 3d";
+    };
+    optimise.automatic = true;
     settings = {
       # Enable flakes and new 'nix' command
       experimental-features = "nix-command flakes";
@@ -112,9 +118,14 @@ in
     supportedFilesystems = [ "ntfs" ];
     kernelParams = [ ];
     loader = {
-      systemd-boot.enable = true;
-      efi.canTouchEfiVariables = true;
-      efi.efiSysMountPoint = "/boot";
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 8;
+      };
+      efi = {
+        canTouchEfiVariables = true;
+        efiSysMountPoint = "/boot";
+      };
     };
   };
 

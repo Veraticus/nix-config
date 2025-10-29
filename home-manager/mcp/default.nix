@@ -15,9 +15,6 @@ in
     [
       targetprocess-mcp
       mcp-atlassian
-    ]
-    ++ lib.optionals pkgs.stdenv.isLinux [
-      steam-run
     ];
 
   home.file =
@@ -27,12 +24,6 @@ in
       ".mcp/bin/mcp-atlassian".source = "${mcp-atlassian}/bin/mcp-atlassian";
       ".mcp/jira-mcp-wrapper.sh" = {
         source = ./jira-mcp-wrapper.sh;
-        executable = true;
-      };
-    }
-    // lib.optionalAttrs pkgs.stdenv.isLinux {
-      ".mcp/playwright-mcp-wrapper.sh" = {
-        source = ./playwright-mcp-wrapper.sh;
         executable = true;
       };
     };

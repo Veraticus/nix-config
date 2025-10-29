@@ -30,6 +30,7 @@ in
   nixpkgs = {
     # You can add overlays here
     overlays = [
+      inputs.neovim-nightly.overlays.default
       outputs.overlays.default
       outputs.overlays.additions
       outputs.overlays.modifications

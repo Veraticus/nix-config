@@ -23,8 +23,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Neovim Nightly
-    neovim-nightly.url = "github:nix-community/neovim-nightly-overlay";
+    neovim-nightly = {
+      url = "github:nix-community/neovim-nightly-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # Hardware-specific optimizations
     hardware.url = "github:nixos/nixos-hardware/master";
@@ -42,7 +44,20 @@
     codex-src.url = "github:Veraticus/codex";
   };
 
-  outputs = { nixpkgs, darwin, home-manager, agenix, self, ... }@inputs:
+  nixConfig = {
+    extra-substituters = [
+      "https://nix-community.cachix.org"
+      "https://neovim-nightly.cachix.org"
+      "https://joshsymonds.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nix-community.cachix.org-1:6IuW1zqaE3RJnYQj2sc2S5hJz9i6wh1M2Q2ivQVlJss="
+      "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
+      "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
+    ];
+  };
+
+  outputs = { nixpkgs, darwin, home-manager, agenix, neovim-nightly, self, ... }@inputs:
     let
       inherit (self) outputs;
       inherit (nixpkgs) lib;
@@ -62,6 +77,7 @@
           pkgs = import nixpkgs {
             inherit system;
             config.allowUnfree = true;
+            overlays = [ inputs.neovim-nightly.overlays.default ];
           };
         in import ./pkgs {
           inherit pkgs inputs outputs;
@@ -185,7 +201,10 @@
           mkHome = { system, module, hostname }: home-manager.lib.homeManagerConfiguration {
             pkgs = import nixpkgs {
               inherit system;
-              overlays = [ outputs.overlays.default ];
+              overlays = [
+                inputs.neovim-nightly.overlays.default
+                outputs.overlays.default
+              ];
               config.allowUnfree = true;
             };
             extraSpecialArgs = mkSpecialArgs system // { inherit hostname; };

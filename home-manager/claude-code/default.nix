@@ -46,46 +46,25 @@ in
         name: _: lib.nameValuePair ".claude/commands/${name}" { source = ./commands/${name}; }
       ) commandEntries;
     in
-    commandFileAttrs
-    // {
-      # Static configuration files
-      ".claude/settings.json".source = ./settings.json;
-      ".claude/CLAUDE.md".source = ./CLAUDE.md;
-
-      # Copy all agent definitions
-      ".claude/agents".source = ./agents;
-
-      # Symlinks to cc-tools binaries with cleaner paths
-      ".claude/bin/cc-tools-validate".source = "${cc-tools}/bin/cc-tools-validate";
-      ".claude/bin/cc-tools-statusline".source = "${cc-tools}/bin/cc-tools-statusline";
-
-      # Notification hook (still needed as separate script)
-      ".claude/hooks/ntfy-notifier.sh" = {
-        source = ./hooks/ntfy-notifier.sh;
-        executable = true;
-      };
-
-      # Create necessary directories
-      ".claude/.keep".text = "";
-      ".claude/projects/.keep".text = "";
-      ".claude/todos/.keep".text = "";
-      ".claude/statsig/.keep".text = "";
-      ".claude/commands/.keep".text = "";
-    }
-    // lib.optionalAttrs pkgs.stdenv.isLinux {
-      # Playwright MCP wrapper for steam-run (Linux only)
-      ".claude/playwright-mcp-wrapper.sh" = {
-        source = ../mcp/playwright-mcp-wrapper.sh;
-        executable = true;
-      };
-    }
-    // lib.optionalAttrs pkgs.stdenv.isDarwin {
-      # Playwright MCP wrapper for macOS
-      ".claude/playwright-mcp-wrapper.sh" = {
-        source = ./playwright-macos-wrapper.sh;
-        executable = true;
-      };
-    };
+    lib.mkMerge [
+      commandFileAttrs
+      {
+        ".claude/settings.json".source = ./settings.json;
+        ".claude/CLAUDE.md".source = ./CLAUDE.md;
+        ".claude/agents".source = ./agents;
+        ".claude/bin/cc-tools-validate".source = "${cc-tools}/bin/cc-tools-validate";
+        ".claude/bin/cc-tools-statusline".source = "${cc-tools}/bin/cc-tools-statusline";
+        ".claude/hooks/ntfy-notifier.sh" = {
+          source = ./hooks/ntfy-notifier.sh;
+          executable = true;
+        };
+        ".claude/.keep".text = "";
+        ".claude/projects/.keep".text = "";
+        ".claude/todos/.keep".text = "";
+        ".claude/statsig/.keep".text = "";
+        ".claude/commands/.keep".text = "";
+      }
+    ];
 
   # Install Claude Code on activation
   # CLI is provided via pkgs.claudeCodeCli.

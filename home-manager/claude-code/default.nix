@@ -11,15 +11,17 @@ let
 in
 {
   # Install Node.js to enable npm
-  home.packages = with pkgs; [
-    nodejs_24
-    # Dependencies for hooks and wrappers
-    yq
-    jq
-    ripgrep
-    # Include cc-tools binaries
-    cc-tools
-  ];
+  home.packages =
+    (with pkgs; [
+      nodejs_24
+      # Dependencies for hooks and wrappers
+      yq
+      jq
+      ripgrep
+      # Include cc-tools binaries
+      cc-tools
+    ])
+    ++ [ pkgs.claudeCodeCli ];
 
   # Add npm global bin to PATH for user-installed packages
   home.sessionPath = lib.mkAfter [
@@ -86,15 +88,5 @@ in
     };
 
   # Install Claude Code on activation
-  home.activation.installClaudeCode = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    PATH="${pkgs.nodejs_24}/bin:${pkgs.gnutar}/bin:${pkgs.gzip}/bin:$PATH"
-    export NPM_CONFIG_PREFIX="$HOME/.npm-global"
-
-    if ! command -v claude >/dev/null 2>&1; then
-      echo "Installing Claude Code..."
-      npm install -g @anthropic-ai/claude-code
-    else
-      echo "Claude Code is already installed at $(which claude)"
-    fi
-  '';
+  # CLI is provided via pkgs.claudeCodeCli.
 }

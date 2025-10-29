@@ -83,7 +83,15 @@ update:
 
 # Delegate to hooks Makefile
 hooks-test:
-	@$(MAKE) -C home-manager/claude-code/hooks test
+	@if [ -f home-manager/claude-code/hooks/Makefile ]; then \
+		$(MAKE) -C home-manager/claude-code/hooks test; \
+	else \
+		echo "No hook test target defined, skipping"; \
+	fi
 
 hooks-lint:
-	@$(MAKE) -C home-manager/claude-code/hooks lint
+	@if [ -f home-manager/claude-code/hooks/Makefile ]; then \
+		$(MAKE) -C home-manager/claude-code/hooks lint; \
+	else \
+		echo "No hook lint target defined, skipping"; \
+	fi

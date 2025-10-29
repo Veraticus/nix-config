@@ -18,6 +18,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    agenix = {
+      url = "github:ryantm/agenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Neovim Nightly
     neovim-nightly.url = "github:nix-community/neovim-nightly-overlay";
 
@@ -37,7 +42,7 @@
     codex-src.url = "github:Veraticus/codex";
   };
 
-  outputs = { nixpkgs, darwin, home-manager, self, ... }@inputs:
+  outputs = { nixpkgs, darwin, home-manager, agenix, self, ... }@inputs:
     let
       inherit (self) outputs;
       inherit (nixpkgs) lib;
@@ -53,11 +58,17 @@
     in
     {
       packages = forAllSystems (system:
-        let pkgs = nixpkgs.legacyPackages.${system};
-        in import ./pkgs { inherit pkgs; }
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+        in import ./pkgs {
+          inherit pkgs inputs outputs;
+        }
       );
 
-      overlays = import ./overlays { inherit inputs; };
+      overlays = import ./overlays { inherit inputs outputs; };
 
       # NixOS configurations - inlined for clarity
       nixosConfigurations = {
@@ -67,6 +78,7 @@
           modules = [
             ./hosts/ultraviolet
             ./hosts/common.nix
+            inputs.agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -76,6 +88,7 @@
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "ultraviolet";
               };
+              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
             }
           ];
         };
@@ -86,6 +99,7 @@
           modules = [
             ./hosts/bluedesert
             ./hosts/common.nix
+            inputs.agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -95,6 +109,7 @@
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "bluedesert";
               };
+              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
             }
           ];
         };
@@ -105,6 +120,7 @@
           modules = [
             ./hosts/echelon  # Fixed: was using bluedesert
             ./hosts/common.nix
+            inputs.agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -114,6 +130,7 @@
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "echelon";
               };
+              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
             }
           ];
         };
@@ -124,6 +141,7 @@
           modules = [
             ./hosts/vermissian
             ./hosts/common.nix
+            inputs.agenix.nixosModules.default
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -133,6 +151,7 @@
               home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
                 hostname = "vermissian";
               };
+              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
             }
           ];
         };
@@ -154,6 +173,7 @@
               home-manager.extraSpecialArgs = mkSpecialArgs "aarch64-darwin" // {
                 hostname = "cloudbank";
               };
+              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
             }
           ];
         };
@@ -169,7 +189,7 @@
               config.allowUnfree = true;
             };
             extraSpecialArgs = mkSpecialArgs system // { inherit hostname; };
-            modules = [ module ];
+            modules = [ inputs.agenix.homeManagerModules.default module ];
           };
           
           linuxHosts = [ "ultraviolet" "bluedesert" "echelon" "vermissian" ];

@@ -1,8 +1,46 @@
 { inputs, outputs, lib, config, pkgs, ... }: {
+  age.identityPaths = [ "/etc/age/${config.networking.hostName}.agekey" ];
   # Common packages for all headless Linux hosts
   environment.systemPackages = with pkgs; [
     yamllint  # YAML linter, useful for Home Assistant configurations
+    inputs.agenix.packages.${pkgs.system}.agenix
+    ssh-to-age
   ];
+
+  system.activationScripts.ageHostKey = let
+    hostKey       = "/etc/ssh/ssh_host_ed25519_key";
+    hostKeyPub    = "${hostKey}.pub";
+    ageDir        = "/etc/age";
+    ageHostKey    = "${ageDir}/${config.networking.hostName}.agekey";
+    ageKeys       = "${ageDir}/keys.txt";
+    ageRecipients = "${ageDir}/recipients.txt";
+  in ''
+    set -euo pipefail
+
+    mkdir -p ${ageDir}
+    chmod 700 ${ageDir}
+
+    if [ ! -f ${hostKey} ]; then
+      echo "WARNING: ${hostKey} not found; skipping age identity generation"
+      exit 0
+    fi
+
+    SSH_TO_AGE=${pkgs.ssh-to-age}/bin/ssh-to-age
+
+    if [ ! -f ${ageHostKey} ]; then
+      echo "Generating age identity from ${hostKey}"
+      $SSH_TO_AGE --private-key < ${hostKey} > ${ageHostKey}.tmp
+      mv ${ageHostKey}.tmp ${ageHostKey}
+      chmod 600 ${ageHostKey}
+    fi
+
+    cat ${ageHostKey} > ${ageKeys}
+    chmod 600 ${ageKeys}
+
+    $SSH_TO_AGE < ${hostKeyPub} > ${ageRecipients}.tmp
+    mv ${ageRecipients}.tmp ${ageRecipients}
+    chmod 644 ${ageRecipients}
+  '';
 
   # Nix store management - prevent disk space issues
   nix = {

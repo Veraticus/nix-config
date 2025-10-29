@@ -11,7 +11,7 @@
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    package = inputs.neovim-nightly.packages.${pkgs.system}.default;
+    package = pkgs.neovim;
 
     # Ensure git and other tools are available to Neovim plugins
     extraPackages = with pkgs; [

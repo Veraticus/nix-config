@@ -4,12 +4,6 @@
     "BASH_MAX_TIMEOUT_MS": "600000"
   },
   "mcpServers": {
-    "playwright": {
-      "type": "stdio",
-      "command": "~/.mcp/playwright-mcp-wrapper.sh",
-      "args": [],
-      "env": {}
-    },
     "targetprocess": {
       "type": "stdio",
       "command": "~/.mcp/bin/targetprocess-mcp",

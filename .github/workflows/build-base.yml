@@ -24,9 +24,30 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+            accept-flake-config = true
+            trusted-users = root runner
+
+      - name: Use nix-community cache
+        uses: cachix/cachix-action@v15
+        with:
+          name: nix-community
+          skipPush: true
+
+      - name: Use neovim-nightly cache
+        uses: cachix/cachix-action@v15
+        with:
+          name: neovim-nightly
+          skipPush: true
+
+      - name: Configure joshsymonds Cachix
+        if: secrets.CACHIX_AUTH_TOKEN != ''
+        uses: cachix/cachix-action@v15
+        with:
+          name: joshsymonds
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - name: Build OCI image
-        run: nix build .#egoengine-dev-base-oci
+        run: nix build --accept-flake-config .#egoengine-dev-base-oci
 
       - name: Compute image metadata
         id: meta

@@ -17,9 +17,6 @@ model_reasoning_effort = "high"
 notify = ["${notifierPath}"]
 
 ${lib.optionalString pkgs.stdenv.isLinux ''
-[mcp_servers.playwright]
-command = "${mcpDir}/playwright-mcp-wrapper.sh"
-
 ''}[mcp_servers.targetprocess]
 command = "${mcpDir}/bin/targetprocess-mcp"
 

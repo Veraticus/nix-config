@@ -14,6 +14,7 @@ in
   # You can import other NixOS modules here
   imports = [
     ../common.nix
+    ../../modules/services/egoengine-coder.nix
 
     # You can also split up your configuration and import pieces of it here:
     # ./users.nix
@@ -113,6 +114,7 @@ in
         22
         80
         443
+        7080
         9437
       ];
     };
@@ -232,6 +234,60 @@ in
   services.nfs.server.enable = true;
   services.rpcbind.enable = true;
 
+  systemd.services."agenix-import-ssh-${user}" = let
+    homeDir = "/home/${user}";
+    sshKey = "${homeDir}/.ssh/github";
+    sshPubKey = "${sshKey}.pub";
+    ageDir = "${homeDir}/.config/agenix";
+    privateOut = "${ageDir}/keys.txt";
+    publicOut = "${ageDir}/keys.pub";
+    defaultSshKey = "${homeDir}/.ssh/id_ed25519";
+    defaultSshPub = "${defaultSshKey}.pub";
+  in {
+    description = "Convert ${user}'s SSH key to an Age identity";
+    wantedBy = [ "multi-user.target" ];
+    unitConfig = {
+      ConditionPathExists = [
+        sshKey
+        sshPubKey
+      ];
+      StartLimitIntervalSec = 0;
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      User = user;
+      UMask = "0077";
+      ExecStart = pkgs.writeShellScript "agenix-import-ssh-${user}" ''
+        set -euo pipefail
+
+        key="${sshKey}"
+        pub="${sshPubKey}"
+        age_dir="${ageDir}"
+        private_out="${privateOut}"
+        public_out="${publicOut}"
+
+        mkdir -p "$age_dir"
+
+        tmp_private="$(${pkgs.coreutils}/bin/mktemp "$age_dir/keys.txt.XXXXXX")"
+        ${pkgs.ssh-to-age}/bin/ssh-to-age --private-key < "$key" > "$tmp_private"
+        mv "$tmp_private" "$private_out"
+        chmod 600 "$private_out"
+
+        ${pkgs.ssh-to-age}/bin/ssh-to-age < "$pub" > "$public_out"
+        chmod 600 "$public_out"
+
+        if [ ! -e "${defaultSshKey}" ]; then
+          ln -sf "$key" "${defaultSshKey}"
+          ln -sf "$pub" "${defaultSshPub}"
+        fi
+
+        echo "Age identity written to $private_out"
+        echo "Age public key:"
+        cat "$public_out"
+      '';
+    };
+  };
+
   # Podman for containers
   virtualisation.podman = {
     enable = true;
@@ -254,6 +310,12 @@ in
   };
 
   virtualisation.oci-containers = {
+  };
+
+  services.egoengine.coder = {
+    enable = true;
+    accessUrl = "https://vermissian.tailnet.ts.net:7080";
+    autoRegisterTemplates = false; # Flip to true once CODER_ADMIN_TOKEN is available.
   };
 
   # Remote mounts check service

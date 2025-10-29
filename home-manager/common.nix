@@ -105,6 +105,8 @@
 
       # Python package management
       uv
+
+      inputs.agenix.packages.${pkgs.system}.agenix
     ];
   };
 

@@ -1,0 +1,60 @@
+name: Build Base Image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Build OCI image
+        run: nix build .#egoengine-dev-base-oci
+
+      - name: Compute image metadata
+        id: meta
+        run: |
+          owner=$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')
+          repo=$(echo "${GITHUB_REPOSITORY#*/}" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/${owner}/${repo}/egoengine" >> "$GITHUB_OUTPUT"
+          echo "rev=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Load image into Docker
+        run: docker load < result
+
+      - name: Tag image
+        run: |
+          IMAGE_ID=$(docker images --format '{{.ID}}' egoengine-dev-base | head -n1)
+          if [ -z "$IMAGE_ID" ]; then
+            echo "Unable to locate image ID for egoengine-dev-base" >&2
+            exit 1
+          fi
+          docker tag "$IMAGE_ID" "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.rev }}"
+          docker tag "$IMAGE_ID" "${{ steps.meta.outputs.image }}:latest"
+
+      - name: Authenticate to GHCR
+        if: github.event_name != 'pull_request'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push image
+        if: github.event_name != 'pull_request'
+        run: |
+          docker push "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.rev }}"
+          docker push "${{ steps.meta.outputs.image }}:latest"

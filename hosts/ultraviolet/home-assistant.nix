@@ -6,14 +6,23 @@
 }:
 let
   # Create a package for the backup script
-  ha-backup-script = pkgs.writeShellScriptBin "backup-ha" (builtins.readFile ./home-assistant/scripts/backup-ha.sh);
+  ha-backup-script = pkgs.writeShellScriptBin "backup-ha" (
+    builtins.readFile ./home-assistant/scripts/backup-ha.sh
+  );
   # Wrap hass-cli to auto-set server and token (script content on disk for readability)
   hassCliWrapped = pkgs.writeShellScriptBin "hass-cli" (
     (builtins.readFile ./home-assistant/scripts/hass-cli.sh)
     + ''
-exec ${pkgs.home-assistant-cli}/bin/hass-cli "$@"
-''
+      REAL_HASS_CLI=${pkgs.home-assistant-cli}/bin/hass-cli
+      run_hass_cli "$REAL_HASS_CLI" "$@"
+    ''
   );
+  blePassthrough = pkgs.fetchFromGitHub {
+    owner = "iHost-Open-Source-Project";
+    repo = "ble_passthrough";
+    rev = "79d807f1bdbc46a8358869cd283ca85e93b20c9c";
+    sha256 = "sha256-hUALGWg22QYCqZk1J4kMy2fJtbOOve4930LzNx+mPGQ=";
+  };
 in
 {
   services.home-assistant = {
@@ -32,6 +41,7 @@ in
         pyheos # HEOS (Denon/Marantz) integration
         wyoming # Wyoming protocol for voice services (Piper TTS)
         aiogithubapi # Required for HACS
+        zlib-ng # Optimized compression for aiohttp_fast_zlib
       ];
 
     # Custom components (like Nest Protect)
@@ -47,6 +57,7 @@ in
     extraComponents = [
       # Core functionality
       "default_config" # Includes most common integrations
+      "bluetooth" # Core Bluetooth stack for proxies, iBeacons
       "met" # Weather (required for onboarding)
       "radio_browser" # Radio stations
       "application_credentials" # OAuth credential management for self-hosted
@@ -89,6 +100,8 @@ in
       # Voice and audio
       "piper" # Local text-to-speech (supports custom voices like GlaDOS)
       "wyoming" # Protocol for voice services integration
+      "ibeacon" # Detect iBeacon button broadcasts
+      "esphome"
 
       # Mobile app support
       "mobile_app" # For Home Assistant companion app
@@ -111,6 +124,7 @@ in
       default_config = { };
 
       homeassistant = {
+
         name = "Home";
         # Location is loaded from secrets.yaml to keep it out of git
         latitude = "!secret latitude";
@@ -124,6 +138,11 @@ in
         external_url = "https://home.husbuddies.gay";
         # Use LAN-reachable IP so speakers (e.g., Sonos) can fetch TTS audio
         internal_url = "http://172.31.0.200:8123";
+
+        packages = [
+          (pkgs.writeTextDir "custom_templates/keychain_button.yaml"
+            (builtins.readFile ./home-assistant/templates/keychain_button.yaml))
+        ];
 
         # Multi-factor authentication configuration
         auth_mfa_modules = [
@@ -200,6 +219,8 @@ in
         themes = "!include_dir_merge_named themes";
       };
 
+      ble_passthrough = { };
+
       # Lovelace configuration
       lovelace = {
         dashboards = {
@@ -239,6 +260,16 @@ in
 
       # Controls for leak alert TTS behavior
       input_boolean = {
+        josh_keychain_button_pressed = {
+          name = "Josh Keychain Button Pressed";
+          icon = "mdi:gesture-double-tap";
+          initial = false;
+        };
+        justin_keychain_button_pressed = {
+          name = "Justin Keychain Button Pressed";
+          icon = "mdi:gesture-double-tap";
+          initial = false;
+        };
         leak_alert_tts_enabled = {
           name = "Leak alert speech";
           icon = "mdi:volume-high";
@@ -415,6 +446,7 @@ in
     "d /var/lib/hass/www 0755 hass hass -"
     "d /var/lib/hass/dashboards 0755 hass hass -"
     "d /etc/homepage/keys 0755 root root -"
+    "d /var/lib/hass/packages 0755 hass hass -"
   ];
 
   # Create a secrets.yaml template for Home Assistant
@@ -455,20 +487,20 @@ in
     description = "Setup HACS for Home Assistant";
     wantedBy = [ "multi-user.target" ];
     before = [ "home-assistant.service" ];
-    
+
     serviceConfig = {
       Type = "oneshot";
       User = "hass";
       Group = "hass";
       RemainAfterExit = true;
     };
-    
+
     script = ''
       set -e
-      
+
       # Ensure custom_components directory exists
       mkdir -p /var/lib/hass/custom_components
-      
+
       # Download and install HACS if not present or outdated
       if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
         echo "Installing HACS..."
@@ -499,45 +531,55 @@ in
       fi
     '';
   };
-  
+
   # Dashboard files are handled directly in preStart script
 
   # Setup secrets file on startup and sync Lovelace YAML
   systemd.services.home-assistant.preStart = lib.mkAfter ''
-    # Copy secrets file if it doesn't exist
-    if [ ! -f /var/lib/hass/secrets.yaml ]; then
-      cp /etc/hass-secrets.yaml /var/lib/hass/secrets.yaml
-      chown hass:hass /var/lib/hass/secrets.yaml
-      chmod 600 /var/lib/hass/secrets.yaml
-      echo "Created secrets.yaml - please edit it with your actual values"
-    fi
+        # Copy secrets file if it doesn't exist
+        if [ ! -f /var/lib/hass/secrets.yaml ]; then
+          cp /etc/hass-secrets.yaml /var/lib/hass/secrets.yaml
+          chown hass:hass /var/lib/hass/secrets.yaml
+          chmod 600 /var/lib/hass/secrets.yaml
+          echo "Created secrets.yaml - please edit it with your actual values"
+        fi
 
-    # Deploy dashboard structure from the Nix config on every start
-    rm -rf /var/lib/hass/dashboards
-    mkdir -p /var/lib/hass/dashboards
-    cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
-    find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
-    find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
-    # Files already have correct ownership since service runs as hass user
-    # Create symlink for main dashboard file
-    ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
+        # Deploy dashboard structure from the Nix config on every start
+        rm -rf /var/lib/hass/dashboards
+        mkdir -p /var/lib/hass/dashboards
+        cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
+        find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
+        find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
+        # Files already have correct ownership since service runs as hass user
+        # Create symlink for main dashboard file
+        ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
 
-    # Sync Git-managed automations directory (merged list include)
-    rm -rf /var/lib/hass/automations
-    mkdir -p /var/lib/hass/automations
-${lib.optionalString (builtins.pathExists ../../automations) ''
-    cp -r ${../../automations}/* /var/lib/hass/automations/
-    find /var/lib/hass/automations -type f -exec chmod 644 {} \;
-    find /var/lib/hass/automations -type d -exec chmod 755 {} \;
-''}
-${lib.optionalString (!(builtins.pathExists ../../automations)) ''
-    echo "No automations directory found in Nix repo; skipping copy"
-''}
+        # Sync Git-managed automations directory (merged list include)
+        rm -rf /var/lib/hass/automations
+        mkdir -p /var/lib/hass/automations
+    ${lib.optionalString (builtins.pathExists ../../automations) ''
+      cp -r ${../../automations}/* /var/lib/hass/automations/
+      find /var/lib/hass/automations -type f -exec chmod 644 {} \;
+      find /var/lib/hass/automations -type d -exec chmod 755 {} \;
+    ''}
+    ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
+      echo "No automations directory found in Nix repo; skipping copy"
+    ''}
+
+        # Deploy BLE passthrough custom component from Nix store each start
+        mkdir -p /var/lib/hass/custom_components
+        rm -rf /var/lib/hass/custom_components/ble_passthrough
+        cp -r ${blePassthrough}/custom_components/ble_passthrough /var/lib/hass/custom_components/
+        find /var/lib/hass/custom_components/ble_passthrough -type f -exec chmod 644 {} \;
+        find /var/lib/hass/custom_components/ble_passthrough -type d -exec chmod 755 {} \;
   '';
 
   # Ensure Home Assistant restarts when dashboard sources change,
   # so the preStart sync copies new/updated YAML (e.g., new popups)
-  systemd.services.home-assistant.restartTriggers = [ ../../dashboards ../../automations ];
+  systemd.services.home-assistant.restartTriggers = [
+    ../../dashboards
+    ../../automations
+  ];
 
   # Backup service for Home Assistant
   systemd.services.home-assistant-backup = {
@@ -547,11 +589,11 @@ ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
       "mnt-backups.mount"
     ];
     requires = [ "mnt-backups.mount" ];
-    
+
     path = with pkgs; [
       coreutils
       rsync
-      util-linux  # for mountpoint and logger
+      util-linux # for mountpoint and logger
       findutils
       gnused
     ];
@@ -671,10 +713,10 @@ ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
 
   # Create convenient restore command
   environment.systemPackages = with pkgs; [
-    ha-backup-script  # Add the backup script to PATH
-    hassCliWrapped    # hass-cli with auto server/token
-    jq                 # JSON processor for API responses
-    yamllint          # YAML linter for configuration validation
+    ha-backup-script # Add the backup script to PATH
+    hassCliWrapped # hass-cli with auto server/token
+    jq # JSON processor for API responses
+    yamllint # YAML linter for configuration validation
     (writeShellScriptBin "ha-restore" ''
       # Home Assistant Restore Tool
       # Usage: ha-restore [backup-name|latest]

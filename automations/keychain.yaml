@@ -1,0 +1,79 @@
+- id: josh_keychain_button_flag
+  alias: "Josh keychain → set flag"
+  description: Raise a short-lived flag when Josh's keychain button beacon reports.
+  mode: restart
+  trigger:
+    - platform: event
+      event_type: ble_passthrough.adv_received
+      event_data:
+        address: "DD:88:00:00:0D:13"
+  condition:
+    - condition: template
+      value_template: >
+        {% set last = state_attr('automation.josh_keychain_button_flag', 'last_triggered') %}
+        {{ last is none or (as_timestamp(now()) - as_timestamp(last)) > 5 }}
+    - condition: template
+      value_template: >
+        {% set bytes = trigger.event.data.data %}
+        {% if bytes is not none and bytes|length >= 26 %}
+          {% set minor = bytes[24:26] %}
+          {{ minor == ['29', '00'] }}
+        {% else %}
+          false
+        {% endif %}
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.josh_keychain_button_pressed
+    - delay: "00:00:01"
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.josh_keychain_button_pressed
+
+- id: justin_keychain_button_flag
+  alias: "Justin keychain → set flag"
+  description: Raise a short-lived flag when Justin's keychain button beacon reports.
+  mode: restart
+  trigger:
+    - platform: event
+      event_type: ble_passthrough.adv_received
+      event_data:
+        address: "DD:88:00:00:08:48"
+  condition:
+    - condition: template
+      value_template: >
+        {% set last = state_attr('automation.justin_keychain_button_flag', 'last_triggered') %}
+        {{ last is none or (as_timestamp(now()) - as_timestamp(last)) > 5 }}
+    - condition: template
+      value_template: >
+        {% set bytes = trigger.event.data.data %}
+        {% if bytes is not none and bytes|length >= 26 %}
+          {% set minor = bytes[24:26] %}
+          {{ minor == ['2C', '00'] }}
+        {% else %}
+          false
+        {% endif %}
+  action:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.justin_keychain_button_pressed
+    - delay: "00:00:01"
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.justin_keychain_button_pressed
+
+- id: keychain_button_toggle_garage
+  alias: "Keychain buttons → toggle garage"
+  description: Toggle the garage door when Josh or Justin double-click their keychain button.
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: input_boolean.josh_keychain_button_pressed
+      to: "on"
+    - platform: state
+      entity_id: input_boolean.justin_keychain_button_pressed
+      to: "on"
+  action:
+    - service: cover.toggle
+      target:
+        entity_id: cover.garage_door

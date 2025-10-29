@@ -1,0 +1,12 @@
+template:
+  - binary_sensor:
+      - name: "Josh Keychain Button Press Signal"
+        unique_id: josh_keychain_button_pressed_signal
+        device_class: occupancy
+        state: >
+          {{ is_state('input_boolean.josh_keychain_button_pressed', 'on') }}
+      - name: "Justin Keychain Button Press Signal"
+        unique_id: justin_keychain_button_pressed_signal
+        device_class: occupancy
+        state: >
+          {{ is_state('input_boolean.justin_keychain_button_pressed', 'on') }}

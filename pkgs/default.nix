@@ -19,5 +19,6 @@ in
   claudeCodeCli = pkgs.callPackage ./claude-code-cli { };
   deadcode = pkgs.callPackage ./deadcode { };
   golangciLintBin = pkgs.callPackage ./golangci-lint-bin { };
+  coder = pkgs.callPackage ./coder-cli { unzip = pkgs.unzip; };
 }
 // egoenginePkgs

@@ -316,7 +316,7 @@ in
   services.egoengine.coder = {
     enable = true;
     accessUrl = "https://vermissian.tailnet.ts.net:7080";
-    autoRegisterTemplates = false; # Flip to true once CODER_ADMIN_TOKEN is available.
+    autoRegisterTemplates = false;
   };
 
   # Remote mounts check service

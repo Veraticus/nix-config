@@ -16,6 +16,7 @@
       claudeCodeCli = final.callPackage ../pkgs/claude-code-cli { };
       deadcode = final.callPackage ../pkgs/deadcode { };
       golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin { };
+      coder = final.callPackage ../pkgs/coder-cli { unzip = final.unzip; };
 
       # Codex packages from local checkout
       codex-tui = codexTui;

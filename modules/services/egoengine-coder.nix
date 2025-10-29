@@ -44,6 +44,12 @@ in
       description = "Address to bind the Coder HTTP service to.";
     };
 
+    internalUrl = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "Internal URL for CLI interactions (defaults to http://127.0.0.1:<port>).";
+    };
+
     accessUrl = mkOption {
       type = types.nullOr types.str;
       default = null;
@@ -125,6 +131,8 @@ in
   config = mkIf cfg.enable (let
     dbSecretPath = config.age.secrets."coder-db-password".path;
     coderSecretPath = config.age.secrets."coder-env".path;
+    internalUrl =
+      if cfg.internalUrl != null then cfg.internalUrl else "http://127.0.0.1:${toString cfg.port}";
     setPasswordScript = pkgs.writeShellScript "coder-postgres-password" ''
       set -euo pipefail
 
@@ -180,34 +188,43 @@ SQL
       # shellcheck disable=SC1090
       source ${cfg.environmentFile}
 
-      if [ -z "''${CODER_PROVISIONER_PSK:-}" ]; then
-        echo "CODER_PROVISIONER_PSK not set; skipping template registration" >&2
-        exit 0
+      CODER_URL="''${CODER_INTERNAL_URL:-${internalUrl}}"
+      if [ -z "''${CODER_URL}" ]; then
+        CODER_URL="${if cfg.accessUrl != null then cfg.accessUrl else ""}"
       fi
-
-      CODER_URL="${if cfg.accessUrl != null then cfg.accessUrl else ""}"
       if [ -z "''${CODER_URL}" ]; then
         CODER_URL="''${CODER_ACCESS_URL:-}"
       fi
       if [ -z "''${CODER_URL}" ]; then
-        echo "CODER_ACCESS_URL not configured; cannot register templates" >&2
+        echo "Coder URL not configured; cannot register templates" >&2
         exit 1
       fi
 
       if command -v coder >/dev/null 2>&1; then
         if [ -n "''${CODER_ADMIN_TOKEN:-}" ]; then
-          coder login "''${CODER_URL}" --token "''${CODER_ADMIN_TOKEN}" --force || true
+          export CODER_SESSION_TOKEN="''${CODER_ADMIN_TOKEN}"
+        fi
+        export CODER_URL="''${CODER_URL}"
+
+        TEMPLATE_FLAGS=()
+        if [ -n "''${CODER_PROVISIONER_TAGS:-}" ]; then
+          IFS=',' read -ra TAGS <<<"''${CODER_PROVISIONER_TAGS}"
+          for tag in "''${TAGS[@]}"; do
+            TEMPLATE_FLAGS+=(--provisioner-tag "$tag")
+          done
         fi
 
         coder templates push \
           --name ${cfg.templatePush.envbuilderName} \
           "${cfg.templatePush.envbuilderPath}" \
-          --provisioner-key "''${CODER_PROVISIONER_PSK}"
+          --yes \
+          "''${TEMPLATE_FLAGS[@]}"
 
         coder templates push \
           --name ${cfg.templatePush.shellName} \
           "${cfg.templatePush.shellPath}" \
-          --provisioner-key "''${CODER_PROVISIONER_PSK}"
+          --yes \
+          "''${TEMPLATE_FLAGS[@]}"
       else
         echo "coder CLI is not available; skipping template registration" >&2
       fi

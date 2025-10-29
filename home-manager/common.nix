@@ -51,6 +51,7 @@
       shellspec
       socat
       wireguard-tools
+      coder
       inputs.cc-tools.packages.${pkgs.system}.default
       k9s
       starlark-lsp

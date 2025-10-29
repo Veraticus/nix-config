@@ -12,9 +12,9 @@ Coder now runs declaratively on `vermissian` via `modules/services/egoengine-cod
 2. Populate the secrets:
    ```sh
    agenix -e secrets/coder-db-password.age    # CODER_DB_PASSWORD=...
-   agenix -e secrets/coder-env.age            # CODER_PG_CONNECTION_URL=..., CODER_PROVISIONER_PSK=...
+   agenix -e secrets/coder-env.age            # CODER_PG_CONNECTION_URL=..., CODER_PROVISIONER_PSK=..., CODER_ADMIN_TOKEN=...
    ```
-   `CODER_ADMIN_TOKEN` is optional but enables automatic template pushes when `services.coder.autoRegisterTemplates = true`.
+   `CODER_ADMIN_TOKEN` is used by the CLI when pushing templates manually.
 3. Deploy the host:
    ```sh
    make update HOST=vermissian
@@ -25,6 +25,23 @@ Coder now runs declaratively on `vermissian` via `modules/services/egoengine-cod
    curl http://127.0.0.1:7080/healthz
    coder login https://vermissian.tailnet.ts.net:7080
    ```
+5. After creating the first administrator (either in the UI or with `coder login --first-user-*`), push the templates manually from the host. The Coder CLI is already available, so run:
+   ```sh
+   export CODER_ADMIN_TOKEN=…
+   export CODER_SESSION_TOKEN="$CODER_ADMIN_TOKEN"
+   export CODER_URL=http://127.0.0.1:7080
+
+   coder templates push \
+     --yes \
+     --name egoengine-envbuilder \
+     coder-templates/egoengine-envbuilder
+
+   coder templates push \
+     --yes \
+     --name egoengine-shell \
+     coder-templates/egoengine-shell
+   ```
+   Add `--provisioner-tag <tag>` if you need to target a specific provisioner pool.
 
 The legacy Docker Compose flow below remains available for ad-hoc testing but should no longer be required for production.
 
@@ -48,24 +65,7 @@ For GitOps with the coderd provider, store the token in your secret manager and 
 
 ## Publishing Coder Templates
 
-Once the Coder server is reachable and the Provisioner PSK is available:
-
-```sh
-coder login https://vermissian.tailnet.ts.net:7080
-export CODER_PROVISIONER_PSK=... # from secret storage
-
-coder templates push \
-  --name egoengine-envbuilder \
-  coder-templates/egoengine-envbuilder \
-  --provisioner-key "$CODER_PROVISIONER_PSK"
-
-coder templates push \
-  --name egoengine-shell \
-  coder-templates/egoengine-shell \
-  --provisioner-key "$CODER_PROVISIONER_PSK"
-```
-
-After the templates are registered you can create workspaces via the UI or:
+After the templates are registered (see the declarative deployment section), you can create workspaces via the UI or:
 
 ```sh
 coder workspace create --template egoengine-envbuilder my-workspace

@@ -51,7 +51,7 @@
       "https://joshsymonds.cachix.org"
     ];
     extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:6IuW1zqaE3RJnYQj2sc2S5hJz9i6wh1M2Q2ivQVlJss="
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
       "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
       "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
     ];

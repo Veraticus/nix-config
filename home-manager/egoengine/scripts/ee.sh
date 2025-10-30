@@ -103,7 +103,7 @@ update_secret() {
 
 fetch_note() {
   local item=$1
-  op item get "op://$vault/$item" --field notesPlain 2>/dev/null
+  op read "op://$vault/$item/notesPlain" 2>/dev/null
 }
 
 run_coder_env() {

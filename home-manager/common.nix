@@ -13,6 +13,7 @@
     ./claude-code
     ./mcp
     ./codex
+    ./egoengine
     ./kitty
     ./nvim
     ./git

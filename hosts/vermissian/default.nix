@@ -315,7 +315,7 @@ in
 
   services.egoengine.coder = {
     enable = true;
-    accessUrl = "https://vermissian.tailnet.ts.net:7080";
+    accessUrl = "https://vermissian:7080";
     autoRegisterTemplates = false;
   };
 

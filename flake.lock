@@ -49,11 +49,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1761856764,
-        "narHash": "sha256-VOd2d0h1uhdbGZbNU2wAjqVJ9nfyn+Osk0QAaXHHjEk=",
+        "lastModified": 1761864444,
+        "narHash": "sha256-8vqXwuSH+N6ZAykNVGxM6jhqOISwkEvmtV4cTYLUzns=",
         "owner": "Veraticus",
         "repo": "codex",
-        "rev": "7051dd5a4bb8b1e23f0b2bc6419f4fc0b874dac5",
+        "rev": "f62c72a1162e57b97de1d2abce0c94c254f21fa2",
         "type": "github"
       },
       "original": {

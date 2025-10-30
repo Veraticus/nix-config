@@ -23,7 +23,7 @@ Coder now runs declaratively on `vermissian` via `modules/services/egoengine-cod
 4. Verify health:
    ```sh
    curl http://127.0.0.1:7080/healthz
-   coder login https://vermissian.tailnet.ts.net:7080
+   coder login https://vermissian:7080
    ```
 5. After creating the first administrator (either in the UI or with `coder login --first-user-*`), push the templates manually from the host. The Coder CLI is already available, so run:
    ```sh

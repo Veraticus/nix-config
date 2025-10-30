@@ -63,7 +63,7 @@
       gh
       parallel
       just
-      kitty.terminfo  # Ensure proper terminal handling for SSH sessions
+      kitty.terminfo # Ensure proper terminal handling for SSH sessions
 
       # Tilt/Starlark tools
       tilt
@@ -74,22 +74,25 @@
       kubernetes-helm
       kubectl
       kustomize
+      istioctl
 
       # AWS tools
       git-remote-codecommit
 
       # Python
-      (python3.withPackages (ps: with ps; [
-        pip
-        pytest
-        pyyaml
-        black
-        # Gmail analysis dependencies
-        google-api-python-client
-        google-auth
-        google-auth-oauthlib
-        google-auth-httplib2
-      ]))
+      (python3.withPackages (
+        ps: with ps; [
+          pip
+          pytest
+          pyyaml
+          black
+          # Gmail analysis dependencies
+          google-api-python-client
+          google-auth
+          google-auth-oauthlib
+          google-auth-httplib2
+        ]
+      ))
 
       # LSP servers
       lua-language-server

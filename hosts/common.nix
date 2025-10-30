@@ -1,5 +1,19 @@
 { inputs, outputs, lib, config, pkgs, ... }: {
   age.identityPaths = [ "/etc/age/${config.networking.hostName}.agekey" ];
+
+  nix.settings = {
+    trusted-users = [ "root" "joshsymonds" ];
+    extra-substituters = [
+      "https://nix-community.cachix.org"
+      "https://neovim-nightly.cachix.org"
+      "https://joshsymonds.cachix.org"
+    ];
+    extra-trusted-public-keys = [
+      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+      "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
+      "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
+    ];
+  };
   # Common packages for all headless Linux hosts
   environment.systemPackages = with pkgs; [
     yamllint  # YAML linter, useful for Home Assistant configurations

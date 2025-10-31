@@ -15,6 +15,7 @@ in
   imports = [
     ../common.nix
     ../../modules/services/egoengine-coder.nix
+    ../../modules/services/cloudflare-tunnel.nix
 
     # You can also split up your configuration and import pieces of it here:
     # ./users.nix
@@ -313,9 +314,21 @@ in
   virtualisation.oci-containers = {
   };
 
+  age.secrets."cloudflared-token" = {
+    file = ../../secrets/hosts/vermissian/cloudflared-token.age;
+    owner = "cloudflared";
+    group = "cloudflared";
+    mode = "0400";
+  };
+
+  services.cloudflareTunnel = {
+    enable = true;
+    tokenFile = config.age.secrets."cloudflared-token".path;
+  };
+
   services.egoengine.coder = {
     enable = true;
-    accessUrl = "https://vermissian:7080";
+    accessUrl = "https://coder.husbuddies.gay";
     autoRegisterTemplates = false;
   };
 

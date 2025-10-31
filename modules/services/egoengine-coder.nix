@@ -239,14 +239,14 @@ SQL
       ];
 
       age.secrets."coder-db-password" = {
-        file = ../../secrets/coder-db-password.age;
+        file = ../../secrets/shared/coder-db-password.age;
         owner = "postgres";
         group = "postgres";
         mode = "0400";
       };
 
       age.secrets."coder-env" = {
-        file = ../../secrets/coder-env.age;
+        file = ../../secrets/shared/coder-env.age;
         owner = "root";
         group = "root";
         mode = "0400";

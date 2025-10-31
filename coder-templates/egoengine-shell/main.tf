@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine-dev-base:egoengine-latest"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:latest"
 }
 
 variable "op_service_account_token" {

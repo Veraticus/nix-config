@@ -14,7 +14,8 @@ let
 
   cfg = config.services.egoengine.coder;
 
-  containerServiceName = "podman-${cfg.containerName}";
+  containerPrefix = if cfg.dockerSocketPath != null then "docker" else "podman";
+  containerServiceName = "${containerPrefix}-${cfg.containerName}";
   containerUnit = "${containerServiceName}.service";
 in
 {
@@ -140,6 +141,7 @@ in
     coderSecretPath = config.age.secrets."coder-env".path;
     internalUrl =
       if cfg.internalUrl != null then cfg.internalUrl else "http://127.0.0.1:${toString cfg.port}";
+    dockerGroupGid = lib.attrByPath [ "users" "groups" "docker" "gid" ] null config;
     setPasswordScript = pkgs.writeShellScript "coder-postgres-password" ''
       set -euo pipefail
 
@@ -298,12 +300,18 @@ SQL
         '';
       };
 
-      virtualisation.oci-containers.backend = mkDefault "podman";
+      virtualisation.oci-containers.backend = mkDefault (
+        if cfg.dockerSocketPath != null then "docker" else "podman"
+      );
 
       virtualisation.oci-containers.containers.${cfg.containerName} = {
         image = cfg.image;
         autoStart = true;
-        extraOptions = [ "--network=host" ];
+        extraOptions =
+          [ "--network=host" ]
+          ++ optional (cfg.dockerSocketPath != null) "--user=root"
+          ++ optional (cfg.dockerSocketPath != null && dockerGroupGid != null)
+            "--group-add=${toString dockerGroupGid}";
         environment =
           (optionalAttrs (cfg.accessUrl != null) {
             CODER_ACCESS_URL = cfg.accessUrl;

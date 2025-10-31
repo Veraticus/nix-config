@@ -15,6 +15,7 @@ Usage:
   ee sync [--quiet]        Mirror 1Password document items into $HOME
   ee work|w [coder args]   Run coder with work environment credentials
   ee personal|p [args]     Run coder with personal environment credentials
+                           (leading 'coder' argument is optional)
 
 Environment:
   EE_VAULT           Override the 1Password vault name (default: egoengine)
@@ -233,6 +234,11 @@ run_coder_env() {
   local env_name=$1
   shift
 
+  local args=("$@")
+  if [ "${#args[@]}" -gt 0 ] && [ "${args[0]}" = coder ]; then
+    args=("${args[@]:1}")
+  fi
+
   local env_item
   case "$env_name" in
     work|w) env_item=$work_item ;;
@@ -297,7 +303,11 @@ EOF
   fi
 
   set +e
-  coder "$@"
+  if [ "${#args[@]}" -gt 0 ]; then
+    coder "${args[@]}"
+  else
+    coder
+  fi
   local status=$?
   set -e
 

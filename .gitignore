@@ -10,3 +10,4 @@ hosts/secrets/
 # Vendor directories
 vendor/
 reference/
+.terraform/

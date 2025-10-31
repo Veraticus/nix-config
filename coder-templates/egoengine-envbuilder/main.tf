@@ -108,7 +108,6 @@ data "coder_parameter" "cache_repo_docker_config_path" {
   display_name = "Cache Registry Docker Config Path"
   mutable      = true
   name         = "cache_repo_docker_config_path"
-  sensitive    = true
   order        = 6
 }
 

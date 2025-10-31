@@ -329,6 +329,7 @@ in
   services.egoengine.coder = {
     enable = true;
     accessUrl = "https://coder.husbuddies.gay";
+    internalUrl = "https://coder.husbuddies.gay";
     autoRegisterTemplates = false;
   };
 

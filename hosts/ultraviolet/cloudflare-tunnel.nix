@@ -1,5 +1,7 @@
 { config, pkgs, lib, ... }:
-
+let
+  tokenPath = config.age.secrets."cloudflared-token".path;
+in
 {
   # Install cloudflared package
   environment.systemPackages = with pkgs; [
@@ -28,17 +30,17 @@
       RestartSec = "5s";
       # Token-based tunnel (ingress rules configured in Cloudflare dashboard)
       ExecStart = ''
-        ${pkgs.bash}/bin/bash -c '${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token $(cat /var/lib/cloudflared/tunnel-token)'
+        ${pkgs.bash}/bin/bash -c '${pkgs.cloudflared}/bin/cloudflared tunnel --no-autoupdate run --token $(cat ${lib.escapeShellArg tokenPath})'
       '';
       # Security hardening
       PrivateTmp = true;
       NoNewPrivileges = true;
-      ReadOnlyPaths = [ "/var/lib/cloudflared/tunnel-token" ];
+      ReadOnlyPaths = [ tokenPath ];
     };
     
     # Only start if token file exists
     unitConfig = {
-      ConditionPathExists = "/var/lib/cloudflared/tunnel-token";
+      ConditionPathExists = tokenPath;
     };
   };
   
@@ -62,17 +64,13 @@
     This directory contains the Cloudflare tunnel token.
     DO NOT commit this file to version control!
     
-    Required file:
-    - tunnel-token: The tunnel authentication token
+    The tunnel authentication token is supplied via agenix.
+    To rotate the token, update secrets/hosts/ultraviolet/cloudflared-token.age\n
     
-    To set up a new tunnel:
-    1. Install cloudflared locally
-    2. Run: cloudflared tunnel login
-    3. Run: cloudflared tunnel create <tunnel-name>
-    4. Run: cloudflared tunnel token <tunnel-name> > tunnel-token
-    5. Set proper permissions:
-       sudo chown cloudflared:cloudflared tunnel-token
-       sudo chmod 600 tunnel-token
+    For reference, to create a token manually:
+      cloudflared tunnel login
+      cloudflared tunnel create <tunnel-name>
+      cloudflared tunnel token <tunnel-name>
     
     Configure routing in Cloudflare dashboard:
     1. Go to https://one.dash.cloudflare.com/

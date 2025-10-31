@@ -1096,6 +1096,20 @@ in
     enable = true;
   };
 
+  age.secrets."cloudflare-api-token" = {
+    file = ../../secrets/hosts/ultraviolet/cloudflare-api-token.age;
+    owner = "caddy";
+    group = "caddy";
+    mode = "0400";
+  };
+
+  age.secrets."cloudflared-token" = {
+    file = ../../secrets/hosts/ultraviolet/cloudflared-token.age;
+    owner = "cloudflared";
+    group = "cloudflared";
+    mode = "0400";
+  };
+
   services.caddy = {
     acmeCA = null;
     enable = true;
@@ -1178,6 +1192,9 @@ in
       '';
     };
   };
+
+  systemd.services.caddy.serviceConfig.EnvironmentFile =
+    config.age.secrets."cloudflare-api-token".path;
 
   environment.etc."homepage/config/settings.yaml" = {
     mode = "0644";

@@ -8,6 +8,7 @@ This template provisions a Docker workspace that runs the egoengine base image d
 | --- | --- |
 | `docker_socket` (optional) | Override the Docker daemon URI if the provisioner is not using the default socket. |
 | `workspace_image` | OCI image to run. Default: `ghcr.io/veraticus/nix-config/egoengine:latest`. Point this to the image published by the CI workflow. |
+| `entrypoint_shell` | Shell used to launch the Coder agent script. Default: `zsh`. Override if your image lacks zsh. |
 | `op_service_account_token` (sensitive) | 1Password Service Account token. Provide via Coder Terraform variables or another secret mechanism. |
 
 ## Behaviour

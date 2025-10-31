@@ -22,6 +22,12 @@ variable "workspace_image" {
   default     = "ghcr.io/veraticus/nix-config/egoengine:latest"
 }
 
+variable "entrypoint_shell" {
+  description = "Shell binary used to launch the coder agent init script."
+  type        = string
+  default     = "zsh"
+}
+
 variable "op_service_account_token" {
   description = "1Password Service Account token injected into the workspace environment."
   type        = string
@@ -80,7 +86,7 @@ resource "docker_container" "workspace" {
   image      = var.workspace_image
   name       = local.container_name
   hostname   = data.coder_workspace.me.name
-  entrypoint = ["sh", "-c", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
+  entrypoint = ["/usr/bin/env", var.entrypoint_shell, "-lc", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
   env        = ["CODER_AGENT_TOKEN=${coder_agent.main.token}"]
 
   host {

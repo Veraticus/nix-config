@@ -97,8 +97,8 @@ Components and Design Details
     - docker_container volumes: persistent Docker volume mounted at container_path = "/home/joshsymonds"
     - Reference: reference/coder/examples/templates/docker/main.tf:174
   - IDE modules
-    - code-server and JetBrains modules configured with folder = "/home/joshsymonds"
-    - Reference: reference/coder/examples/templates/docker/main.tf:124
+    - No bundled IDE backends; editors can be installed inside the workspace image as required.
+    - Reference (historical): reference/coder/examples/templates/docker/main.tf:124
   - Envbuilder devcontainer template (`coder-templates/egoengine-envbuilder/`)
     - Based on reference/coder/examples/templates/docker-envbuilder/main.tf:123
     - Parameters:
@@ -158,7 +158,7 @@ Components and Design Details
 - Create a workspace from the Devcontainer template; select the repo.
 - Envbuilder builds the devcontainer from the base image; registry cache accelerates rebuilds.
 - On start, secrets are fetched from 1Password to ~/.codex.
-- Use code-server/JetBrains modules, or connect external IDE via Coder extension/Connect.
+- Prefer installing editors through devcontainer tooling or Home Manager; add Coder IDE modules only when a template explicitly requires them.
 - Persistent home volume preserves environment and tokens across restarts; updated tokens propagate on next start.
 
 7) Security and Compliance

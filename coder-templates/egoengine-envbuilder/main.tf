@@ -235,13 +235,16 @@ resource "coder_agent" "main" {
 
   startup_script = <<-EOT
     set -euo pipefail
-
     mkdir -p ~/.codex
     umask 077
 
     op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
     chmod 600 ~/.codex/auth.json || true
     codex auth me || rm -f ~/.codex/auth.json || true
+
+    if [ -n "$${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -x "$${HOME}/.local/bin/ee" ]; then
+      "$${HOME}/.local/bin/ee" sync --quiet || true
+    fi
   EOT
 
   metadata {
@@ -267,22 +270,6 @@ resource "coder_agent" "main" {
     interval     = 60
     timeout      = 1
   }
-}
-
-module "code-server" {
-  count    = data.coder_workspace.me.start_count
-  source   = "registry.coder.com/coder/code-server/coder"
-  version  = "~> 1.0"
-  agent_id = coder_agent.main.id
-}
-
-module "jetbrains" {
-  count      = data.coder_workspace.me.start_count
-  source     = "registry.coder.com/coder/jetbrains/coder"
-  version    = "~> 1.0"
-  agent_id   = coder_agent.main.id
-  agent_name = "main"
-  folder     = "/home/joshsymonds"
 }
 
 resource "coder_metadata" "container_info" {

@@ -8,6 +8,7 @@ let
     mkMerge
     mkOption
     mkOverride
+    optional
     optionalAttrs
     types;
 
@@ -30,6 +31,12 @@ in
       type = types.str;
       default = "coder";
       description = "Name of the OCI container running Coder.";
+    };
+
+    dockerSocketPath = mkOption {
+      type = types.nullOr types.str;
+      default = "/var/run/docker.sock";
+      description = ''Path to a Docker-compatible socket exposed to the Coder container. Set to null to manage provisioning connectivity externally.'';
     };
 
     port = mkOption {
@@ -297,28 +304,40 @@ SQL
         image = cfg.image;
         autoStart = true;
         extraOptions = [ "--network=host" ];
-        environment = (optionalAttrs (cfg.accessUrl != null) {
-          CODER_ACCESS_URL = cfg.accessUrl;
-        }) // {
-          CODER_HTTP_ADDRESS = "0.0.0.0:${toString cfg.port}";
-        };
+        environment =
+          (optionalAttrs (cfg.accessUrl != null) {
+            CODER_ACCESS_URL = cfg.accessUrl;
+          })
+          // {
+            CODER_HTTP_ADDRESS = "0.0.0.0:${toString cfg.port}";
+          }
+          // optionalAttrs (cfg.dockerSocketPath != null) {
+            CODER_PROVISIONER_DOCKER_HOST = "unix://${cfg.dockerSocketPath}";
+          };
         environmentFiles = [ cfg.environmentFile ];
-        volumes = [
-          "${cfg.dataDir}:/var/lib/coder"
-        ];
+        volumes =
+          [
+            "${cfg.dataDir}:/var/lib/coder"
+          ]
+          ++ optional (cfg.dockerSocketPath != null)
+            "${cfg.dockerSocketPath}:${cfg.dockerSocketPath}";
       };
 
       systemd.services.${containerServiceName} = {
-        after = [
-          "postgresql.service"
-          "coder-postgres-password.service"
-          "run-agenix.d.mount"
-        ];
-        requires = [
-          "postgresql.service"
-          "coder-postgres-password.service"
-          "run-agenix.d.mount"
-        ];
+        after =
+          [
+            "postgresql.service"
+            "coder-postgres-password.service"
+            "run-agenix.d.mount"
+          ]
+          ++ optional (cfg.dockerSocketPath != null) "docker.service";
+        requires =
+          [
+            "postgresql.service"
+            "coder-postgres-password.service"
+            "run-agenix.d.mount"
+          ]
+          ++ optional (cfg.dockerSocketPath != null) "docker.service";
       };
 
       systemd.services."coder-postgres-password" = {

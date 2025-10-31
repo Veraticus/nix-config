@@ -28,8 +28,16 @@ Additional Terraform variables:
   op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
   chmod 600 ~/.codex/auth.json || true
   codex auth me || rm -f ~/.codex/auth.json || true
+  # Mirror 1Password document items into the workspace
+  if [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -x "$HOME/.local/bin/ee" ]; then
+    "$HOME/.local/bin/ee" sync --quiet || true
+  fi
   ```
   Ensure the vault path (`egoengine/Codex Auth/auth.json`) matches the item stored in 1Password.
+  Any document item in the `egoengine` vault whose title is not `personal`, `work`, or `service-account`
+  is mirrored into the workspace `$HOME` via `ee sync --quiet`. Titles beginning with `home/` map to the corresponding
+  relative path (e.g. `home/.ssh/id_ed25519` → `~/.ssh/id_ed25519`). Use `ee secret <path>` to upload
+  files back into 1Password.
 
 ## Persistent Home Directory
 
@@ -47,4 +55,4 @@ To enable build caching:
 
 - Update the default fallback image to point at the GHCR repository created by `.github/workflows/build-base.yml`.
 - The Envbuilder workdir is `/home/joshsymonds`, keeping repo checkouts inside the persistent home directory.
-- IDE modules (code-server and JetBrains) use `/home/joshsymonds` as their root folder so editors open the correct directory by default.
+- The template intentionally omits bundled IDE backends; install editors directly inside the devcontainer when needed.

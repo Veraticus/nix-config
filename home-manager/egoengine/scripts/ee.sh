@@ -12,6 +12,7 @@ usage() {
   cat <<'EOF'
 Usage:
   ee secret <path>         Upload or update a workspace file in 1Password
+  ee sync [--quiet]        Mirror 1Password document items into $HOME
   ee work|w [coder args]   Run coder with work environment credentials
   ee personal|p [args]     Run coder with personal environment credentials
 
@@ -100,6 +101,125 @@ update_secret() {
   trap - RETURN
   rm -f "$tmp"
 }
+
+sync_documents() {
+  require_cmd op
+
+  local quiet=0
+  local dry_run=0
+  local target_vault=$vault
+
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --quiet|-q)
+        quiet=1
+        ;;
+      --dry-run)
+        dry_run=1
+        ;;
+      --vault)
+        shift || die "--vault requires an argument"
+        target_vault=$1
+        ;;
+      *)
+        die "unknown option '$1' for sync"
+        ;;
+    esac
+    shift
+  done
+
+  if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+    if [ "$quiet" -ne 1 ]; then
+      printf '%s\n' "OP_SERVICE_ACCOUNT_TOKEN not set; skipping document sync" >&2
+    fi
+    return 0
+  fi
+
+  local list_output
+  if ! list_output=$(op item list --vault "$target_vault" --categories document --format json 2>/dev/null); then
+    if [ "$quiet" -ne 1 ]; then
+      printf '%s: unable to list documents in vault %s\n' "$script_name" "$target_vault" >&2
+    fi
+    return 1
+  fi
+
+  local titles
+  if command -v jq >/dev/null 2>&1; then
+    if ! titles=$(printf '%s' "$list_output" | jq -r '.[]?.title // empty'); then
+      [ "$quiet" -ne 1 ] && printf '%s\n' "Failed to parse 1Password document list (jq)" >&2
+      return 1
+    fi
+  else
+    if ! titles=$(printf '%s' "$list_output" | python3 -c 'import json, sys
+items = json.load(sys.stdin)
+for item in items or []:
+    title = item.get("title")
+    if title:
+        print(title)
+' 2>/dev/null); then
+      [ "$quiet" -ne 1 ] && printf '%s\n' "Failed to parse 1Password document list (python3)" >&2
+      return 1
+    fi
+  fi
+
+  umask 077
+
+  while IFS= read -r title; do
+    [ -z "$title" ] && continue
+    case "$title" in
+      personal|work|service-account)
+        continue
+        ;;
+    esac
+
+    local rel=$title
+    if [ "${rel#home/}" != "$rel" ]; then
+      rel=${rel#home/}
+    fi
+    rel=${rel#/}
+
+    if [ -z "$rel" ]; then
+      continue
+    fi
+
+    case "$rel" in
+      *..*)
+        [ "$quiet" -ne 1 ] && printf '%s: skipping unsafe document title %s\n' "$script_name" "$title" >&2
+        continue
+        ;;
+    esac
+
+    local dest="$HOME/$rel"
+    local dest_dir
+    dest_dir=$(dirname -- "$dest") || continue
+
+    if [ "$dry_run" -eq 1 ]; then
+      [ "$quiet" -ne 1 ] && printf 'Would sync %s -> %s\n' "$title" "$dest"
+      continue
+    fi
+
+    mkdir -p "$dest_dir"
+
+    local tmp_file
+    tmp_file=$(mktemp)
+    if op document get "op://$target_vault/$title" >"$tmp_file" 2>/dev/null; then
+      if [ -f "$dest" ] && cmp -s "$dest" "$tmp_file"; then
+        rm -f "$tmp_file"
+        continue
+      fi
+
+      mv "$tmp_file" "$dest"
+      chmod 600 "$dest"
+      [ "$quiet" -ne 1 ] && printf 'Synced %s -> %s\n' "$title" "$dest"
+    else
+      [ "$quiet" -ne 1 ] && printf '%s: failed to fetch document %s\n' "$script_name" "$title" >&2
+      rm -f "$tmp_file"
+    fi
+  done <<EOF
+$titles
+EOF
+}
+
 
 fetch_note() {
   local item=$1
@@ -201,6 +321,10 @@ main() {
         die "secret command expects exactly one path"
       fi
       update_secret "$1"
+      ;;
+    sync)
+      shift
+      sync_documents "$@"
       ;;
     work|w)
       shift || true

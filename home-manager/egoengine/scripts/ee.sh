@@ -133,7 +133,14 @@ run_coder_env() {
   local have_url=0
   local have_token=0
   local exported_vars=""
-  local line key value
+
+  if [ -n "${service_content//[[:space:]]/}" ]; then
+    service_content=$(printf '%s\n' "$service_content" | sed -e 's/\r//g' -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g')
+    if [ -n "$service_content" ]; then
+      export OP_SERVICE_ACCOUNT_TOKEN="$service_content"
+      exported_vars="$exported_vars OP_SERVICE_ACCOUNT_TOKEN"
+    fi
+  fi
 
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
@@ -159,7 +166,6 @@ run_coder_env() {
       CODER_SESSION_TOKEN) have_token=1 ;;
     esac
   done <<EOF
-$service_content
 $env_content
 EOF
 

@@ -49,7 +49,7 @@ jobs:
           authToken: ${{ env.CACHIX_AUTH_TOKEN }}
 
       - name: Build OCI image
-        run: nix build --accept-flake-config .#egoengine-dev-base-oci
+        run: nix build --accept-flake-config .#egoengine
 
       - name: Compute image metadata
         id: meta
@@ -60,17 +60,22 @@ jobs:
           echo "rev=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Load image into Docker
-        run: docker load < result
+        id: load
+        run: |
+          output=$(docker load < result)
+          echo "$output"
+          image=$(echo "$output" | sed -n 's/^Loaded image: //p' | tail -n1)
+          if [ -z "$image" ]; then
+            echo "Unable to determine loaded image name" >&2
+            exit 1
+          fi
+          echo "loaded_image=$image" >> "$GITHUB_OUTPUT"
 
       - name: Tag image
         run: |
-          IMAGE_ID=$(docker images --format '{{.ID}}' egoengine-dev-base | head -n1)
-          if [ -z "$IMAGE_ID" ]; then
-            echo "Unable to locate image ID for egoengine-dev-base" >&2
-            exit 1
-          fi
-          docker tag "$IMAGE_ID" "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.rev }}"
-          docker tag "$IMAGE_ID" "${{ steps.meta.outputs.image }}:latest"
+          SOURCE_IMAGE="${{ steps.load.outputs.loaded_image }}"
+          docker tag "$SOURCE_IMAGE" "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.rev }}"
+          docker tag "$SOURCE_IMAGE" "${{ steps.meta.outputs.image }}:latest"
 
       - name: Authenticate to GHCR
         if: github.event_name != 'pull_request'

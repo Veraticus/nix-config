@@ -72,7 +72,7 @@ data "coder_parameter" "custom_repo_url" {
 }
 
 data "coder_parameter" "fallback_image" {
-  default      = "ghcr.io/veraticus/nix-config/egoengine-dev-base:egoengine-latest"
+  default      = "ghcr.io/veraticus/nix-config/egoengine:latest"
   description  = "Base image used when the devcontainer fails to build."
   display_name = "Fallback Image"
   mutable      = true
@@ -113,6 +113,7 @@ data "coder_parameter" "cache_repo_docker_config_path" {
 
 locals {
   container_name             = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
+  
   devcontainer_builder_image = data.coder_parameter.devcontainer_builder.value
   git_author_name            = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
   git_author_email           = data.coder_workspace_owner.me.email
@@ -130,6 +131,8 @@ locals {
     CODER_AGENT_URL              = replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
     ENVBUILDER_INIT_SCRIPT       = replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
   }
+
+  entrypoint_shell          = var.entrypoint_shell
 
   docker_env = [
     for k, v in local.envbuilder_env : "${k}=${v}"
@@ -195,7 +198,6 @@ resource "docker_container" "workspace" {
   name  = local.container_name
   hostname = data.coder_workspace.me.name
   env = local.cache_repo == "" ? local.docker_env : envbuilder_cached_image.cached[0].env
-
   host {
     host = "host.docker.internal"
     ip   = "host-gateway"

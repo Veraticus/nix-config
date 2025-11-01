@@ -61,8 +61,6 @@
         system = final.system;
         config.allowUnfree = true;
       };
-
-      "egoengine-dev-base-oci" = final.callPackage ../pkgs/egoengine { inherit inputs; };
     };
 
   additions = final: _prev: { };

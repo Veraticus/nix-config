@@ -40,7 +40,7 @@ High‑Level Architecture
 Repository Impact
 
 - docs/: This design file.
-- Nix: Add a flake package output `egoengine-dev-base-oci` that builds the base OCI image tagged ghcr.io/veraticus/nix-config/egoengine:<tag>.
+- Nix: Add a flake package output `egoengine` that builds the base OCI image tagged ghcr.io/veraticus/nix-config/egoengine:<tag>.
 - Coder templates: Add Docker Envbuilder template configured for joshsymonds and GHCR cache.
 - CI: GitHub Actions job to build and push base image on push to main; optional signing (cosign).
 
@@ -53,17 +53,17 @@ Components and Design Details
   - Publish on every push; pin tag in templates for reproducibility.
 
 - Build strategy
-  - Use dockerTools (or nix2container) to assemble an OCI image from your flake Home Manager configuration for joshsymonds.
+  - Use `dockerTools.buildImageWithNixDb` to assemble an OCI image from the flake’s NixOS system closure (including the Home Manager profile for joshsymonds).
   - Create user joshsymonds (UID/GID stable across hosts), set HOME to /home/joshsymonds, and set the login shell.
   - Include op (1Password CLI) preinstalled.
-  - Local validation: `nix build .#egoengine-dev-base-oci` followed by `docker load < result`.
+  - Local validation: `nix build .#egoengine` followed by `docker load < result`.
 
 - Tagging and publishing
   - Tag scheme: ghcr.io/veraticus/nix-config/egoengine:<flakeRev> (and a moving ghcr.io/veraticus/nix-config/egoengine:latest for convenience).
   - Push via CI; optionally sign via cosign.
 
 - CI outline
-  - `nix build .#egoengine-dev-base-oci`
+  - `nix build .#egoengine`
   - `docker load < result`
   - `docker tag` the loaded image as ghcr.io/veraticus/nix-config/egoengine:<rev> and ghcr.io/veraticus/nix-config/egoengine:latest
   - `docker push` both tags using the repository’s built-in `GITHUB_TOKEN`

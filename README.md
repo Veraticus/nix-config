@@ -46,6 +46,16 @@ nix flake update
 nix build .#myCaddy  # Custom Caddy web server
 ```
 
+### Build the egoengine Base Image
+
+```bash
+nix build .#egoengine
+docker load < result
+```
+
+The image loads into Docker as `egoengine:<nix-hash>`. Tag and push it to
+`ghcr.io/veraticus/nix-config/egoengine` or run it locally for validation.
+
 ## Structure
 
 - `flake.nix` - Main entry point and flake configuration

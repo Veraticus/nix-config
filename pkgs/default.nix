@@ -2,15 +2,6 @@
 # You can build them using 'nix build .#example' or (legacy) 'nix-build -A example'
 
 { pkgs ? (import ../nixpkgs.nix) { }, inputs ? null, outputs ? null }:
-let
-  egoenginePkgs =
-    if inputs == null then
-      { }
-    else
-      import ./egoengine {
-        inherit pkgs inputs;
-      };
-in
 {
   myCaddy = pkgs.callPackage ./caddy { };
   starlark-lsp = pkgs.callPackage ./starlark-lsp { };
@@ -21,4 +12,3 @@ in
   golangciLintBin = pkgs.callPackage ./golangci-lint-bin { };
   coder = pkgs.callPackage ./coder-cli { unzip = pkgs.unzip; };
 }
-// egoenginePkgs

@@ -112,6 +112,7 @@
       uv
 
       inputs.agenix.packages.${pkgs.system}.agenix
+      pkgs.docker
     ];
   };
 

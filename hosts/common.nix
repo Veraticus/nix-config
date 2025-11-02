@@ -1,19 +1,35 @@
 { inputs, outputs, lib, config, pkgs, ... }: {
   age.identityPaths = [ "/etc/age/${config.networking.hostName}.agekey" ];
 
-  nix.settings = {
-    trusted-users = [ "root" "joshsymonds" ];
-    extra-substituters = [
-      "https://nix-community.cachix.org"
-      "https://neovim-nightly.cachix.org"
-      "https://joshsymonds.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
-      "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
-    ];
+  nix = {
+    settings = {
+      trusted-users = [ "root" "joshsymonds" ];
+      extra-substituters = [
+        "https://nix-community.cachix.org"
+        "https://neovim-nightly.cachix.org"
+        "https://joshsymonds.cachix.org"
+      ];
+      extra-trusted-public-keys = [
+        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+        "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
+        "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
+      ];
+      # Trigger GC when disk space is low
+      min-free = "${toString (10 * 1024 * 1024 * 1024)}"; # 10GB free space minimum
+      max-free = "${toString (50 * 1024 * 1024 * 1024)}"; # Clean up to 50GB when triggered
+    };
+
+    # Automatic garbage collection
+    gc = {
+      automatic = true;
+      dates = "daily";  # Run every night
+      options = "--delete-older-than 3d";  # Keep derivations for 3 days
+    };
+
+    # Automatic store optimization (hard-linking identical files)
+    optimise.automatic = true;
   };
+
   # Common packages for all headless Linux hosts
   environment.systemPackages = with pkgs; [
     yamllint  # YAML linter, useful for Home Assistant configurations
@@ -55,25 +71,6 @@
     mv ${ageRecipients}.tmp ${ageRecipients}
     chmod 644 ${ageRecipients}
   '';
-
-  # Nix store management - prevent disk space issues
-  nix = {
-    # Automatic garbage collection
-    gc = {
-      automatic = true;
-      dates = "daily";  # Run every night
-      options = "--delete-older-than 3d";  # Keep derivations for 3 days
-    };
-    
-    # Automatic store optimization (hard-linking identical files)
-    optimise.automatic = true;
-    
-    settings = {
-      # Trigger GC when disk space is low
-      min-free = "${toString (10 * 1024 * 1024 * 1024)}"; # 10GB free space minimum
-      max-free = "${toString (50 * 1024 * 1024 * 1024)}"; # Clean up to 50GB when triggered
-    };
-  };
 
   fileSystems = {
     "/mnt/video" = {

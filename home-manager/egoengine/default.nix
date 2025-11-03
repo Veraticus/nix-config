@@ -11,5 +11,7 @@
 
   home.packages = [
     pkgs._1password-cli
+    pkgs.gnutar
+    pkgs.gzip
   ];
 }

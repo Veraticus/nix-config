@@ -103,22 +103,7 @@
                 gid = cfg.users.groups.${user}.gid;
                 localeArchive = cfg.environment.variables.LOCALE_ARCHIVE;
                 nsswitchSource = lib.attrByPath [ "environment" "etc" "nsswitch.conf" "source" ] null cfg;
-                systemRoot = pkgsFor.runCommand "egoengine-system-root" {
-                  buildInputs = [ pkgsFor.coreutils pkgsFor.rsync ];
-                } ''
-                  set -euo pipefail
-                  mkdir -p $out
-                  rsync -a --no-perms --no-owner --no-group ${cfg.system.build.toplevel}/ $out/
-                  target="$(readlink -f ${cfg.system.build.toplevel}/etc)"
-                  rm -rf "$out/etc"
-                  mkdir -p "$out/etc"
-                  rsync -a --no-perms --no-owner --no-group "$target"/ "$out/etc/"
-                  install -m 0644 ${cfg.environment.etc."passwd".source} "$out/etc/passwd"
-                  install -m 0644 ${cfg.environment.etc."group".source} "$out/etc/group"
-                  ${lib.optionalString (nsswitchSource != null) ''
-                    install -m 0644 ${nsswitchSource} "$out/etc/nsswitch.conf"
-                  ''}
-                '';
+                systemRoot = cfg.system.build.toplevel;
                 pathOverlay = pkgsFor.runCommand "egoengine-path-overlay" { } ''
                   set -euo pipefail
                   mkdir -p $out/bin $out/usr/bin
@@ -149,6 +134,15 @@
                 keepContentsDirlinks = true;
                 runAsRoot = ''
                   set -euo pipefail
+                  if [ -L /etc ]; then
+                    target="$(readlink -f /etc)"
+                    rm /etc
+                    mkdir -p /etc
+                    cp -a ${cfg.system.build.etc}/etc/. /etc/
+                  fi
+                  ${lib.optionalString (nsswitchSource != null) ''
+                    install -m 0644 ${nsswitchSource} /etc/nsswitch.conf
+                  ''}
                   mkdir -p /home/${user} /workspace
                   chmod 1777 /tmp
                   chown ${toString uid}:${toString gid} /home/${user}

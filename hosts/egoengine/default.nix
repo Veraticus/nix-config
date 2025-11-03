@@ -1,6 +1,3 @@
-let
-  user = "joshsymonds";
-in
 { inputs
 , outputs
 , lib
@@ -8,6 +5,15 @@ in
 , pkgs
 , ...
 }:
+let
+  user = "joshsymonds";
+  minimalLocales = pkgs.glibcLocales.override {
+    locales = [
+      "en_US.UTF-8/UTF-8"
+      "C.UTF-8/UTF-8"
+    ];
+  };
+in
 {
   imports = [
     ../common.nix
@@ -67,19 +73,18 @@ docker:x:998:${user}
   programs.zsh.enable = true;
 
   environment.shells = [ pkgs.zsh pkgs.bashInteractive ];
-  environment.systemPackages = with pkgs; [
+  environment.systemPackages = (with pkgs; [
     coreutils
     git
-    docker
-    kind
+    docker-client
     codex
     claudeCodeCli
     neovim
-    glibcLocales
-  ];
+    kubectl
+  ]) ++ [ minimalLocales ];
   environment.variables = {
     EDITOR = "nvim";
-    LOCALE_ARCHIVE = lib.mkForce "${pkgs.glibcLocales}/lib/locale/locale-archive";
+    LOCALE_ARCHIVE = lib.mkForce "${minimalLocales}/lib/locale/locale-archive";
   };
 
   systemd.tmpfiles.rules = [

@@ -119,7 +119,7 @@
                   ln -s ${shellPath}/bin/zsh $out/bin/zsh
                   ln -s ${pkgsFor.bashInteractive}/bin/bash $out/bin/sh
                   ln -s ${pkgsFor.git}/bin/git $out/bin/git
-                  ln -s ${pkgsFor.docker}/bin/docker $out/bin/docker
+                  ln -s ${pkgsFor.docker-client}/bin/docker $out/bin/docker
                   ln -s ${pkgsFor.kind}/bin/kind $out/bin/kind
                   ln -s ${pkgsFor.codex}/bin/codex $out/bin/codex
                   ln -s ${pkgsFor.claudeCodeCli}/bin/claude $out/bin/claude
@@ -164,7 +164,7 @@
                     "NIX_USER_PROFILE_DIR=/nix/var/nix/profiles/per-user/${user}"
                     "NIX_PROFILES=/nix/var/nix/profiles/per-user/${user}/profile"
                     "LOCALE_ARCHIVE=${localeArchive}"
-                    "PATH=${pkgsFor.coreutils}/bin:${homeDir}/.nix-profile/bin:${homeDir}/.nix-profile/sbin:/run/current-system/sw/bin:/run/current-system/sw/sbin:/usr/bin:/bin"
+                    "PATH=/etc/profiles/per-user/${user}/bin:${pkgsFor.coreutils}/bin:${homeDir}/.nix-profile/bin:${homeDir}/.nix-profile/sbin:/run/current-system/sw/bin:/run/current-system/sw/sbin:/usr/bin:/bin"
                   ];
                   Labels = {
                     "org.opencontainers.image.title" = "egoengine";

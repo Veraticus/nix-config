@@ -1,106 +1,62 @@
+{ lib, config, pkgs, ... }:
+let
+  cfg = config.programs.go.enable or false;
+in
 {
-  inputs,
-  lib,
-  config,
-  pkgs,
-  ...
-}:
-{
-  # Go language configuration
-  programs.go = {
-    enable = true;
-    package = pkgs.go_1_24;
-    env = {
-      GOPATH = "${config.home.homeDirectory}/go";
-      GOBIN = "${config.home.homeDirectory}/go/bin";
+  config = lib.mkIf cfg {
+    programs.go = {
+      package = pkgs.go_1_24;
+      env = {
+        GOPATH = "${config.home.homeDirectory}/go";
+        GOBIN = "${config.home.homeDirectory}/go/bin";
+      };
     };
-  };
 
-  # Go development tools
-  home.packages =
-    (with pkgs; [
-      # Core tools
-      go-tools # Official Go tools (goimports, etc.)
-      gopls # Language server
-      delve # Debugger
+    home.packages =
+      (with pkgs; [
+        go-tools
+        gopls
+        delve
+        gofumpt
+        golines
+        gotestsum
+        goreleaser
+        go-task
+        ko
+      ])
+      ++ [
+        pkgs.golangciLintBin
+        pkgs.deadcode
+      ];
 
-      # Formatting and refactoring
-      gofumpt # Stricter gofmt
-      golines # Long line formatter
-
-      # Testing tools
-      gotestsum # Better test output
-
-      # Documentation
-      # godoc is included in go-tools
-
-      # Build tools
-      goreleaser # Release automation
-      go-task # Task runner (alternative to make)
-      ko
-    ])
-    ++ [
-      pkgs.golangciLintBin
-      pkgs.deadcode
-    ];
-
-  # Global golangci-lint configuration
-  # This will be used by all Go projects that don't have their own .golangci.yml
-  home.file.".golangci.yml".source = ./golangci.yml;
-
-  # Environment variables for Go
-  home.sessionVariables = {
-    # Enable Go modules by default
-    GO111MODULE = "on";
-
-    # Set default Go proxy
-    GOPROXY = "https://proxy.golang.org,direct";
-
-    # Don't send telemetry
-    GOTELEMETRY = "off";
-
-    # Checksum database
-    GOSUMDB = "sum.golang.org";
-  };
-
-  # Add Go binaries to PATH
-  home.sessionPath = [
-    "$HOME/go/bin"
-  ];
-
-  # Git configuration for Go
-  programs.git.extraConfig = {
-    # Go-specific diff patterns
-    "diff.go" = {
-      xfuncname = "^[ \\t]*(func|type)[ \\t]+([a-zA-Z_][a-zA-Z0-9_]*)";
+    home.sessionVariables = {
+      GO111MODULE = lib.mkDefault "on";
+      GOPROXY = lib.mkDefault "https://proxy.golang.org,direct";
+      GOTELEMETRY = lib.mkDefault "off";
+      GOSUMDB = lib.mkDefault "sum.golang.org";
     };
-  };
 
-  # Optional: Create project template directory structure
-  home.file.".go-templates/.keep".text = "";
+    home.sessionPath = lib.mkAfter [ "$HOME/go/bin" ];
 
-  # Helpful aliases for Go development
-  home.shellAliases = {
-    # Testing shortcuts
-    got = "go test ./...";
-    gotv = "go test -v ./...";
-    gotr = "go test -race ./...";
-    gotc = "go test -cover ./...";
+    programs.git.extraConfig."diff.go" = {
+      xfuncname = "^[ \t]*(func|type)[ \t]+([a-zA-Z_][a-zA-Z0-9_]*)";
+    };
 
-    # Linting shortcuts
-    gol = "golangci-lint run";
-    golf = "golangci-lint run --fix";
-    golu = "echo 'golangci-lint is managed by Nix (pkgs.golangciLintBin); bump pkgs/golangci-lint-bin to update.'";
+    home.file.".go-templates/.keep".text = "";
 
-    # Module management
-    gomu = "go mod download && go mod tidy";
-    gomv = "go mod vendor";
-
-    # Quick build/run
-    gob = "go build";
-    gor = "go run";
-
-    # Format all Go files
-    gofmtall = "gofumpt -l -w .";
+    home.shellAliases = {
+      got = "go test ./...";
+      gotv = "go test -v ./...";
+      gotr = "go test -race ./...";
+      gotc = "go test -cover ./...";
+      gol = "golangci-lint run";
+      golf = "golangci-lint run --fix";
+      golu = "echo 'golangci-lint is managed by Nix (pkgs.golangciLintBin); bump pkgs/golangci-lint-bin to update.'";
+      gomu = "go mod download && go mod tidy";
+      gomv = "go mod vendor";
+      gob = "go build";
+      gor = "go run";
+      gofmtall = "gofumpt -l -w .";
+    };
   };
 }

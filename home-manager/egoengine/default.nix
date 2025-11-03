@@ -1,5 +1,6 @@
 { lib, pkgs, ... }:
 {
+
   home.file.".local/bin/ee" = {
     source = ./scripts/ee.sh;
     executable = true;

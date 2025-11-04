@@ -79,6 +79,7 @@ docker:x:998:${user}
     docker-client
     gnutar
     gzip
+    gnugrep
     codex
     claudeCodeCli
     neovim
@@ -117,6 +118,7 @@ docker:x:998:${user}
     ln -s ${pkgs.bashInteractive}/bin/bash $out/usr/bin/bash
     ln -s ${pkgs.gnutar}/bin/tar $out/usr/bin/tar
     ln -s ${pkgs.gzip}/bin/gzip $out/usr/bin/gzip
+    ln -s ${pkgs.gnugrep}/bin/grep $out/usr/bin/grep
     ln -s ${pkgs._1password-cli}/bin/op $out/usr/bin/op
 
     ln -s ${pkgs.coreutils}/bin/env $out/bin/env
@@ -132,6 +134,7 @@ docker:x:998:${user}
     ln -s ${pkgs.neovim}/bin/nvim $out/bin/nvim
     ln -s ${pkgs.gnutar}/bin/tar $out/bin/tar
     ln -s ${pkgs.gzip}/bin/gzip $out/bin/gzip
+    ln -s ${pkgs.gnugrep}/bin/grep $out/bin/grep
     ln -s ${pkgs._1password-cli}/bin/op $out/bin/op
   '';
 

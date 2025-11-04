@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:latest"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:870d936"
 }
 
 variable "entrypoint_shell" {
@@ -135,8 +135,6 @@ resource "coder_agent" "main" {
       op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
     fi
     chmod 600 ~/.codex/auth.json || true
-    codex auth me || rm -f ~/.codex/auth.json || true
-
     if [ -n "$${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -x "$${HOME}/.local/bin/ee" ]; then
       "$${HOME}/.local/bin/ee" sync --quiet || true
     fi

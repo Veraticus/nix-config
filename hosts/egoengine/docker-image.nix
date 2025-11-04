@@ -25,6 +25,33 @@ let
     inherit inputs pkgs;
   };
 
+  # Pre-build home directory structure from home-manager configuration
+  # This extracts dotfiles and configurations without running activation
+  prebuiltHome = pkgs.runCommand "egoengine-home" {
+    nativeBuildInputs = [ pkgs.rsync ];
+  } ''
+    set -euo pipefail
+
+    # Create home directory structure
+    mkdir -p $out
+
+    # Extract home-files from home-manager build
+    # Home-manager stores dotfiles in the activation package
+    if [ -d "${homeConfig.activationPackage}/home-files" ]; then
+      echo "Copying home-files from activation package..."
+      rsync -a "${homeConfig.activationPackage}/home-files/" "$out/"
+    fi
+
+    # Ensure standard directories exist
+    mkdir -p $out/.config
+    mkdir -p $out/.local/bin
+    mkdir -p $out/.local/share
+    mkdir -p $out/.cache
+
+    # Set proper permissions
+    chmod -R u+w $out
+  '';
+
   # Core system packages needed in container
   # This mirrors the packages from the NixOS configuration
   systemPackages = with pkgs; [
@@ -151,8 +178,21 @@ pkgs.dockerTools.buildLayeredImage {
     mkdir -p ./nix/var/nix/profiles/per-user/${user}
     mkdir -p ./root
 
+    # Copy pre-built home directory structure
+    # This contains dotfiles, configs, etc. from home-manager
+    # Using cp instead of rsync for better compatibility in fakechroot
+    echo "Installing home directory structure..."
+    cp -r ${prebuiltHome}/. ./home/${user}/
+
+    # Create profile symlink for home-manager
+    ln -sf ${homeConfig.activationPackage} ./nix/var/nix/profiles/per-user/${user}/profile
+
+    # Link .nix-profile to the actual profile
+    rm -f ./home/${user}/.nix-profile
+    ln -sf /nix/var/nix/profiles/per-user/${user}/profile ./home/${user}/.nix-profile
+
     # Set ownership
-    chown ${uid}:${gid} ./home/${user}
+    chown -R ${uid}:${gid} ./home/${user}
     chmod 0700 ./home/${user}
 
     chown ${uid}:${gid} ./workspace
@@ -161,22 +201,6 @@ pkgs.dockerTools.buildLayeredImage {
     chmod 1777 ./tmp
 
     chown ${uid}:${gid} ./nix/var/nix/profiles/per-user/${user}
-
-    # Activate home-manager configuration during image build
-    # When Docker creates the volume, it will copy this pre-activated home directory
-    ${lib.optionalString (homeConfig ? activationPackage) ''
-      # Create profile symlink
-      ln -sf ${homeConfig.activationPackage} ./nix/var/nix/profiles/per-user/${user}/profile
-
-      # Run home-manager activation directly into the image
-      # This sets up all dotfiles, zsh config, starship, etc.
-      export HOME=./home/${user}
-      export USER=${user}
-      ${homeConfig.activationPackage}/activate
-
-      # Fix ownership after activation
-      chown -R ${uid}:${gid} ./home/${user}
-    ''}
   '';
 
   # Contents to copy into the image
@@ -193,7 +217,7 @@ pkgs.dockerTools.buildLayeredImage {
     # Combined environment with all packages
     combinedEnv
 
-    # Home-manager activation package
+    # Home-manager activation package (for the profile)
     homeConfig.activationPackage
   ];
 

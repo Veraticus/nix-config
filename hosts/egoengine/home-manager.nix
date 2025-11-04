@@ -2,6 +2,7 @@
 # This builds a home-manager activation package without NixOS
 { inputs
 , pkgs
+, lib
 , ...
 }:
 let
@@ -36,7 +37,7 @@ inputs.home-manager.lib.homeManagerConfiguration {
 
       # Disable atuin daemon in container (no systemd)
       # Use standalone mode instead
-      programs.atuin.daemon.enable = false;
+      programs.atuin.daemon.enable = lib.mkForce false;
     }
   ];
 

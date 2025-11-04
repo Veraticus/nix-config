@@ -22,7 +22,7 @@ let
 
   # Build home-manager activation package standalone
   homeConfig = import ./home-manager.nix {
-    inherit inputs pkgs;
+    inherit inputs pkgs lib;
   };
 
   # Pre-build home directory structure from home-manager configuration

@@ -109,10 +109,10 @@
       export PATH=''${PATH}:''${HOME}/go/bin:''${HOME}/.local/share/../bin
 
       # Start atuin daemon if not running (for containers without systemd)
+      # Run in subshell to suppress job control messages
       if command -v atuin &>/dev/null && ! pgrep -x "atuin" &>/dev/null; then
         mkdir -p ~/.local/share/atuin
-        atuin daemon &>/dev/null &
-        disown
+        (atuin daemon &>/dev/null &)
       fi
 
       cd ~

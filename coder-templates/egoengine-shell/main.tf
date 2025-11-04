@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:ecc6f38"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:5565d7f"
 }
 
 variable "entrypoint_shell" {

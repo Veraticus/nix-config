@@ -83,7 +83,7 @@
           command = ''
             # Prefer Coder workspace name if set
             if [ -n "$CODER_WORKSPACE_NAME" ]; then
-              echo " $CODER_WORKSPACE_NAME"
+              echo "  $CODER_WORKSPACE_NAME"
             else
               case "$TMUX_DEVSPACE" in
                 mercury) echo " ☿ mercury" ;;
@@ -97,6 +97,12 @@
           '';
           format = "[ $output ]($style)";
           style = "bg:mauve fg:base bold";
+        };
+        hostname = {
+          when = ''test -z "$CODER_WORKSPACE_NAME"'';
+          command = ''hostname'';
+          format = "[](fg:rosewater bg:mauve)[ 󰒋 $output ]($style)";
+          style = "bg:rosewater fg:base";
         };
       };
 

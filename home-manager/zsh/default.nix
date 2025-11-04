@@ -24,11 +24,16 @@
 
     envExtra = ''
       export NIX_CONFIG="experimental-features = nix-command flakes"
-      export LS_COLORS="$(vivid generate catppuccin-mocha)"
+
+      # Only set LS_COLORS if vivid is available
+      if command -v vivid &>/dev/null; then
+        export LS_COLORS="$(vivid generate catppuccin-mocha)"
+      fi
+
       export ZVM_CURSOR_STYLE_ENABLED=false
       export XL_SECRET_PROVIDER=FILE
       export WINEDLLOVERRIDES="d3dcompiler_47=n;d3d11=n,b"
-      
+
       # Set up Prisma to use Nix-provided engines on NixOS
       ${lib.optionalString pkgs.stdenv.isLinux ''
         export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
@@ -36,8 +41,9 @@
         export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
         export PRISMA_FMT_BINARY="${pkgs.prisma-engines}/bin/prisma-fmt"
       ''}
-      
-      source ~/.secrets
+
+      # Source secrets file if it exists
+      [ -f ~/.secrets ] && source ~/.secrets
     '';
 
     history = {
@@ -86,7 +92,7 @@
 
       # Ensure emacs mode (not vi mode)
       bindkey -e
-      
+
       if [ -n "''${commands[fzf-share]}" ]; then
         source "$(fzf-share)/key-bindings.zsh"
         source "$(fzf-share)/completion.zsh"

@@ -133,6 +133,28 @@ EOF
     "/bin"
   ];
 
+  # Create activation wrapper script
+  # This activates home-manager configuration on first login
+  activationWrapper = pkgs.writeShellScript "activate-home-manager" ''
+    set -euo pipefail
+
+    # Only activate if needed (check for marker file)
+    MARKER_FILE="${homeDirectory}/.config/home-manager/activated"
+
+    if [ ! -f "$MARKER_FILE" ]; then
+      echo "Activating home-manager configuration..."
+
+      # Run home-manager activation
+      ${homeConfig.activationPackage}/activate
+
+      # Create marker file
+      mkdir -p "$(dirname "$MARKER_FILE")"
+      touch "$MARKER_FILE"
+
+      echo "Home-manager activation complete"
+    fi
+  '';
+
 in
 pkgs.dockerTools.buildLayeredImage {
   name = "egoengine";
@@ -189,6 +211,13 @@ pkgs.dockerTools.buildLayeredImage {
 
     # Home-manager activation package
     homeConfig.activationPackage
+
+    # Activation wrapper script
+    (pkgs.runCommand "activation-wrapper" {} ''
+      mkdir -p $out/usr/local/bin
+      cp ${activationWrapper} $out/usr/local/bin/activate-home-manager
+      chmod +x $out/usr/local/bin/activate-home-manager
+    '')
   ];
 
   # Container configuration

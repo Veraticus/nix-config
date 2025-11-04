@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:8ccf3f7"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:80b0a44"
 }
 
 variable "entrypoint_shell" {
@@ -141,8 +141,13 @@ resource "coder_agent" "main" {
     mkdir -p ~/.codex
     umask 077
 
-    PATH="/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+    PATH="/run/current-system/sw/bin:/usr/bin:/bin:/usr/local/bin:$PATH"
     export PATH
+
+    # Activate home-manager configuration on first login
+    if [ -x /usr/local/bin/activate-home-manager ]; then
+      /usr/local/bin/activate-home-manager
+    fi
 
     if command -v op >/dev/null 2>&1; then
       op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true

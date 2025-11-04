@@ -40,6 +40,7 @@ let
 
     # Development tools
     git
+    curl
     docker-client
     kubectl
     neovim

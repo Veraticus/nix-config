@@ -239,7 +239,9 @@ resource "coder_agent" "main" {
     mkdir -p ~/.codex
     umask 077
 
-    op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
+    if command -v op >/dev/null 2>&1; then
+      op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
+    fi
     chmod 600 ~/.codex/auth.json || true
     codex auth me || rm -f ~/.codex/auth.json || true
 

@@ -83,6 +83,7 @@ docker:x:998:${user}
     claudeCodeCli
     neovim
     kubectl
+    _1password-cli
   ]) ++ [ minimalLocales ];
   environment.variables = {
     EDITOR = "nvim";
@@ -116,6 +117,7 @@ docker:x:998:${user}
     ln -s ${pkgs.bashInteractive}/bin/bash $out/usr/bin/bash
     ln -s ${pkgs.gnutar}/bin/tar $out/usr/bin/tar
     ln -s ${pkgs.gzip}/bin/gzip $out/usr/bin/gzip
+    ln -s ${pkgs._1password-cli}/bin/op $out/usr/bin/op
 
     ln -s ${pkgs.coreutils}/bin/env $out/bin/env
     ln -s ${pkgs.coreutils}/bin/head $out/bin/head
@@ -130,6 +132,7 @@ docker:x:998:${user}
     ln -s ${pkgs.neovim}/bin/nvim $out/bin/nvim
     ln -s ${pkgs.gnutar}/bin/tar $out/bin/tar
     ln -s ${pkgs.gzip}/bin/gzip $out/bin/gzip
+    ln -s ${pkgs._1password-cli}/bin/op $out/bin/op
   '';
 
   system.build.egoengineDockerImage =

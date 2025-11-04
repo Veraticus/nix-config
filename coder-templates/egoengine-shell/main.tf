@@ -25,7 +25,7 @@ variable "workspace_image" {
 variable "entrypoint_shell" {
   description = "Shell binary used to launch the coder agent init script."
   type        = string
-  default     = "zsh"
+  default     = "sh"
 }
 
 variable "op_service_account_token" {
@@ -88,6 +88,7 @@ resource "docker_container" "workspace" {
   hostname   = data.coder_workspace.me.name
   entrypoint = ["/usr/bin/env", var.entrypoint_shell, "-lc", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
   env        = ["CODER_AGENT_TOKEN=${coder_agent.main.token}"]
+  logs       = true
 
   host {
     host = "host.docker.internal"
@@ -130,7 +131,9 @@ resource "coder_agent" "main" {
     mkdir -p ~/.codex
     umask 077
 
-    op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
+    if command -v op >/dev/null 2>&1; then
+      op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
+    fi
     chmod 600 ~/.codex/auth.json || true
     codex auth me || rm -f ~/.codex/auth.json || true
 
@@ -138,6 +141,8 @@ resource "coder_agent" "main" {
       "$${HOME}/.local/bin/ee" sync --quiet || true
     fi
   EOT
+
+  startup_script_behavior = "blocking"
 
   metadata {
     display_name = "CPU Usage"

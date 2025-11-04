@@ -79,16 +79,21 @@
 
       custom = {
         devspace = {
-          when = ''test -n "$TMUX_DEVSPACE"'';
+          when = ''test -n "$CODER_WORKSPACE_NAME" || test -n "$TMUX_DEVSPACE"'';
           command = ''
-            case "$TMUX_DEVSPACE" in
-              mercury) echo " ☿ mercury" ;;
-              venus)   echo " ♀ venus" ;;
-              earth)   echo " ♁ earth" ;;
-              mars)    echo " ♂ mars" ;;
-              jupiter) echo " ♃ jupiter" ;;
-              *)       echo " ● $TMUX_DEVSPACE" ;;
-            esac
+            # Prefer Coder workspace name if set
+            if [ -n "$CODER_WORKSPACE_NAME" ]; then
+              echo " $CODER_WORKSPACE_NAME"
+            else
+              case "$TMUX_DEVSPACE" in
+                mercury) echo " ☿ mercury" ;;
+                venus)   echo " ♀ venus" ;;
+                earth)   echo " ♁ earth" ;;
+                mars)    echo " ♂ mars" ;;
+                jupiter) echo " ♃ jupiter" ;;
+                *)       echo " ● $TMUX_DEVSPACE" ;;
+              esac
+            fi
           '';
           format = "[ $output ]($style)";
           style = "bg:mauve fg:base bold";

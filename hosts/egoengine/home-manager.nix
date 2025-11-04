@@ -33,6 +33,10 @@ inputs.home-manager.lib.homeManagerConfiguration {
         LANG = "en_US.UTF-8";
         LC_ALL = "en_US.UTF-8";
       };
+
+      # Disable atuin daemon in container (no systemd)
+      # Use standalone mode instead
+      programs.atuin.daemon.enable = false;
     }
   ];
 

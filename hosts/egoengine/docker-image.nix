@@ -196,11 +196,23 @@ pkgs.dockerTools.buildLayeredImage {
     chown -R ${uid}:${gid} ./home/${user}
     chmod 0700 ./home/${user}
 
+    # Create runtime writable directories that might not exist yet
+    mkdir -p ./home/${user}/.rbenv/shims
+    mkdir -p ./home/${user}/.rbenv/versions
+    mkdir -p ./home/${user}/.local/share/atuin
+    mkdir -p ./home/${user}/.cache
+    mkdir -p ./home/${user}/.config
+
     # Fix permissions on writable directories
     # These need to be writable by the user at runtime
     chmod -R u+w ./home/${user}/.cache
     chmod -R u+w ./home/${user}/.local
     chmod -R u+w ./home/${user}/.config
+    chmod -R u+w ./home/${user}/.rbenv
+    chmod -R u+w ./home/${user}/.ssh
+
+    # Ensure ownership after mkdir
+    chown -R ${uid}:${gid} ./home/${user}
 
     chown ${uid}:${gid} ./workspace
     chmod 0755 ./workspace

@@ -141,13 +141,8 @@ resource "coder_agent" "main" {
     mkdir -p ~/.codex
     umask 077
 
-    PATH="/run/current-system/sw/bin:/usr/bin:/bin:/usr/local/bin:$PATH"
+    PATH="/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
     export PATH
-
-    # Activate home-manager configuration on first login
-    if [ -x /usr/local/bin/activate-home-manager ]; then
-      /usr/local/bin/activate-home-manager
-    fi
 
     if command -v op >/dev/null 2>&1; then
       op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true

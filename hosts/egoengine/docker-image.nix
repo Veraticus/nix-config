@@ -133,27 +133,6 @@ EOF
     "/bin"
   ];
 
-  # Create activation wrapper script
-  # This activates home-manager configuration on first login
-  activationWrapper = pkgs.writeShellScript "activate-home-manager" ''
-    set -euo pipefail
-
-    # Only activate if needed (check for marker file)
-    MARKER_FILE="${homeDirectory}/.config/home-manager/activated"
-
-    if [ ! -f "$MARKER_FILE" ]; then
-      echo "Activating home-manager configuration..."
-
-      # Run home-manager activation
-      ${homeConfig.activationPackage}/activate
-
-      # Create marker file
-      mkdir -p "$(dirname "$MARKER_FILE")"
-      touch "$MARKER_FILE"
-
-      echo "Home-manager activation complete"
-    fi
-  '';
 
 in
 pkgs.dockerTools.buildLayeredImage {
@@ -183,15 +162,20 @@ pkgs.dockerTools.buildLayeredImage {
 
     chown ${uid}:${gid} ./nix/var/nix/profiles/per-user/${user}
 
-    # Initialize home-manager profile
-    # This pre-activates the home-manager configuration in the image
+    # Activate home-manager configuration during image build
+    # When Docker creates the volume, it will copy this pre-activated home directory
     ${lib.optionalString (homeConfig ? activationPackage) ''
       # Create profile symlink
       ln -sf ${homeConfig.activationPackage} ./nix/var/nix/profiles/per-user/${user}/profile
 
-      # Create home profile symlink
-      mkdir -p ./home/${user}/.nix-profile
-      ln -sf ${homeConfig.activationPackage} ./home/${user}/.nix-profile/home-manager
+      # Run home-manager activation directly into the image
+      # This sets up all dotfiles, zsh config, starship, etc.
+      export HOME=./home/${user}
+      export USER=${user}
+      ${homeConfig.activationPackage}/activate
+
+      # Fix ownership after activation
+      chown -R ${uid}:${gid} ./home/${user}
     ''}
   '';
 
@@ -211,13 +195,6 @@ pkgs.dockerTools.buildLayeredImage {
 
     # Home-manager activation package
     homeConfig.activationPackage
-
-    # Activation wrapper script
-    (pkgs.runCommand "activation-wrapper" {} ''
-      mkdir -p $out/usr/local/bin
-      cp ${activationWrapper} $out/usr/local/bin/activate-home-manager
-      chmod +x $out/usr/local/bin/activate-home-manager
-    '')
   ];
 
   # Container configuration

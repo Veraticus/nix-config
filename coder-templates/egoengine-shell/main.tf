@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:870d936"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:8ccf3f7"
 }
 
 variable "entrypoint_shell" {
@@ -56,6 +56,13 @@ locals {
   op_env = var.op_service_account_token == "" ? {} : {
     OP_SERVICE_ACCOUNT_TOKEN = var.op_service_account_token
   }
+  agent_env = merge(
+    local.git_env,
+    local.op_env,
+    {
+      PATH = "/run/current-system/sw/bin:/usr/bin:/bin"
+    }
+  )
 }
 
 resource "docker_volume" "home" {
@@ -87,7 +94,10 @@ resource "docker_container" "workspace" {
   name       = local.container_name
   hostname   = data.coder_workspace.me.name
   entrypoint = ["/usr/bin/env", var.entrypoint_shell, "-lc", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
-  env        = ["CODER_AGENT_TOKEN=${coder_agent.main.token}"]
+  env = [
+    "CODER_AGENT_TOKEN=${coder_agent.main.token}",
+    "PATH=/usr/bin:/bin:/run/wrappers/bin:/nix/var/nix/profiles/default/bin"
+  ]
   logs       = true
 
   host {
@@ -124,12 +134,15 @@ resource "coder_agent" "main" {
   os   = "linux"
   dir  = "/home/joshsymonds"
 
-  env = merge(local.git_env, local.op_env)
+  env = local.agent_env
 
   startup_script = <<-EOT
     set -euo pipefail
     mkdir -p ~/.codex
     umask 077
+
+    PATH="/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
+    export PATH
 
     if command -v op >/dev/null 2>&1; then
       op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true

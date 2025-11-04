@@ -91,6 +91,12 @@ docker:x:998:${user}
     LOCALE_ARCHIVE = lib.mkForce "${minimalLocales}/lib/locale/locale-archive";
   };
 
+  # Ensure /usr/bin and /bin remain in PATH after profile loads
+  # This is critical for Coder agent init script which needs grep, tar, etc.
+  environment.sessionVariables = {
+    PATH = lib.mkAfter "/usr/bin:/bin";
+  };
+
   systemd.tmpfiles.rules = [
     "d /usr/bin 0755 root root - -"
     "L+ /usr/bin/env - - - - ${pkgs.coreutils}/bin/env"

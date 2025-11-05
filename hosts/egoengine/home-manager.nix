@@ -35,6 +35,14 @@ inputs.home-manager.lib.homeManagerConfiguration {
         LC_ALL = "en_US.UTF-8";
       };
 
+      # Always use HTTPS for GitHub operations inside the container
+      programs.git.extraConfig.url = lib.mkForce {
+        "https://github.com/".insteadOf = [
+          "git@github.com:"
+          "ssh://git@github.com/"
+        ];
+      };
+
       # Disable atuin daemon in container (no systemd)
       # Use standalone mode instead
       programs.atuin.daemon.enable = lib.mkForce false;

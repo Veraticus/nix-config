@@ -184,6 +184,18 @@ pkgs.dockerTools.buildLayeredImage {
     echo "Installing home directory structure..."
     cp -r ${prebuiltHome}/. ./home/${user}/
 
+    # Ensure Claude CLI directories are writable
+    if [ -d "./home/${user}/.claude" ]; then
+      chmod 755 ./home/${user}/.claude
+      for dir in bin commands hooks projects statsig todos; do
+        if [ -d "./home/${user}/.claude/$dir" ]; then
+          chmod 755 "./home/${user}/.claude/$dir"
+        fi
+      done
+      mkdir -p "./home/${user}/.claude/debug"
+      chmod 755 "./home/${user}/.claude/debug"
+    fi
+
     # Create profile symlink for home-manager
     # Point to the home-path which contains all the binaries, not the generation itself
     ln -sf ${homeConfig.activationPackage}/home-path ./nix/var/nix/profiles/per-user/${user}/profile

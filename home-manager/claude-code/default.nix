@@ -68,4 +68,16 @@ in
 
   # Install Claude Code on activation
   # CLI is provided via pkgs.claudeCodeCli.
+  home.activation.claudeDirectoryPermissions = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    set -euo pipefail
+    for dir in ".claude" ".claude/bin" ".claude/commands" ".claude/hooks" ".claude/projects" ".claude/statsig" ".claude/todos"; do
+      if [ -d "$HOME/$dir" ]; then
+        chmod 755 "$HOME/$dir"
+      fi
+    done
+    if [ ! -d "$HOME/.claude/debug" ]; then
+      mkdir -p "$HOME/.claude/debug"
+      chmod 755 "$HOME/.claude/debug"
+    fi
+  '';
 }

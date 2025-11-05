@@ -196,6 +196,14 @@ pkgs.dockerTools.buildLayeredImage {
       chmod 755 "./home/${user}/.claude/debug"
     fi
 
+    # Ensure Codex directories are writable
+    if [ -d "./home/${user}/.codex" ]; then
+      chmod 755 "./home/${user}/.codex"
+      if [ -d "./home/${user}/.codex/hooks" ]; then
+        chmod 755 "./home/${user}/.codex/hooks"
+      fi
+    fi
+
     # Create profile symlink for home-manager
     # Point to the home-path which contains all the binaries, not the generation itself
     ln -sf ${homeConfig.activationPackage}/home-path ./nix/var/nix/profiles/per-user/${user}/profile

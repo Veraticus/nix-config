@@ -51,4 +51,14 @@ in
       force = true;
     };
   };
+
+  home.activation.codexDirectoryPermissions = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    set -euo pipefail
+    if [ -d "$HOME/.codex" ]; then
+      chmod 755 "$HOME/.codex"
+      if [ -d "$HOME/.codex/hooks" ]; then
+        chmod 755 "$HOME/.codex/hooks"
+      fi
+    fi
+  '';
 }

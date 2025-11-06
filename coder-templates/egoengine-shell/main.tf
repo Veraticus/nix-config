@@ -19,7 +19,7 @@ variable "docker_socket" {
 variable "workspace_image" {
   description = "OCI image used for the workspace container."
   type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:5565d7f"
+  default     = "ghcr.io/veraticus/nix-config/egoengine:285afb1"
 }
 
 variable "entrypoint_shell" {
@@ -60,7 +60,7 @@ locals {
     local.git_env,
     local.op_env,
     {
-      PATH = "/run/current-system/sw/bin:/usr/bin:/bin"
+      PATH                 = "/run/current-system/sw/bin:/usr/bin:/bin"
       CODER_WORKSPACE_NAME = data.coder_workspace.me.name
     }
   )
@@ -99,7 +99,7 @@ resource "docker_container" "workspace" {
     "CODER_AGENT_TOKEN=${coder_agent.main.token}",
     "PATH=/usr/bin:/bin:/run/wrappers/bin:/nix/var/nix/profiles/default/bin"
   ]
-  logs       = true
+  logs = true
 
   host {
     host = "host.docker.internal"

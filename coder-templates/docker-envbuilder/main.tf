@@ -19,13 +19,6 @@ variable "docker_socket" {
   default     = ""
 }
 
-variable "op_service_account_token" {
-  description = "1Password Service Account token injected into the workspace environment."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 provider "coder" {}
 
 provider "docker" {
@@ -39,45 +32,29 @@ data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
 
 data "coder_parameter" "repo" {
-  description  = "Select a repository to build with Envbuilder."
-  display_name = "Repository"
+  description  = "Git repository URL to build with Envbuilder."
+  display_name = "Repository URL"
   mutable      = true
   name         = "repo"
-  option {
-    name        = "vercel/next.js"
-    description = "Vercel Next.js example"
-    value       = "https://github.com/vercel/next.js"
+  order        = 1
+  type         = "string"
+  validation {
+    regex = "[^\\s]"
+    error = "Provide a repository URL."
   }
-  option {
-    name        = "home-assistant/core"
-    description = "Home Assistant core"
-    value       = "https://github.com/home-assistant/core"
-  }
-  option {
-    name        = "Custom"
-    icon        = "/emojis/1f5c3.png"
-    description = "Specify a custom repository URL below."
-    value       = "custom"
-  }
-  order = 1
-}
-
-data "coder_parameter" "custom_repo_url" {
-  default      = ""
-  description  = "Optional custom repository URL."
-  display_name = "Repository URL (custom)"
-  name         = "custom_repo_url"
-  mutable      = true
-  order        = 2
 }
 
 data "coder_parameter" "fallback_image" {
-  default      = "ghcr.io/veraticus/nix-config/egoengine:latest"
   description  = "Base image used when the devcontainer fails to build."
   display_name = "Fallback Image"
   mutable      = true
   name         = "fallback_image"
-  order        = 3
+  order        = 2
+  type         = "string"
+  validation {
+    regex = "[^\\s]"
+    error = "Provide a fallback image name."
+  }
 }
 
 data "coder_parameter" "devcontainer_builder" {
@@ -90,7 +67,7 @@ EOF
   mutable      = true
   name         = "devcontainer_builder"
   default      = "ghcr.io/coder/envbuilder:latest"
-  order        = 4
+  order        = 3
 }
 
 data "coder_parameter" "cache_repo" {
@@ -99,7 +76,7 @@ data "coder_parameter" "cache_repo" {
   display_name = "Cache Registry"
   mutable      = true
   name         = "cache_repo"
-  order        = 5
+  order        = 4
 }
 
 data "coder_parameter" "cache_repo_docker_config_path" {
@@ -108,17 +85,19 @@ data "coder_parameter" "cache_repo_docker_config_path" {
   display_name = "Cache Registry Docker Config Path"
   mutable      = true
   name         = "cache_repo_docker_config_path"
-  order        = 6
+  order        = 5
 }
 
 locals {
+  workspace_home            = "/home/joshsymonds"
   container_name             = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   
   devcontainer_builder_image = data.coder_parameter.devcontainer_builder.value
   git_author_name            = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
   git_author_email           = data.coder_workspace_owner.me.email
-  repo_url                   = data.coder_parameter.repo.value == "custom" ? data.coder_parameter.custom_repo_url.value : data.coder_parameter.repo.value
+  repo_url                   = data.coder_parameter.repo.value
   cache_repo                 = data.coder_parameter.cache_repo.value
+  secret_manifest_path       = "${local.workspace_home}/.local/state/ee/synced-files"
 
   envbuilder_env = {
     ENVBUILDER_GIT_URL           = local.repo_url
@@ -126,13 +105,11 @@ locals {
     ENVBUILDER_FALLBACK_IMAGE    = data.coder_parameter.fallback_image.value
     ENVBUILDER_DOCKER_CONFIG_BASE64 = try(data.local_sensitive_file.cache_repo_dockerconfigjson[0].content_base64, "")
     ENVBUILDER_PUSH_IMAGE        = local.cache_repo == "" ? "" : "true"
-    ENVBUILDER_WORKDIR           = "/home/joshsymonds"
+    ENVBUILDER_WORKDIR           = local.workspace_home
     CODER_AGENT_TOKEN            = coder_agent.main.token
     CODER_AGENT_URL              = replace(data.coder_workspace.me.access_url, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
     ENVBUILDER_INIT_SCRIPT       = replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")
   }
-
-  entrypoint_shell          = var.entrypoint_shell
 
   docker_env = [
     for k, v in local.envbuilder_env : "${k}=${v}"
@@ -146,9 +123,6 @@ locals {
     GIT_COMMITTER_EMAIL = local.git_author_email
   }
 
-  op_env = var.op_service_account_token == "" ? {} : {
-    OP_SERVICE_ACCOUNT_TOKEN = var.op_service_account_token
-  }
 }
 
 data "local_sensitive_file" "cache_repo_dockerconfigjson" {
@@ -204,7 +178,7 @@ resource "docker_container" "workspace" {
   }
 
   volumes {
-    container_path = "/home/joshsymonds"
+    container_path = local.workspace_home
     volume_name    = docker_volume.home.name
     read_only      = false
   }
@@ -230,15 +204,12 @@ resource "docker_container" "workspace" {
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
-  dir  = "/home/joshsymonds"
+  dir  = local.workspace_home
 
-  env = merge(local.git_env, local.op_env)
-
-  startup_script = <<-EOT
-    set -euo pipefail
-    mkdir -p ~/.codex
-    umask 077
-  EOT
+  env = merge(local.git_env, {
+    EE_SYNC_MANIFEST_PATH     = local.secret_manifest_path,
+    WORKSPACE_SECRET_MANIFEST = local.secret_manifest_path
+  })
 
   metadata {
     display_name = "CPU Usage"
@@ -263,6 +234,45 @@ resource "coder_agent" "main" {
     interval     = 60
     timeout      = 1
   }
+}
+
+resource "coder_script" "cleanup" {
+  agent_id    = coder_agent.main.id
+  run_on_stop = true
+  script      = <<-EOT
+    set -eu
+
+    home="${local.workspace_home}"
+    manifest="$${WORKSPACE_SECRET_MANIFEST:-$${EE_SYNC_MANIFEST_PATH:-}}"
+    clean_cmd="$${WORKSPACE_SECRET_CLEAN_CMD:-}"
+
+    if [ -n "$manifest" ] && [ -f "$manifest" ]; then
+      while IFS= read -r rel || [ -n "$rel" ]; do
+        case "$rel" in
+          ''|'#'*) continue ;;
+        esac
+
+        case "$rel" in
+          /*) target="$rel" ;;
+          *) target="$home/$rel" ;;
+        esac
+
+        case "$target" in
+          "$home"|"$home"/*) : ;;
+          *) continue ;;
+        esac
+
+        if [ -e "$target" ]; then
+          rm -rf -- "$target"
+        fi
+      done < "$manifest"
+      rm -f -- "$manifest"
+    fi
+
+    if [ -n "$clean_cmd" ]; then
+      sh -c "$clean_cmd" || true
+    fi
+  EOT
 }
 
 resource "coder_metadata" "container_info" {

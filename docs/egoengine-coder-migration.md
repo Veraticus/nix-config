@@ -5,7 +5,7 @@ Summary
 - Replace devspaces with Coder OSS on a new control-plane host named egoengine.
 - Workspaces run as user joshsymonds, with Home Manager and development tools baked into a Nix-built base OCI image.
 - Per-project environments layer on top via Devcontainers built by Envbuilder with a registry cache (Option A).
-- Secrets are fetched at workspace startup from 1Password Cloud using a scoped Service Account token; no host mounts.
+- Secrets are fetched on first shell connect from 1Password Cloud using a scoped Service Account token; no host mounts.
 - Initial deployment via Docker Compose on egoengine; optional future migration to Kubernetes.
 
 Scope and Non‑Goals
@@ -34,7 +34,7 @@ High‑Level Architecture
 
 - Secrets Management
   - 1Password Service Account restricted to a dedicated vault (e.g., egoengine).
-  - Workspaces receive OP_SERVICE_ACCOUNT_TOKEN via Coder template env; at startup, use op CLI to fetch/write files such as ~/.codex/auth.json.
+- During the first shell connection the operator runs `ee` tooling with `OP_SERVICE_ACCOUNT_TOKEN` to populate secrets (no template env injection).
   - No host mounts; portable across Docker and Kubernetes.
 
 Repository Impact
@@ -88,21 +88,21 @@ Components and Design Details
 
 - Strategy
   - Docker provider (Phase 1) with two flavors stored under `coder-templates/`:
-    - `egoengine-shell`: runs ghcr.io/veraticus/nix-config/egoengine:<tag> as the workspace image for general shells.
-    - `egoengine-envbuilder`: uses Envbuilder to build and run a per-project devcontainer using the base image and registry cache.
+    - `docker-shell`: runs a supplied base image directly for general shells.
+    - `docker-envbuilder`: uses Envbuilder to build and run a per-project devcontainer using the base image and registry cache.
 
 - Template specifics (Docker)
   - Workspace user and home
-    - coder_agent.dir = "/home/joshsymonds"
-    - docker_container volumes: persistent Docker volume mounted at container_path = "/home/joshsymonds"
+    - `workspace_home` local defaults to `/home/joshsymonds`; reuse it for `coder_agent.dir`, `ENVBUILDER_WORKDIR`, and the Docker volume mount to avoid hardcoding the user path.
+    - Docker volume persists `${workspace_home}` using `coder_workspace.me.id` in the name plus `lifecycle { ignore_changes = all }` to guard against data loss.
     - Reference: reference/coder/examples/templates/docker/main.tf:174
   - IDE modules
     - No bundled IDE backends; editors can be installed inside the workspace image as required.
     - Reference (historical): reference/coder/examples/templates/docker/main.tf:124
-  - Envbuilder devcontainer template (`coder-templates/egoengine-envbuilder/`)
+  - Envbuilder devcontainer template (`coder-templates/docker-envbuilder/`)
     - Based on reference/coder/examples/templates/docker-envbuilder/main.tf:123
     - Parameters:
-      - repo (URL) or custom_repo_url
+      - repo (Git URL)
       - fallback_image (ghcr.io/veraticus/nix-config/egoengine:<tag> recommended)
       - cache_repo (GHCR path), optional dockerconfig for auth
     - Host gateway mapping for 127.0.0.1 edge cases already included in examples.
@@ -115,27 +115,21 @@ Components and Design Details
 
 - Why this approach
   - No host mounts; same UX for Docker and K8s; central single source of truth.
-  - Service Account token is injected as a secret env var; dev machines read only from a dedicated vault.
+- Service Account token is pulled during interactive sessions; dev machines read only from a dedicated vault.
 
 - Vault and Service Account
   - Create vault egoengine.
   - Create a Service Account scoped read-only to that vault.
-  - Store OP_SERVICE_ACCOUNT_TOKEN in CI/provisioner secrets, not in code or template parameters.
+- Store OP_SERVICE_ACCOUNT_TOKEN in a secrets manager accessible to operators; never commit it or surface it to templates.
 
 - Secret modeling
   - For Codex CLI, keep an item named “Codex Auth” with a file field or document attachment auth.json.
   - Update this file whenever you refresh locally.
 
-- Workspace startup ingestion (idempotent)
-  - Ensure op is installed (base image).
-  - Template env:
-    - OP_SERVICE_ACCOUNT_TOKEN (sensitive)
-  - coder_agent.startup_script (POSIX; minimal):
-    - set -euo pipefail
-    - mkdir -p ~/.codex && umask 077
-    - op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
-    - chmod 600 ~/.codex/auth.json || true
-    - Optional: codex auth me || rm -f ~/.codex/auth.json
+- Post-connect secret ingestion (idempotent)
+  - Ensure `op` and `ee` are installed in the image.
+  - First shell connect exports `OP_SERVICE_ACCOUNT_TOKEN` and runs `ee sync --quiet` via zsh hooks.
+  - `ee sync` records every mirrored file in `~/.local/state/ee/synced-files` and exports `WORKSPACE_SECRET_MANIFEST`; the stop-time hook reads that manifest (and `WORKSPACE_SECRET_CLEAN_CMD`, when set) to purge secrets such as the AWS CLI cache before shutdown.
 
 - Security considerations
   - Do not use template parameters for secrets; they display in cleartext.
@@ -157,20 +151,22 @@ Components and Design Details
 
 - Create a workspace from the Devcontainer template; select the repo.
 - Envbuilder builds the devcontainer from the base image; registry cache accelerates rebuilds.
-- On start, secrets are fetched from 1Password to ~/.codex.
+- After the first shell connect, secrets are fetched from 1Password to ~/.codex.
 - Prefer installing editors through devcontainer tooling or Home Manager; add Coder IDE modules only when a template explicitly requires them.
 - Persistent home volume preserves environment and tokens across restarts; updated tokens propagate on next start.
+- Stop hook removes synced secret files and AWS caches so sensitive material does not linger between sessions.
 
 7) Security and Compliance
 
 - Secrets
-  - Inject via env or K8s Secrets; never via template parameters.
+- Provide tokens through runtime env (e.g. SSH wrapper) or K8s Secrets; never via template parameters.
+- Stop-time cleanup ensures mirrored documents and AWS CLI caches are purged on workspace shutdown.
   - Avoid hostPath volumes on K8s; prefer PVCs.
   - Reference: reference/coder/docs/admin/infrastructure/validated-architectures/index.md:280
 
 - Access and TLS
   - Enforce OIDC/SSO to Coder; serve CODER_ACCESS_URL over TLS.
-  - Keep OP_SERVICE_ACCOUNT_TOKEN only in CI/provisioner secrets or K8s Secret.
+- Keep OP_SERVICE_ACCOUNT_TOKEN only in secure secret stores (CI vaults, K8s Secrets); do not surface it at template eval time.
 
 - Filesystem
   - Lock permissions: auth.json 600; HOME owned by joshsymonds.
@@ -180,7 +176,7 @@ Components and Design Details
 - Use coder_agent metadata blocks to show CPU, RAM, disk usage in UI.
   - References: reference/coder/examples/templates/docker/main.tf:57
 - Logs: /tmp/coder-agent.log in workspace and Coder server logs.
-- Validation: after startup, verify ~/.codex/auth.json exists and codex CLI authentication succeeds.
+- Validation: after first shell connect, verify ~/.codex/auth.json exists and codex CLI authentication succeeds.
 
 9) Risks and Mitigations
 
@@ -213,13 +209,13 @@ Components and Design Details
 
 - Phase 3: Devcontainer template with Envbuilder
   - Create Docker Envbuilder template pinned to base; set cache_repo to GHCR.
-  - Set coder_agent.dir=/home/joshsymonds, volume, IDE modules.
+  - Set `workspace_home` default `/home/joshsymonds` and reuse it for the agent dir, volume mount, and Envbuilder workdir.
   - Acceptance: select repo → workspace builds and opens; base customizations visible.
 
 - Phase 4: 1Password Service Account secrets
   - Create vault egoengine; scope Service Account read-only.
-  - Inject OP_SERVICE_ACCOUNT_TOKEN via template env (sensitive) or K8s Secret (future).
-  - Add startup ingestion snippet to write ~/.codex/auth.json; validate with codex CLI.
+  - Provide OP_SERVICE_ACCOUNT_TOKEN via the runtime secret wrapper (SSH or K8s Secret) so it is available after connect.
+  - Ensure the login shell runs `ee sync` once; validate with codex CLI.
   - Acceptance: token ingested on start; refreshed item in 1Password is picked up on restart.
 
 - Phase 5 (optional): Kubernetes

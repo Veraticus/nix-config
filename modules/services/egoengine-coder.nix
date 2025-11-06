@@ -103,7 +103,7 @@ in
     autoRegisterTemplates = mkOption {
       type = types.bool;
       default = false;
-      description = "Automatically register Egoengine templates once Coder is ready.";
+      description = "Automatically register the bundled templates once Coder is ready.";
     };
 
     templatePush = mkOption {
@@ -111,22 +111,22 @@ in
         options = {
           envbuilderName = mkOption {
             type = types.str;
-            default = "egoengine-envbuilder";
+            default = "docker-envbuilder";
             description = "Name for the Envbuilder template.";
           };
           envbuilderPath = mkOption {
             type = types.path;
-            default = ../../coder-templates/egoengine-envbuilder;
+            default = ../../coder-templates/docker-envbuilder;
             description = "Path to the Envbuilder template definition.";
           };
           shellName = mkOption {
             type = types.str;
-            default = "egoengine-shell";
+            default = "docker-shell";
             description = "Name for the shell-only template.";
           };
           shellPath = mkOption {
             type = types.path;
-            default = ../../coder-templates/egoengine-shell;
+            default = ../../coder-templates/docker-shell;
             description = "Path to the shell template definition.";
           };
         };

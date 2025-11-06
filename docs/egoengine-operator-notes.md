@@ -31,15 +31,15 @@ Coder now runs declaratively on `vermissian` via `modules/services/egoengine-cod
    export CODER_SESSION_TOKEN="$CODER_ADMIN_TOKEN"
    export CODER_URL=http://127.0.0.1:7080
 
-   coder templates push \
-     --yes \
-     --name egoengine-envbuilder \
-     coder-templates/egoengine-envbuilder
+  coder templates push \
+    --yes \
+    --name docker-envbuilder \
+    coder-templates/docker-envbuilder
 
-   coder templates push \
-     --yes \
-     --name egoengine-shell \
-     coder-templates/egoengine-shell
+  coder templates push \
+    --yes \
+    --name docker-shell \
+    coder-templates/docker-shell
    ```
    Add `--provisioner-tag <tag>` if you need to target a specific provisioner pool.
 
@@ -68,7 +68,7 @@ For GitOps with the coderd provider, store the token in your secret manager and 
 After the templates are registered (see the declarative deployment section), you can create workspaces via the UI or:
 
 ```sh
-coder workspace create --template egoengine-envbuilder my-workspace
+coder workspace create --template docker-envbuilder my-workspace
 ```
 
 ## Referencing the Base Image in devcontainer.json

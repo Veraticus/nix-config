@@ -7,6 +7,14 @@ vault=${EE_VAULT:-egoengine}
 service_item=${EE_SERVICE_ITEM:-service-account}
 work_item=${EE_WORK_ITEM:-work}
 personal_item=${EE_PERSONAL_ITEM:-personal}
+sync_manifest_path_default="$HOME/.local/state/ee/synced-files"
+sync_manifest_path=${WORKSPACE_SECRET_MANIFEST:-${EE_SYNC_MANIFEST_PATH:-$sync_manifest_path_default}}
+export WORKSPACE_SECRET_MANIFEST="$sync_manifest_path"
+export EE_SYNC_MANIFEST_PATH="$sync_manifest_path"
+
+if [ -z "${WORKSPACE_SECRET_CLEAN_CMD:-}" ]; then
+  export WORKSPACE_SECRET_CLEAN_CMD='rm -rf "$HOME/.aws"'
+fi
 
 usage() {
   cat <<'EOF'
@@ -16,6 +24,8 @@ Usage:
   ee work|w [coder args]   Run coder with work environment credentials
   ee personal|p [args]     Run coder with personal environment credentials
                            (leading 'coder' argument is optional)
+  ee personal|p go <dir> [workspace]
+                           Ensure/create a workspace for the repo at <dir> and connect via SSH
 
 Environment:
   EE_VAULT           Override the 1Password vault name (default: egoengine)
@@ -34,6 +44,57 @@ require_cmd() {
   if ! command -v "$1" >/dev/null 2>&1; then
     die "required command '$1' not found in PATH"
   fi
+}
+
+sanitize_workspace_name() {
+  printf '%s' "$1" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+}
+
+normalize_repo_url() {
+  local remote=$1
+  case "$remote" in
+    git@*:* )
+      local tmp=${remote#git@}
+      local host=${tmp%%:*}
+      local path=${tmp#*:}
+      path=${path%.git}
+      printf 'https://%s/%s\n' "$host" "$path"
+      ;;
+    ssh://git@* )
+      local without=${remote#ssh://git@}
+      local host=${without%%/*}
+      local path=${without#*/}
+      path=${path%.git}
+      printf 'https://%s/%s\n' "$host" "$path"
+      ;;
+    https://* | http://* )
+      printf '%s\n' "${remote%.git}"
+      ;;
+    * )
+      printf '%s\n' "${remote%.git}"
+      ;;
+  esac
+}
+
+record_exported_var() {
+  local key=$1
+  case " $EE_EXPORTED_VARS " in
+    *" $key "*) ;;
+    *) EE_EXPORTED_VARS="$EE_EXPORTED_VARS $key" ;;
+  esac
+}
+
+extract_repo_slug() {
+  local url=$1
+  case "$url" in
+    https://*|http://*)
+      url=${url#*://*/}
+      ;;
+  esac
+  url=${url%.git}
+  printf '%s\n' "$url"
 }
 
 resolve_relative_path() {
@@ -71,6 +132,20 @@ resolve_relative_path() {
       die "path '$input' must reside within $HOME"
       ;;
   esac
+}
+
+record_synced_file() {
+  local rel_path=$1
+  local manifest_dir
+
+  manifest_dir=$(dirname -- "$sync_manifest_path")
+  mkdir -p "$manifest_dir"
+
+  if [ -f "$sync_manifest_path" ] && grep -Fxq -- "$rel_path" "$sync_manifest_path"; then
+    return 0
+  fi
+
+  printf '%s\n' "$rel_path" >>"$sync_manifest_path"
 }
 
 update_secret() {
@@ -206,11 +281,13 @@ for item in items or []:
     if op document get "op://$target_vault/$title" >"$tmp_file" 2>/dev/null; then
       if [ -f "$dest" ] && cmp -s "$dest" "$tmp_file"; then
         rm -f "$tmp_file"
+        record_synced_file "$rel"
         continue
       fi
 
       mv "$tmp_file" "$dest"
       chmod 600 "$dest"
+      record_synced_file "$rel"
       [ "$quiet" -ne 1 ] && printf 'Synced %s -> %s\n' "$title" "$dest"
     else
       [ "$quiet" -ne 1 ] && printf '%s: failed to fetch document %s\n' "$script_name" "$title" >&2
@@ -219,6 +296,8 @@ for item in items or []:
   done <<EOF
 $titles
 EOF
+
+  record_synced_file ".aws"
 }
 
 
@@ -227,18 +306,11 @@ fetch_note() {
   op read "op://$vault/$item/notesPlain" 2>/dev/null
 }
 
-run_coder_env() {
+load_coder_env() {
   require_cmd op
   require_cmd coder
 
   local env_name=$1
-  shift
-
-  local args=("$@")
-  if [ "${#args[@]}" -gt 0 ] && [ "${args[0]}" = coder ]; then
-    args=("${args[@]:1}")
-  fi
-
   local env_item
   case "$env_name" in
     work|w) env_item=$work_item ;;
@@ -256,15 +328,15 @@ run_coder_env() {
     die "failed to read environment item '$env_item' in vault '$vault'"
   fi
 
+  EE_EXPORTED_VARS=""
   local have_url=0
   local have_token=0
-  local exported_vars=""
 
   if [ -n "${service_content//[[:space:]]/}" ]; then
     service_content=$(printf '%s\n' "$service_content" | sed -e 's/\r//g' -e 's/^[[:space:]]*//g' -e 's/[[:space:]]*$//g')
     if [ -n "$service_content" ]; then
       export OP_SERVICE_ACCOUNT_TOKEN="$service_content"
-      exported_vars="$exported_vars OP_SERVICE_ACCOUNT_TOKEN"
+      record_exported_var OP_SERVICE_ACCOUNT_TOKEN
     fi
   fi
 
@@ -285,7 +357,7 @@ run_coder_env() {
     esac
 
     export "$key=$value"
-    exported_vars="$exported_vars $key"
+    record_exported_var "$key"
 
     case "$key" in
       CODER_URL) have_url=1 ;;
@@ -298,6 +370,7 @@ EOF
   if [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -z "${EE_SYNCED:-}" ]; then
     sync_documents --quiet || true
     export EE_SYNCED=1
+    record_exported_var EE_SYNCED
   fi
 
   if [ "$have_url" -eq 0 ]; then
@@ -305,6 +378,27 @@ EOF
   fi
   if [ "$have_token" -eq 0 ]; then
     die "CODER_SESSION_TOKEN missing from environment item '$env_item'"
+  fi
+}
+
+cleanup_coder_env() {
+  if [ -n "${EE_EXPORTED_VARS:-}" ]; then
+    for key in $EE_EXPORTED_VARS; do
+      unset "$key"
+    done
+  fi
+  unset EE_EXPORTED_VARS
+}
+
+run_coder_env() {
+  local env_name=$1
+  shift || true
+
+  load_coder_env "$env_name"
+
+  local args=("$@")
+  if [ "${#args[@]}" -gt 0 ] && [ "${args[0]}" = coder ]; then
+    args=("${args[@]:1}")
   fi
 
   set +e
@@ -316,11 +410,104 @@ EOF
   local status=$?
   set -e
 
-  for key in $exported_vars; do
-    unset "$key"
-  done
-
+  cleanup_coder_env
   return "$status"
+}
+
+workspace_go() {
+  local target_dir=${1:-$PWD}
+  local override_name=${2:-}
+  local fallback_image="ghcr.io/veraticus/nix-config/egoengine:latest"
+
+  require_cmd git
+  require_cmd python3
+
+  local abs_dir
+  if ! abs_dir=$(cd "$target_dir" 2>/dev/null && pwd -P); then
+    die "unable to resolve directory '$target_dir'"
+  fi
+
+  local repo_root
+  if ! repo_root=$(git -C "$abs_dir" rev-parse --show-toplevel 2>/dev/null); then
+    die "directory '$abs_dir' is not inside a git repository"
+  fi
+
+  local repo_remote
+  repo_remote=$(git -C "$abs_dir" remote get-url origin 2>/dev/null || true)
+  local repo_url=""
+  local repo_slug=""
+
+  if [ -n "$repo_remote" ]; then
+    repo_url=$(normalize_repo_url "$repo_remote")
+    repo_slug=$(extract_repo_slug "$repo_url")
+  else
+    die "repository at '$abs_dir' does not have an 'origin' remote"
+  fi
+
+  local default_name
+  default_name=$(sanitize_workspace_name "$repo_slug")
+  if [ -z "$default_name" ]; then
+    default_name=$(sanitize_workspace_name "$(basename "$repo_root")")
+  fi
+
+  local workspace_name
+  if [ -n "$override_name" ]; then
+    workspace_name=$(sanitize_workspace_name "$override_name")
+    if [ -z "$workspace_name" ]; then
+      die "invalid workspace name '$override_name'"
+    fi
+  else
+    workspace_name=$default_name
+  fi
+
+  if [ -z "$workspace_name" ]; then
+    die "unable to determine workspace name"
+  fi
+
+  printf 'Workspace: %s\n' "$workspace_name"
+  printf 'Repository: %s\n' "$repo_url"
+
+  local workspace_json
+  workspace_json=$(coder list --output json --search "workspace:$workspace_name owner:me" 2>/dev/null || true)
+
+  local workspace_exists=0
+  local workspace_outdated="false"
+
+  if [ -n "$workspace_json" ] && [ "$workspace_json" != "[]" ]; then
+    local parsed
+    workspace_outdated=$(printf '%s' "$workspace_json" | python3 - <<'PY'
+import sys, json
+data = json.load(sys.stdin)
+if data:
+    w = data[0]
+    print("true" if w.get("outdated") else "false")
+PY
+) || workspace_outdated="false"
+
+    if [ -n "$workspace_outdated" ]; then
+      workspace_exists=1
+    fi
+  fi
+
+  if [ "$workspace_exists" -eq 0 ]; then
+    printf 'Creating workspace %s...\n' "$workspace_name"
+    coder create "$workspace_name" \
+      --template docker-envbuilder \
+      --parameter "repo=$repo_url" \
+      --parameter "fallback_image=$fallback_image" \
+      --yes || return 1
+  else
+    if [ "$workspace_outdated" = "true" ]; then
+      printf 'Updating workspace %s...\n' "$workspace_name"
+      coder update "$workspace_name" || return 1
+    fi
+  fi
+
+  printf 'Starting workspace %s...\n' "$workspace_name"
+  coder start -y "$workspace_name" >/dev/null || return 1
+
+  printf 'Connecting to %s...\n' "$workspace_name"
+  coder ssh "$workspace_name"
 }
 
 main() {
@@ -347,6 +534,16 @@ main() {
       ;;
     personal|p)
       shift || true
+      if [ "${1-}" = go ]; then
+        shift || true
+        load_coder_env personal
+        set +e
+        workspace_go "$@"
+        local go_status=$?
+        set -e
+        cleanup_coder_env
+        return "$go_status"
+      fi
       run_coder_env personal "$@"
       ;;
     help|-h|--help)

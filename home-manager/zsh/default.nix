@@ -108,8 +108,8 @@
 
       export PATH=''${PATH}:''${HOME}/go/bin:''${HOME}/.local/share/../bin
 
-      if [[ -z ${EE_SYNCED-} && -x ${HOME}/.local/bin/ee && -n ${OP_SERVICE_ACCOUNT_TOKEN:-} ]]; then
-        "${HOME}/.local/bin/ee" sync --quiet || true
+      if [[ -z ''${EE_SYNCED-} && -x ''${HOME}/.local/bin/ee && -n ''${OP_SERVICE_ACCOUNT_TOKEN-} ]]; then
+        "''${HOME}/.local/bin/ee" sync --quiet || true
         export EE_SYNCED=1
       fi
 

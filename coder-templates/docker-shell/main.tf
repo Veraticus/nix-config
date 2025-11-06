@@ -16,23 +16,10 @@ variable "docker_socket" {
   default     = ""
 }
 
-variable "workspace_image" {
-  description = "OCI image used for the workspace container."
-  type        = string
-  default     = "ghcr.io/veraticus/nix-config/egoengine:285afb1"
-}
-
 variable "entrypoint_shell" {
   description = "Shell binary used to launch the coder agent init script."
   type        = string
   default     = "sh"
-}
-
-variable "op_service_account_token" {
-  description = "1Password Service Account token injected into the workspace environment."
-  type        = string
-  sensitive   = true
-  default     = ""
 }
 
 provider "coder" {}
@@ -45,23 +32,36 @@ data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
 data "coder_provisioner" "me" {}
 
+data "coder_parameter" "workspace_image" {
+  description  = "OCI image used for the workspace container."
+  display_name = "Workspace Image"
+  mutable      = true
+  name         = "workspace_image"
+  order        = 1
+  type         = "string"
+  validation {
+    regex = "[^\\s]"
+    error = "Provide an image reference."
+  }
+}
+
 locals {
-  container_name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
+  workspace_home  = "/home/joshsymonds"
+  container_name  = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
   git_env = {
     GIT_AUTHOR_NAME     = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_AUTHOR_EMAIL    = data.coder_workspace_owner.me.email
     GIT_COMMITTER_NAME  = coalesce(data.coder_workspace_owner.me.full_name, data.coder_workspace_owner.me.name)
     GIT_COMMITTER_EMAIL = data.coder_workspace_owner.me.email
   }
-  op_env = var.op_service_account_token == "" ? {} : {
-    OP_SERVICE_ACCOUNT_TOKEN = var.op_service_account_token
-  }
+  secret_manifest_path = "${local.workspace_home}/.local/state/ee/synced-files"
   agent_env = merge(
     local.git_env,
-    local.op_env,
     {
-      PATH                 = "/run/current-system/sw/bin:/usr/bin:/bin"
-      CODER_WORKSPACE_NAME = data.coder_workspace.me.name
+      PATH                      = "/run/current-system/sw/bin:/usr/bin:/bin"
+      CODER_WORKSPACE_NAME      = data.coder_workspace.me.name
+      EE_SYNC_MANIFEST_PATH     = local.secret_manifest_path
+      WORKSPACE_SECRET_MANIFEST = local.secret_manifest_path
     }
   )
 }
@@ -91,7 +91,7 @@ resource "docker_volume" "home" {
 
 resource "docker_container" "workspace" {
   count      = data.coder_workspace.me.start_count
-  image      = var.workspace_image
+  image      = data.coder_parameter.workspace_image.value
   name       = local.container_name
   hostname   = data.coder_workspace.me.name
   entrypoint = ["/usr/bin/env", var.entrypoint_shell, "-lc", replace(coder_agent.main.init_script, "/localhost|127\\.0\\.0\\.1/", "host.docker.internal")]
@@ -107,7 +107,7 @@ resource "docker_container" "workspace" {
   }
 
   volumes {
-    container_path = "/home/joshsymonds"
+    container_path = local.workspace_home
     volume_name    = docker_volume.home.name
     read_only      = false
   }
@@ -133,28 +133,9 @@ resource "docker_container" "workspace" {
 resource "coder_agent" "main" {
   arch = data.coder_provisioner.me.arch
   os   = "linux"
-  dir  = "/home/joshsymonds"
+  dir  = local.workspace_home
 
   env = local.agent_env
-
-  startup_script = <<-EOT
-    set -euo pipefail
-    mkdir -p ~/.codex
-    umask 077
-
-    PATH="/run/current-system/sw/bin:/usr/bin:/bin:$PATH"
-    export PATH
-
-    if command -v op >/dev/null 2>&1; then
-      op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
-    fi
-    chmod 600 ~/.codex/auth.json || true
-    if [ -n "$${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -x "$${HOME}/.local/bin/ee" ]; then
-      "$${HOME}/.local/bin/ee" sync --quiet || true
-    fi
-  EOT
-
-  startup_script_behavior = "blocking"
 
   metadata {
     display_name = "CPU Usage"
@@ -179,4 +160,43 @@ resource "coder_agent" "main" {
     interval     = 60
     timeout      = 1
   }
+}
+
+resource "coder_script" "cleanup" {
+  agent_id    = coder_agent.main.id
+  run_on_stop = true
+  script      = <<-EOT
+    set -eu
+
+    home="${local.workspace_home}"
+    manifest="$${WORKSPACE_SECRET_MANIFEST:-$${EE_SYNC_MANIFEST_PATH:-}}"
+    clean_cmd="$${WORKSPACE_SECRET_CLEAN_CMD:-}"
+
+    if [ -n "$manifest" ] && [ -f "$manifest" ]; then
+      while IFS= read -r rel || [ -n "$rel" ]; do
+        case "$rel" in
+          ''|'#'*) continue ;;
+        esac
+
+        case "$rel" in
+          /*) target="$rel" ;;
+          *) target="$home/$rel" ;;
+        esac
+
+        case "$target" in
+          "$home"|"$home"/*) : ;;
+          *) continue ;;
+        esac
+
+        if [ -e "$target" ]; then
+          rm -rf -- "$target"
+        fi
+      done < "$manifest"
+      rm -f -- "$manifest"
+    fi
+
+    if [ -n "$clean_cmd" ]; then
+      sh -c "$clean_cmd" || true
+    fi
+  EOT
 }

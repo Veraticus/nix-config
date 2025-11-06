@@ -49,11 +49,11 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1761866957,
-        "narHash": "sha256-IIQidyMTfNnwvtRXxWOWfjOn4v1We8ECGM86ymAQLSg=",
+        "lastModified": 1762463062,
+        "narHash": "sha256-h/ElabB/alnCFRo+XuNVvh68eahWksIrB/YwYdSZEHk=",
         "owner": "Veraticus",
         "repo": "codex",
-        "rev": "e6c222e866044191b0df369dddf4645b3e83df09",
+        "rev": "f7b65d0a0566f6069b69321becc87ec90153292d",
         "type": "github"
       },
       "original": {
@@ -308,21 +308,6 @@
       "original": {
         "owner": "neovim",
         "repo": "neovim",
-        "type": "github"
-      }
-    },
-    "nixlib": {
-      "locked": {
-        "lastModified": 1736643958,
-        "narHash": "sha256-tmpqTSWVRJVhpvfSN9KXBvKEXplrwKnSZNAoNPf/S/s=",
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
-        "rev": "1418bc28a52126761c02dd3d89b2d8ca0f521181",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nix-community",
-        "repo": "nixpkgs.lib",
         "type": "github"
       }
     },

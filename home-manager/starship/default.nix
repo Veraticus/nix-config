@@ -16,7 +16,7 @@
 
       format = "[](fg:lavender)$directory$character";
 
-      right_format = "[](fg:mauve)\${custom.devspace}[](fg:rosewater bg:mauve)$hostname[](fg:sky bg:rosewater)$git_branch$git_status[](fg:peach bg:sky)$aws[](bg:peach fg:teal)$kubernetes[](fg:teal)";
+      right_format = "[](fg:mauve)\${custom.devspace}[](fg:rosewater bg:mauve)\${custom.workspaceHost}[](fg:sky bg:rosewater)$git_branch$git_status[](fg:peach bg:sky)$aws[](bg:peach fg:teal)$kubernetes[](fg:teal)";
 
       add_newline = false;
 
@@ -51,13 +51,6 @@
         style = "bg:peach fg:base";
         format = "[  $profile ]($style)";
         force_display = true;
-      };
-
-      hostname = {
-        style = "bg:rosewater fg:base";
-        format = "[ 󰒋 $hostname ]($style)";
-        ssh_only = false;
-        ssh_symbol = "";
       };
 
       "git_branch" = {
@@ -96,6 +89,27 @@
           '';
           format = "[ $output ]($style)";
           style = "bg:mauve fg:base bold";
+        };
+        workspaceHost = {
+          when = ''true'';
+          command = ''
+            host_output=""
+            if [ -n "$CODER_WORKSPACE_NAME" ] && [ -n "$CODER_AGENT_URL" ]; then
+              host_output="$(printf '%s' "$CODER_AGENT_URL" | sed -e 's|^[^:]*://||' -e 's|/.*$||')"
+            else
+              host_output="$(hostname 2>/dev/null || printf "")"
+              if [ -z "$host_output" ]; then
+                host_output="$(cat /proc/sys/kernel/hostname 2>/dev/null || printf "")"
+              fi
+            fi
+            if [ -n "$host_output" ]; then
+              printf " 󰒋 %s" "$host_output"
+            else
+              printf ""
+            fi
+          '';
+          format = "[ $output ]($style)";
+          style = "bg:rosewater fg:base";
         };
       };
 

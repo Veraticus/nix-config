@@ -68,6 +68,7 @@ let
     # Development tools
     git
     curl
+    gcc
     docker-client
     kubectl
     neovim

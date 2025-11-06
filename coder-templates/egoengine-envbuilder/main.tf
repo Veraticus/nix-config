@@ -238,16 +238,6 @@ resource "coder_agent" "main" {
     set -euo pipefail
     mkdir -p ~/.codex
     umask 077
-
-    if command -v op >/dev/null 2>&1; then
-      op read 'op://egoengine/Codex Auth/auth.json' > ~/.codex/auth.json || true
-    fi
-    chmod 600 ~/.codex/auth.json || true
-    codex auth me || rm -f ~/.codex/auth.json || true
-
-    if [ -n "$${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -x "$${HOME}/.local/bin/ee" ]; then
-      "$${HOME}/.local/bin/ee" sync --quiet || true
-    fi
   EOT
 
   metadata {

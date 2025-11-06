@@ -295,6 +295,11 @@ run_coder_env() {
 $env_content
 EOF
 
+  if [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -z "${EE_SYNCED:-}" ]; then
+    sync_documents --quiet || true
+    export EE_SYNCED=1
+  fi
+
   if [ "$have_url" -eq 0 ]; then
     die "CODER_URL missing from environment item '$env_item'"
   fi

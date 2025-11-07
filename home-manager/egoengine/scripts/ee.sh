@@ -417,8 +417,11 @@ run_coder_env() {
 workspace_go() {
   local target_dir=${1:-$PWD}
   local override_name=${2:-}
-  local fallback_image="ghcr.io/veraticus/nix-config/egoengine:latest"
+  local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/veraticus/nix-config/egoengine:latest}"
+  local devcontainer_builder="${EE_DEVCONTAINER_BUILDER:-ghcr.io/coder/envbuilder:latest}"
 
+  load_coder_env personal
+  require_cmd coder
   require_cmd git
   require_cmd python3
 
@@ -495,6 +498,7 @@ PY
       --template docker-envbuilder \
       --parameter "repo=$repo_url" \
       --parameter "fallback_image=$fallback_image" \
+      --parameter "devcontainer_builder=$devcontainer_builder" \
       --yes || return 1
   else
     if [ "$workspace_outdated" = "true" ]; then
@@ -508,6 +512,8 @@ PY
 
   printf 'Connecting to %s...\n' "$workspace_name"
   coder ssh "$workspace_name"
+
+  cleanup_coder_env
 }
 
 main() {
@@ -536,13 +542,8 @@ main() {
       shift || true
       if [ "${1-}" = go ]; then
         shift || true
-        load_coder_env personal
-        set +e
         workspace_go "$@"
-        local go_status=$?
-        set -e
-        cleanup_coder_env
-        return "$go_status"
+        return $?
       fi
       run_coder_env personal "$@"
       ;;

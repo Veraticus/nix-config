@@ -9,6 +9,7 @@
     ./kitty
     ./nvim
     ./git
+    ./k9s
     ./ssh-agent
     ./zsh
     ./starship
@@ -24,25 +25,45 @@
       };
 
       packages = with pkgs; [
-        coreutils
-        git
-        curl
-        ripgrep
-        jq
-        eza
-        fzf
-        yq
-        gh
+        autossh
         bat
-        shellcheck
-        neovim
-        codex
         claudeCodeCli
-        docker-client
-        kubectl
         coder
-        vivid  # For LS_COLORS generation
+        codex
+        coreutils-full
+        curl
+        docker
+        docker-client
+        eza
+        eternal-terminal
+        fzf
+        gh
+        git
         inputs.agenix.packages.${pkgs.system}.agenix
+        inputs.cc-tools.packages.${pkgs.system}.default
+        istioctl
+        jq
+        just
+        k9s
+        killall
+        kitty.terminfo
+        kubectl
+        kubernetes-helm
+        kustomize
+        manix
+        ncdu
+        parallel
+        ranger
+        ripgrep
+        shellcheck
+        shellspec
+        socat
+        talosctl
+        vivid  # For LS_COLORS generation
+        wget
+        wireguard-tools
+        xdg-utils
+        yq
       ];
     };
 

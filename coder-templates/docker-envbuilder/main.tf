@@ -73,7 +73,7 @@ EOF
 }
 
 data "coder_parameter" "cache_repo" {
-  default      = ""
+  default      = "ghcr.io/Veraticus/envbuilder-cache"
   description  = "Optional container registry cache (e.g. ghcr.io/OWNER/envbuilder-cache)."
   display_name = "Cache Registry"
   mutable      = true

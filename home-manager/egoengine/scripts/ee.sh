@@ -9,6 +9,7 @@ work_item=${EE_WORK_ITEM:-work}
 personal_item=${EE_PERSONAL_ITEM:-personal}
 sync_manifest_path_default="$HOME/.local/state/ee/synced-files"
 sync_manifest_path=${WORKSPACE_SECRET_MANIFEST:-${EE_SYNC_MANIFEST_PATH:-$sync_manifest_path_default}}
+ee_config_dir=${EE_CONFIG_DIR:-$HOME/.config/ee}
 export WORKSPACE_SECRET_MANIFEST="$sync_manifest_path"
 export EE_SYNC_MANIFEST_PATH="$sync_manifest_path"
 
@@ -414,11 +415,72 @@ run_coder_env() {
   return "$status"
 }
 
+ensure_cache_repo_docker_config() {
+  local config_dir=${EE_CACHE_CONFIG_DIR:-$ee_config_dir}
+  local token_file="$config_dir/ghcr-cache-token"
+  local docker_config="$config_dir/ghcr-cache-docker-config.json"
+  local username="${EE_GHCR_USERNAME:-}"
+  local token=""
+
+  mkdir -p "$config_dir"
+  chmod 700 "$config_dir"
+
+  if [ -f "$token_file" ]; then
+    token=$(<"$token_file")
+  fi
+
+  if [ -z "$token" ]; then
+    require_cmd gh
+    if ! gh auth status >/dev/null 2>&1; then
+      die "gh CLI is not authenticated; run 'gh auth login --scopes write:packages'."
+    fi
+    if ! gh auth refresh -h github.com -s write:packages >/dev/null 2>&1; then
+      die "failed to ensure gh token has write:packages scope"
+    fi
+    token=$(gh auth token | tr -d '\n')
+    if [ -z "$token" ]; then
+      die "gh auth token returned empty output"
+    fi
+    printf '%s' "$token" >"$token_file"
+    chmod 600 "$token_file"
+  fi
+
+  if [ -z "$username" ]; then
+    require_cmd gh
+    username=$(gh api user --jq .login | tr -d '\n')
+    if [ -z "$username" ]; then
+      die "unable to determine GitHub username via gh"
+    fi
+  fi
+
+  require_cmd base64
+  local auth_value
+  auth_value=$(printf '%s' "$username:$token" | base64 | tr -d '\n')
+
+  cat >"$docker_config" <<EOF
+{
+  "auths": {
+    "ghcr.io": {
+      "auth": "$auth_value"
+    }
+  }
+}
+EOF
+  chmod 600 "$docker_config"
+  printf '%s\n' "$docker_config"
+}
+
 workspace_go() {
   local target_dir=${1:-$PWD}
   local override_name=${2:-}
   local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/veraticus/nix-config/egoengine:latest}"
   local devcontainer_builder="${EE_DEVCONTAINER_BUILDER:-ghcr.io/coder/envbuilder:latest}"
+  local cache_repo="${EE_CACHE_REPO:-ghcr.io/Veraticus/envbuilder-cache}"
+  local cache_repo_config="${EE_CACHE_REPO_DOCKER_CONFIG_PATH:-}"
+
+  if [ -n "$cache_repo" ] && [ -z "$cache_repo_config" ]; then
+    cache_repo_config=$(ensure_cache_repo_docker_config)
+  fi
 
   load_coder_env personal
   require_cmd coder
@@ -499,6 +561,8 @@ PY
       --parameter "repo=$repo_url" \
       --parameter "fallback_image=$fallback_image" \
       --parameter "devcontainer_builder=$devcontainer_builder" \
+      --parameter "cache_repo=$cache_repo" \
+      --parameter "cache_repo_docker_config_path=$cache_repo_config" \
       --yes || return 1
   else
     if [ "$workspace_outdated" = "true" ]; then

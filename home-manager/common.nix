@@ -40,6 +40,7 @@
         claudeCodeCli
         docker-client
         kubectl
+        coder
         vivid  # For LS_COLORS generation
         inputs.agenix.packages.${pkgs.system}.agenix
       ];

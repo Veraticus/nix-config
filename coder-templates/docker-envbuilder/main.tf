@@ -38,6 +38,7 @@ data "coder_parameter" "repo" {
   name         = "repo"
   order        = 1
   type         = "string"
+  default      = "https://github.com/veraticus/nix-config"
   validation {
     regex = "[^\\s]"
     error = "Provide a repository URL."

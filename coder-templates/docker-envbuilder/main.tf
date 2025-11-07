@@ -51,6 +51,7 @@ data "coder_parameter" "fallback_image" {
   name         = "fallback_image"
   order        = 2
   type         = "string"
+  default      = "ghcr.io/veraticus/nix-config/egoengine:latest"
   validation {
     regex = "[^\\s]"
     error = "Provide a fallback image name."

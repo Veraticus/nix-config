@@ -237,8 +237,9 @@ resource "coder_agent" "main" {
 }
 
 resource "coder_script" "cleanup" {
-  agent_id    = coder_agent.main.id
-  run_on_stop = true
+  agent_id     = coder_agent.main.id
+  run_on_stop  = true
+  display_name = "Secret cleanup"
   script      = <<-EOT
     set -eu
 

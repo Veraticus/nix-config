@@ -321,6 +321,13 @@ in
     mode = "0400";
   };
 
+  age.secrets."coder-ghcr-cache-auth" = {
+    file = ../../secrets/hosts/vermissian/coder-ghcr-cache-auth.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
   services.cloudflareTunnel = {
     enable = true;
     tokenFile = config.age.secrets."cloudflared-token".path;
@@ -332,6 +339,46 @@ in
     internalUrl = "https://coder.husbuddies.gay";
     autoRegisterTemplates = false;
   };
+
+  systemd.services."coder-ghcr-cache-config" = {
+    description = "Install GHCR cache Docker config for Coder";
+    after = [ "run-agenix.d.mount" ];
+    before = [ "docker-coder.service" ];
+    partOf = [ "docker-coder.service" ];
+    wantedBy = [ "multi-user.target" ];
+    restartTriggers = [ config.age.secrets."coder-ghcr-cache-auth".path ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "install-ghcr-cache-config" ''
+        set -euo pipefail
+        ${pkgs.coreutils}/bin/install -d -m 0750 -o root -g root /var/lib/coder/ghcr-cache
+        if ! read -r auth_line <${config.age.secrets."coder-ghcr-cache-auth".path}; then
+          echo "Unable to read GHCR auth secret" >&2
+          exit 1
+        fi
+        username="''${auth_line%%=*}"
+        token="''${auth_line#*=}"
+        if [ -z "$username" ] || [ -z "$token" ] || [ "$username" = "$auth_line" ]; then
+          echo "Invalid GHCR auth secret format (expected username=token)" >&2
+          exit 1
+        fi
+        auth=$(${pkgs.coreutils}/bin/printf '%s:%s' "$username" "$token" | ${pkgs.coreutils}/bin/base64 -w0)
+        cat >/var/lib/coder/ghcr-cache/config.json <<EOF
+{
+  "auths": {
+    "ghcr.io": {
+      "auth": "$auth"
+    }
+  }
+}
+EOF
+        chmod 600 /var/lib/coder/ghcr-cache/config.json
+      '';
+    };
+  };
+
+  systemd.services."docker-coder".after = lib.mkAfter [ "coder-ghcr-cache-config.service" ];
+  systemd.services."docker-coder".requires = lib.mkAfter [ "coder-ghcr-cache-config.service" ];
 
   # Remote mounts check service
   systemd.services.remote-mounts = {

@@ -11,4 +11,5 @@ in {
   "secrets/hosts/ultraviolet/cloudflare-api-token.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/cloudflared-token.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/vermissian/cloudflared-token.age".publicKeys = keys.vermissian;
+  "secrets/hosts/vermissian/coder-ghcr-cache-auth.age".publicKeys = keys.vermissian;
 }

@@ -9,7 +9,6 @@ work_item=${EE_WORK_ITEM:-work}
 personal_item=${EE_PERSONAL_ITEM:-personal}
 sync_manifest_path_default="$HOME/.local/state/ee/synced-files"
 sync_manifest_path=${WORKSPACE_SECRET_MANIFEST:-${EE_SYNC_MANIFEST_PATH:-$sync_manifest_path_default}}
-ee_config_dir=${EE_CONFIG_DIR:-$HOME/.config/ee}
 export WORKSPACE_SECRET_MANIFEST="$sync_manifest_path"
 export EE_SYNC_MANIFEST_PATH="$sync_manifest_path"
 
@@ -20,6 +19,7 @@ fi
 usage() {
   cat <<'EOF'
 Usage:
+  ee [--verbose] <command>
   ee secret <path>         Upload or update a workspace file in 1Password
   ee sync [--quiet]        Mirror 1Password document items into $HOME
   ee work|w [coder args]   Run coder with work environment credentials
@@ -33,6 +33,10 @@ Environment:
   EE_SERVICE_ITEM    Name of the service account note (default: service-account)
   EE_WORK_ITEM       Name of the work env note (default: work)
   EE_PERSONAL_ITEM   Name of the personal env note (default: personal)
+  EE_CACHE_REPO      Optional cache registry (e.g. ghcr.io/Veraticus/envbuilder-cache)
+  EE_CACHE_REPO_DOCKER_CONFIG_PATH
+                     Path on the Coder host/container to a docker config.json with registry creds
+  EE_VERBOSE         Set to 1 to enable verbose logging (or pass --verbose)
 EOF
 }
 
@@ -47,6 +51,12 @@ require_cmd() {
   fi
 }
 
+log() {
+  if [ -n "${EE_VERBOSE:-}" ]; then
+    printf '[ee] %s\n' "$*" >&2
+  fi
+}
+
 sanitize_workspace_name() {
   printf '%s' "$1" |
     tr '[:upper:]' '[:lower:]' |
@@ -56,43 +66,43 @@ sanitize_workspace_name() {
 normalize_repo_url() {
   local remote=$1
   case "$remote" in
-    git@*:* )
-      local tmp=${remote#git@}
-      local host=${tmp%%:*}
-      local path=${tmp#*:}
-      path=${path%.git}
-      printf 'https://%s/%s\n' "$host" "$path"
-      ;;
-    ssh://git@* )
-      local without=${remote#ssh://git@}
-      local host=${without%%/*}
-      local path=${without#*/}
-      path=${path%.git}
-      printf 'https://%s/%s\n' "$host" "$path"
-      ;;
-    https://* | http://* )
-      printf '%s\n' "${remote%.git}"
-      ;;
-    * )
-      printf '%s\n' "${remote%.git}"
-      ;;
+  git@*:*)
+    local tmp=${remote#git@}
+    local host=${tmp%%:*}
+    local path=${tmp#*:}
+    path=${path%.git}
+    printf 'https://%s/%s\n' "$host" "$path"
+    ;;
+  ssh://git@*)
+    local without=${remote#ssh://git@}
+    local host=${without%%/*}
+    local path=${without#*/}
+    path=${path%.git}
+    printf 'https://%s/%s\n' "$host" "$path"
+    ;;
+  https://* | http://*)
+    printf '%s\n' "${remote%.git}"
+    ;;
+  *)
+    printf '%s\n' "${remote%.git}"
+    ;;
   esac
 }
 
 record_exported_var() {
   local key=$1
   case " $EE_EXPORTED_VARS " in
-    *" $key "*) ;;
-    *) EE_EXPORTED_VARS="$EE_EXPORTED_VARS $key" ;;
+  *" $key "*) ;;
+  *) EE_EXPORTED_VARS="$EE_EXPORTED_VARS $key" ;;
   esac
 }
 
 extract_repo_slug() {
   local url=$1
   case "$url" in
-    https://*|http://*)
-      url=${url#*://*/}
-      ;;
+  https://* | http://*)
+    url=${url#*://*/}
+    ;;
   esac
   url=${url%.git}
   printf '%s\n' "$url"
@@ -103,10 +113,10 @@ resolve_relative_path() {
   local abs dir base
 
   case "$input" in
-    ~) abs=$HOME ;;
-    ~/*) abs=$HOME/${input#~/} ;;
-    /*) abs=$input ;;
-    *) abs=$PWD/$input ;;
+  ~) abs=$HOME ;;
+  ~/*) abs=$HOME/${input#~/} ;;
+  /*) abs=$input ;;
+  *) abs=$PWD/$input ;;
   esac
 
   dir=$(dirname -- "$abs")
@@ -123,15 +133,15 @@ resolve_relative_path() {
   fi
 
   case "$abs" in
-    "$HOME")
-      die "path '$input' must reside within $HOME"
-      ;;
-    "$HOME"/*)
-      printf '%s\n' "${abs#"$HOME"/}"
-      ;;
-    *)
-      die "path '$input' must reside within $HOME"
-      ;;
+  "$HOME")
+    die "path '$input' must reside within $HOME"
+    ;;
+  "$HOME"/*)
+    printf '%s\n' "${abs#"$HOME"/}"
+    ;;
+  *)
+    die "path '$input' must reside within $HOME"
+    ;;
   esac
 }
 
@@ -181,6 +191,7 @@ update_secret() {
 
 sync_documents() {
   require_cmd op
+  log "sync_documents: starting (args: $*)"
 
   local quiet=0
   local dry_run=0
@@ -188,30 +199,32 @@ sync_documents() {
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --quiet|-q)
-        quiet=1
-        ;;
-      --dry-run)
-        dry_run=1
-        ;;
-      --vault)
-        shift || die "--vault requires an argument"
-        target_vault=$1
-        ;;
-      *)
-        die "unknown option '$1' for sync"
-        ;;
+    --quiet | -q)
+      quiet=1
+      ;;
+    --dry-run)
+      dry_run=1
+      ;;
+    --vault)
+      shift || die "--vault requires an argument"
+      target_vault=$1
+      ;;
+    *)
+      die "unknown option '$1' for sync"
+      ;;
     esac
     shift
   done
 
   if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+    log "sync_documents: OP_SERVICE_ACCOUNT_TOKEN unset; skipping"
     if [ "$quiet" -ne 1 ]; then
       printf '%s\n' "OP_SERVICE_ACCOUNT_TOKEN not set; skipping document sync" >&2
     fi
     return 0
   fi
 
+  log "sync_documents: listing documents from vault '$target_vault'"
   local list_output
   if ! list_output=$(op item list --vault "$target_vault" --categories document --format json 2>/dev/null); then
     if [ "$quiet" -ne 1 ]; then
@@ -244,9 +257,9 @@ for item in items or []:
   while IFS= read -r title; do
     [ -z "$title" ] && continue
     case "$title" in
-      personal|work|service-account)
-        continue
-        ;;
+    personal | work | service-account)
+      continue
+      ;;
     esac
 
     local rel=$title
@@ -260,10 +273,10 @@ for item in items or []:
     fi
 
     case "$rel" in
-      *..*)
-        [ "$quiet" -ne 1 ] && printf '%s: skipping unsafe document title %s\n' "$script_name" "$title" >&2
-        continue
-        ;;
+    *..*)
+      [ "$quiet" -ne 1 ] && printf '%s: skipping unsafe document title %s\n' "$script_name" "$title" >&2
+      continue
+      ;;
     esac
 
     local dest="$HOME/$rel"
@@ -299,8 +312,8 @@ $titles
 EOF
 
   record_synced_file ".aws"
+  log "sync_documents: completed"
 }
-
 
 fetch_note() {
   local item=$1
@@ -312,13 +325,14 @@ load_coder_env() {
   require_cmd coder
 
   local env_name=$1
+  log "load_coder_env: loading environment '$env_name'"
   local env_item
   case "$env_name" in
-    work|w) env_item=$work_item ;;
-    personal|p) env_item=$personal_item ;;
-    *)
-      die "unknown environment '$env_name'"
-      ;;
+  work | w) env_item=$work_item ;;
+  personal | p) env_item=$personal_item ;;
+  *)
+    die "unknown environment '$env_name'"
+    ;;
   esac
 
   local service_content env_content
@@ -343,32 +357,33 @@ load_coder_env() {
 
   while IFS= read -r line || [ -n "$line" ]; do
     case "$line" in
-      ''|\#*)
-        continue
-        ;;
+    '' | \#*)
+      continue
+      ;;
     esac
     case "$line" in
-      *=*)
-        key=${line%%=*}
-        value=${line#*=}
-        ;;
-      *)
-        die "invalid line in 1Password item '$env_item': $line"
-        ;;
+    *=*)
+      key=${line%%=*}
+      value=${line#*=}
+      ;;
+    *)
+      die "invalid line in 1Password item '$env_item': $line"
+      ;;
     esac
 
     export "$key=$value"
     record_exported_var "$key"
 
     case "$key" in
-      CODER_URL) have_url=1 ;;
-      CODER_SESSION_TOKEN) have_token=1 ;;
+    CODER_URL) have_url=1 ;;
+    CODER_SESSION_TOKEN) have_token=1 ;;
     esac
   done <<EOF
 $env_content
 EOF
 
   if [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] && [ -z "${EE_SYNCED:-}" ]; then
+    log "load_coder_env: syncing documents via 1Password"
     sync_documents --quiet || true
     export EE_SYNCED=1
     record_exported_var EE_SYNCED
@@ -380,6 +395,7 @@ EOF
   if [ "$have_token" -eq 0 ]; then
     die "CODER_SESSION_TOKEN missing from environment item '$env_item'"
   fi
+  log "load_coder_env: finished loading environment '$env_name'"
 }
 
 cleanup_coder_env() {
@@ -415,74 +431,22 @@ run_coder_env() {
   return "$status"
 }
 
-ensure_cache_repo_docker_config() {
-  local config_dir=${EE_CACHE_CONFIG_DIR:-$ee_config_dir}
-  local token_file="$config_dir/ghcr-cache-token"
-  local docker_config="$config_dir/ghcr-cache-docker-config.json"
-  local username="${EE_GHCR_USERNAME:-}"
-  local token=""
-
-  mkdir -p "$config_dir"
-  chmod 700 "$config_dir"
-
-  if [ -f "$token_file" ]; then
-    token=$(<"$token_file")
-  fi
-
-  if [ -z "$token" ]; then
-    require_cmd gh
-    if ! gh auth status >/dev/null 2>&1; then
-      die "gh CLI is not authenticated; run 'gh auth login --scopes write:packages'."
-    fi
-    if ! gh auth refresh -h github.com -s write:packages >/dev/null 2>&1; then
-      die "failed to ensure gh token has write:packages scope"
-    fi
-    token=$(gh auth token | tr -d '\n')
-    if [ -z "$token" ]; then
-      die "gh auth token returned empty output"
-    fi
-    printf '%s' "$token" >"$token_file"
-    chmod 600 "$token_file"
-  fi
-
-  if [ -z "$username" ]; then
-    require_cmd gh
-    username=$(gh api user --jq .login | tr -d '\n')
-    if [ -z "$username" ]; then
-      die "unable to determine GitHub username via gh"
-    fi
-  fi
-
-  require_cmd base64
-  local auth_value
-  auth_value=$(printf '%s' "$username:$token" | base64 | tr -d '\n')
-
-  cat >"$docker_config" <<EOF
-{
-  "auths": {
-    "ghcr.io": {
-      "auth": "$auth_value"
-    }
-  }
-}
-EOF
-  chmod 600 "$docker_config"
-  printf '%s\n' "$docker_config"
-}
-
 workspace_go() {
   local target_dir=${1:-$PWD}
   local override_name=${2:-}
+  log "workspace_go: target_dir=$target_dir override_name=$override_name"
   local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/veraticus/nix-config/egoengine:latest}"
   local devcontainer_builder="${EE_DEVCONTAINER_BUILDER:-ghcr.io/coder/envbuilder:latest}"
   local cache_repo="${EE_CACHE_REPO:-ghcr.io/Veraticus/envbuilder-cache}"
   local cache_repo_config="${EE_CACHE_REPO_DOCKER_CONFIG_PATH:-}"
 
-  if [ -n "$cache_repo" ] && [ -z "$cache_repo_config" ]; then
-    cache_repo_config=$(ensure_cache_repo_docker_config)
+  if [ -z "$cache_repo_config" ]; then
+    log "workspace_go: cache repo config path not provided; skipping cache repo parameter"
+    cache_repo=""
   fi
 
   load_coder_env personal
+  log "workspace_go: coder environment loaded"
   require_cmd coder
   require_cmd git
   require_cmd python3
@@ -508,6 +472,7 @@ workspace_go() {
   else
     die "repository at '$abs_dir' does not have an 'origin' remote"
   fi
+  log "workspace_go: repo_url=$repo_url slug=$repo_slug"
 
   local default_name
   default_name=$(sanitize_workspace_name "$repo_slug")
@@ -528,10 +493,12 @@ workspace_go() {
   if [ -z "$workspace_name" ]; then
     die "unable to determine workspace name"
   fi
+  log "workspace_go: workspace name resolved to $workspace_name"
 
   printf 'Workspace: %s\n' "$workspace_name"
   printf 'Repository: %s\n' "$repo_url"
 
+  log "workspace_go: querying coder for existing workspace"
   local workspace_json
   workspace_json=$(coder list --output json --search "workspace:$workspace_name owner:me" 2>/dev/null || true)
 
@@ -540,84 +507,118 @@ workspace_go() {
 
   if [ -n "$workspace_json" ] && [ "$workspace_json" != "[]" ]; then
     local parsed
-    workspace_outdated=$(printf '%s' "$workspace_json" | python3 - <<'PY'
+    workspace_outdated=$(
+      printf '%s' "$workspace_json" | python3 - <<'PY'
 import sys, json
 data = json.load(sys.stdin)
 if data:
     w = data[0]
     print("true" if w.get("outdated") else "false")
 PY
-) || workspace_outdated="false"
+    ) || workspace_outdated="false"
 
     if [ -n "$workspace_outdated" ]; then
       workspace_exists=1
     fi
   fi
+  log "workspace_go: workspace_exists=$workspace_exists workspace_outdated=$workspace_outdated"
 
   if [ "$workspace_exists" -eq 0 ]; then
     printf 'Creating workspace %s...\n' "$workspace_name"
-    coder create "$workspace_name" \
-      --template docker-envbuilder \
-      --parameter "repo=$repo_url" \
-      --parameter "fallback_image=$fallback_image" \
-      --parameter "devcontainer_builder=$devcontainer_builder" \
-      --parameter "cache_repo=$cache_repo" \
-      --parameter "cache_repo_docker_config_path=$cache_repo_config" \
-      --yes || return 1
+    log "workspace_go: invoking coder create for $workspace_name"
+    local -a create_args=(
+      "$workspace_name"
+      --template docker-envbuilder
+      --parameter "repo=$repo_url"
+      --parameter "fallback_image=$fallback_image"
+      --parameter "devcontainer_builder=$devcontainer_builder"
+    )
+    if [ -n "$cache_repo" ]; then
+      log "workspace_go: passing cache repo parameters"
+      create_args+=(
+        --parameter "cache_repo=$cache_repo"
+        --parameter "cache_repo_docker_config_path=$cache_repo_config"
+      )
+    else
+      log "workspace_go: cache repo parameters not set"
+    fi
+    create_args+=(--yes)
+    coder create "${create_args[@]}" || return 1
   else
     if [ "$workspace_outdated" = "true" ]; then
       printf 'Updating workspace %s...\n' "$workspace_name"
+      log "workspace_go: workspace outdated, running coder update"
       coder update "$workspace_name" || return 1
     fi
   fi
 
   printf 'Starting workspace %s...\n' "$workspace_name"
+  log "workspace_go: starting workspace via coder start"
   coder start -y "$workspace_name" >/dev/null || return 1
 
   printf 'Connecting to %s...\n' "$workspace_name"
+  log "workspace_go: connecting via coder ssh"
   coder ssh "$workspace_name"
 
   cleanup_coder_env
+  log "workspace_go: completed"
 }
 
 main() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --verbose|-v)
+        EE_VERBOSE=1
+        export EE_VERBOSE
+        shift
+        ;;
+      --)
+        shift
+        break
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+
   if [ "$#" -eq 0 ]; then
     usage
     exit 1
   fi
 
   case "$1" in
-    secret)
-      shift
-      if [ "$#" -ne 1 ]; then
-        die "secret command expects exactly one path"
-      fi
-      update_secret "$1"
-      ;;
-    sync)
-      shift
-      sync_documents "$@"
-      ;;
-    work|w)
+  secret)
+    shift
+    if [ "$#" -ne 1 ]; then
+      die "secret command expects exactly one path"
+    fi
+    update_secret "$1"
+    ;;
+  sync)
+    shift
+    sync_documents "$@"
+    ;;
+  work | w)
+    shift || true
+    run_coder_env work "$@"
+    ;;
+  personal | p)
+    shift || true
+    if [ "${1-}" = go ]; then
       shift || true
-      run_coder_env work "$@"
-      ;;
-    personal|p)
-      shift || true
-      if [ "${1-}" = go ]; then
-        shift || true
-        workspace_go "$@"
-        return $?
-      fi
-      run_coder_env personal "$@"
-      ;;
-    help|-h|--help)
-      usage
-      ;;
-    *)
-      usage
-      exit 1
-      ;;
+      workspace_go "$@"
+      return $?
+    fi
+    run_coder_env personal "$@"
+    ;;
+  help | -h | --help)
+    usage
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
   esac
 }
 

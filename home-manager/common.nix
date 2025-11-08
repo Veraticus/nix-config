@@ -33,7 +33,6 @@
         coreutils-full
         curl
         docker
-        docker-client
         eza
         eternal-terminal
         fzf

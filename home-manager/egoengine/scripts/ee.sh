@@ -438,7 +438,7 @@ workspace_go() {
   local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/veraticus/nix-config/egoengine:latest}"
   local devcontainer_builder="${EE_DEVCONTAINER_BUILDER:-ghcr.io/coder/envbuilder:latest}"
   local cache_repo="${EE_CACHE_REPO:-ghcr.io/Veraticus/envbuilder-cache}"
-  local cache_repo_config="${EE_CACHE_REPO_DOCKER_CONFIG_PATH:-}"
+  local cache_repo_config="${EE_CACHE_REPO_DOCKER_CONFIG_PATH:-/var/lib/coder/ghcr-cache/config.json}"
 
   if [ -z "$cache_repo_config" ]; then
     log "workspace_go: cache repo config path not provided; skipping cache repo parameter"

@@ -6,8 +6,8 @@
     ./mcp
     ./codex
     ./egoengine
+    ./helix
     ./kitty
-    ./nvim
     ./git
     ./k9s
     ./ssh-agent

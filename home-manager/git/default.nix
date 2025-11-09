@@ -14,7 +14,7 @@
 
     extraConfig = {
       core = { 
-        editor = "nvim";
+        editor = "hx";
         whitespace = "fix,-indent-with-non-tab,trailing-space,cr-at-eol";
       };
       url."ssh://git@github.com/".insteadOf = "https://github.com/";

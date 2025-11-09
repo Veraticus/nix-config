@@ -8,6 +8,7 @@ ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: src: ''
     ${pkgs.coreutils}/bin/cp -a ${src} $out/share/nvim/lazy/${name}
 '') lazySources)}
   '';
+  lazyDataDir = "${config.home.homeDirectory}/.local/share/nvim/lazy";
 in {
   home.packages = with pkgs; [
     ripgrep
@@ -16,7 +17,7 @@ in {
 
   programs.neovim = {
     enable = true;
-    defaultEditor = true;
+    defaultEditor = false;
     viAlias = true;
     vimAlias = true;
     package = pkgs.neovim;
@@ -35,12 +36,12 @@ in {
     recursive = true;
     force = true;
   };
-
-  home.file = {
-    ".local/share/nvim/lazy" = {
-      source = lazyPluginCache + "/share/nvim/lazy";
-      recursive = true;
-      force = true;
-    };
-  };
+  home.activation.syncLazyPlugins =
+    lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+      lazy_dir=${lib.escapeShellArg lazyDataDir}
+      cache_dir=${lib.escapeShellArg (lazyPluginCache + "/share/nvim/lazy")}
+      $DRY_RUN_CMD rm -rf "$lazy_dir"
+      $DRY_RUN_CMD mkdir -p "$(dirname "$lazy_dir")"
+      $DRY_RUN_CMD ${pkgs.coreutils}/bin/cp -a "$cache_dir" "$lazy_dir"
+    '';
 }

@@ -126,7 +126,7 @@ in
         set -g automatic-rename-format '#{pane_title}'
         
         # Terminal title: devspace (or hostname) + command + cwd
-        set -g set-titles-string '#{?env:TMUX_DEVSPACE,#{env:TMUX_DEVSPACE},#H} · #{pane_current_command} · #{b:pane_current_path}'
+        set -g set-titles-string '#{?env:TMUX_DEVSPACE,#{env:TMUX_DEVSPACE},#H}·#{b:pane_current_path}·#{pane_current_command}'
         
         # Status line configuration
         set -g status-right-length 100

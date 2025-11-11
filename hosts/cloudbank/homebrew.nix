@@ -22,7 +22,7 @@ in
       }
       "pyenv"
       "borders"
-      "colima"
+      "qemu"
       "chruby"
       "ruby-install"
       "xz"

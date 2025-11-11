@@ -8,6 +8,7 @@
     ./egoengine
     ./helix
     ./kitty
+    ./tmux
     ./git
     ./k9s
     ./ssh-agent
@@ -46,6 +47,7 @@
         k9s
         killall
         kitty.terminfo
+        tmux
         tmux.terminfo
         kubectl
         kubernetes-helm

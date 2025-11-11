@@ -3,6 +3,8 @@
 with lib;
 
 let
+  zshPackage = config.programs.zsh.package or pkgs.zsh;
+  defaultShell = "${zshPackage}/bin/zsh";
   # Remote link opening script for server side
   remoteLinkOpenScript = pkgs.writeScriptBin "remote-link-open" ''
     #!${pkgs.bash}/bin/bash
@@ -101,6 +103,8 @@ in
         
         # Ensure proper color rendering
         set -g default-terminal "tmux-256color"
+        set -g default-shell "${defaultShell}"
+        set -g default-command "${defaultShell} -l"
         set -ag terminal-overrides ",xterm*:RGB"
         set -ag terminal-overrides ",screen*:RGB"
         

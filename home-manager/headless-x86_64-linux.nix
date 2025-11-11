@@ -1,7 +1,6 @@
 { inputs, lib, config, pkgs, ... }: {
   imports = [
     ./common.nix
-    ./tmux
     ./devspaces-host
     ./linkpearl
     ./security-tools

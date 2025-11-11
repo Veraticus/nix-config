@@ -7,7 +7,6 @@
 {
   imports = [
     ../common.nix
-    ../tmux
     ../devspaces-host
     ../linkpearl
     ../security-tools

@@ -113,11 +113,14 @@ in
 
   networking = {
     useDHCP = false;
-    hostName = "ultraviolet";
-    firewall = {
-      enable = true;
-      checkReversePath = "loose";
-      trustedInterfaces = [ "tailscale0" ];
+      hostName = "ultraviolet";
+      firewall = {
+        enable = true;
+        checkReversePath = "loose";
+        trustedInterfaces = [
+          "tailscale0"
+          "podman0"
+        ];
       allowedUDPPorts = [
         51820
         config.services.tailscale.port
@@ -221,6 +224,7 @@ in
   systemd.tmpfiles.rules = [
     "d /etc/jellyseerr/config 0644 root root -"
     "d /etc/bazarr/config 0644 root root -"
+    "d /etc/piped 0755 root root -"
   ];
 
   # Services
@@ -450,6 +454,31 @@ in
   services.radarr = {
     enable = true;
     package = pkgs.radarr;
+  };
+
+  services.postgresql = {
+    enable = true;
+    package = pkgs.postgresql_16;
+    ensureDatabases = [ "piped" ];
+    ensureUsers = [
+      {
+        name = "piped";
+        ensureDBOwnership = true;
+      }
+    ];
+    settings = {
+      "listen_addresses" = lib.mkForce "*";
+    };
+    authentication = ''
+      local   all             postgres                                peer
+      local   piped           piped                                   trust
+      host    piped           piped           127.0.0.1/32            trust
+      host    piped           piped           ::1/128                 trust
+      host    piped           piped           10.88.0.0/16            trust
+      local   all             all                                     peer
+      host    all             all             127.0.0.1/32            scram-sha-256
+      host    all             all             ::1/128                 scram-sha-256
+    '';
   };
   
   # Configure Radarr with optimal quality settings after it starts
@@ -1191,6 +1220,26 @@ in
         import cloudflare
       '';
     };
+    virtualHosts."piped.home.husbuddies.gay" = {
+      extraConfig = ''
+        reverse_proxy /* 127.0.0.1:8086
+        import cloudflare
+      '';
+    };
+    virtualHosts."piped-api.home.husbuddies.gay" = {
+      extraConfig = ''
+        reverse_proxy /* 127.0.0.1:8087
+        import cloudflare
+      '';
+    };
+    virtualHosts."piped-proxy.home.husbuddies.gay" = {
+      extraConfig = ''
+        reverse_proxy /* 127.0.0.1:8088 {
+          header_up Host {http.request.header.Host}
+        }
+        import cloudflare
+      '';
+    };
   };
 
   systemd.services.caddy.serviceConfig.EnvironmentFile =
@@ -1317,6 +1366,28 @@ in
     '';
   };
 
+  environment.etc."piped/config.properties" = {
+    mode = "0640";
+    text = ''
+      PORT: 8080
+      HTTP_WORKERS: 2
+      PROXY_PART: https://piped-proxy.home.husbuddies.gay
+      API_URL: https://piped-api.home.husbuddies.gay
+      FRONTEND_URL: https://piped.home.husbuddies.gay
+      COMPROMISED_PASSWORD_CHECK: false
+      DISABLE_REGISTRATION:true
+      FEED_RETENTION: 30
+      SPONSORBLOCK_SERVERS:https://sponsor.ajay.app,https://sponsorblock.kavin.rocks
+      RYD_PROXY_URL:https://ryd-proxy.kavin.rocks
+      BG_HELPER_URL:http://piped-bg-helper:3000
+      hibernate.connection.url:jdbc:postgresql://host.containers.internal:5432/piped
+      hibernate.connection.driver_class:org.postgresql.Driver
+      hibernate.dialect:org.hibernate.dialect.PostgreSQLDialect
+      hibernate.connection.username:piped
+      hibernate.connection.password:
+    '';
+  };
+
   # Podman for media containers
   virtualisation.podman = {
     enable = true;
@@ -1333,6 +1404,51 @@ in
   virtualisation.oci-containers = {
     backend = "podman";
     containers = {
+      piped-bg-helper = {
+        image = "docker.io/1337kavin/bg-helper-server:latest";
+        autoRemoveOnStop = false;
+      };
+      piped-proxy = {
+        image = "docker.io/1337kavin/piped-proxy:latest";
+        ports = [
+          "127.0.0.1:8088:8080"
+        ];
+        autoRemoveOnStop = false;
+      };
+      piped-backend = {
+        image = "docker.io/1337kavin/piped:latest";
+        ports = [
+          "127.0.0.1:8087:8080"
+        ];
+        volumes = [
+          "/etc/piped/config.properties:/app/config.properties:ro"
+        ];
+        dependsOn = [
+          "piped-bg-helper"
+        ];
+        extraOptions = [
+          "--add-host=host.containers.internal:10.88.0.1"
+        ];
+        autoRemoveOnStop = false;
+      };
+      piped-frontend = {
+        image = "docker.io/1337kavin/piped-frontend:latest";
+        environment = {
+          BACKEND_HOSTNAME = "piped-api.home.husbuddies.gay";
+          HTTP_MODE = "https";
+        };
+        ports = [
+          "127.0.0.1:8086:80"
+        ];
+        dependsOn = [
+          "piped-backend"
+          "piped-proxy"
+        ];
+        autoRemoveOnStop = false;
+        capabilities = {
+          NET_BIND_SERVICE = true;
+        };
+      };
       flaresolverr = {
         image = "flaresolverr/flaresolverr:v3.3.18";
         ports = [

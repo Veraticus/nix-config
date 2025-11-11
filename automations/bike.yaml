@@ -1,0 +1,49 @@
+- id: nice_bike_arrival_front_deck
+  alias: "Nice bike + Josh → arriving home"
+  description: Open the garage when the bike is approaching from the street or within 50 ft of the house.
+  initial_state: "off"
+  use_blueprint:
+    path: garage/proximity_arrival.yaml
+    input:
+      distance_sensor: sensor.joshs_nice_bike_distance
+      location_sensor: sensor.josh_nice_bike_location
+      control_boolean: input_boolean.nice_bike_should_open
+      garage_cover: cover.garage_door
+      paired_departure_automation: automation.nice_bike_departure_front_deck
+      log_label: Nice Bike
+      front_deck_source_label: Front Deck
+      offline_attribute: offline
+      front_deck_threshold: 80
+      near_threshold: 50
+      cooldown_seconds: 15
+      home_device_tracker_ids: |
+        e8ed9f876ea7985f4b70625111ed0e2f
+        f1e6e1d96969a0af47431c9a1c1eec35
+        30408d03f2cb3a7441a310c9ef1606b8
+        4a09a5bcbbe2ff35db5fb5d49817d6e8
+- id: nice_bike_departure_front_deck
+  alias: "Nice bike + Josh → leaving home"
+  description: Close the garage once the bike is moving away from the garage toward the street.
+  initial_state: "off"
+  use_blueprint:
+    path: garage/proximity_departure.yaml
+    input:
+      distance_sensor: sensor.joshs_nice_bike_distance
+      location_sensor: sensor.josh_nice_bike_location
+      control_boolean: input_boolean.nice_bike_should_open
+      garage_cover: cover.garage_door
+      paired_arrival_automation: automation.nice_bike_arrival_front_deck
+      log_label: Nice Bike
+      garage_source_label: Garage
+      driveway_source_label: Driveway
+      front_deck_source_label: Front Deck
+      garage_state_name: garage
+      offline_attribute: offline
+      garage_depart_threshold: 25
+      far_threshold: 50
+      cooldown_seconds: 15
+      away_device_tracker_ids: |
+        e8ed9f876ea7985f4b70625111ed0e2f
+        f1e6e1d96969a0af47431c9a1c1eec35
+        30408d03f2cb3a7441a310c9ef1606b8
+        4a09a5bcbbe2ff35db5fb5d49817d6e8

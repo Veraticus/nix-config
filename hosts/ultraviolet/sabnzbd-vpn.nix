@@ -382,39 +382,42 @@
         
         echo "Checking SABnzbd VPN connection..."
         
-        # Check if Gluetun is healthy
-        if ! ${pkgs.podman}/bin/podman healthcheck run gluetun 2>/dev/null; then
-          echo "❌ Gluetun VPN is not healthy!"
+        # Query Mullvad status from inside the SABnzbd container so we know
+        # exactly what the downloader experiences.
+        VPN_STATUS=$(${pkgs.podman}/bin/podman exec sabnzbd curl -s https://am.i.mullvad.net/json 2>/dev/null || echo "")
+        if [ -z "$VPN_STATUS" ]; then
+          echo "❌ Unable to query Mullvad status from SABnzbd container"
           exit 1
         fi
         
-        # Check external IP through Gluetun
-        VPN_IP=$(${pkgs.curl}/bin/curl -s --proxy http://localhost:8888 https://ipinfo.io/ip 2>/dev/null || echo "FAILED")
+        IS_MULLVAD=$(${pkgs.jq}/bin/jq -r '.mullvad_exit_ip // false' <<<"$VPN_STATUS" 2>/dev/null || echo "false")
+        VPN_IP=$(${pkgs.jq}/bin/jq -r '.ip // "unknown"' <<<"$VPN_STATUS" 2>/dev/null || echo "unknown")
+        EXIT_HOST=$(${pkgs.jq}/bin/jq -r '.mullvad_exit_ip_hostname // "unknown"' <<<"$VPN_STATUS" 2>/dev/null || echo "unknown")
         
-        if [ "$VPN_IP" = "FAILED" ]; then
-          echo "❌ Cannot reach internet through VPN!"
-          echo "   Killswitch is active - no VPN, no internet."
+        if [ "$IS_MULLVAD" != "true" ]; then
+          echo "⚠️  WARNING: Traffic may not be routed through Mullvad"
+          echo "$VPN_STATUS"
           exit 1
         fi
         
-        # Verify it's Mullvad
-        VPN_ORG=$(${pkgs.curl}/bin/curl -s --proxy http://localhost:8888 https://ipinfo.io/org 2>/dev/null || echo "")
+        echo "✅ SABnzbd is using Mullvad VPN"
+        echo "   External IP: $VPN_IP"
+        echo "   Exit host: $EXIT_HOST"
         
-        if echo "$VPN_ORG" | grep -qi mullvad; then
-          echo "✅ SABnzbd is using Mullvad VPN"
-          echo "   External IP: $VPN_IP"
-          echo "   Organization: $VPN_ORG"
+        # Verify DNS from within SABnzbd
+        if ${pkgs.podman}/bin/podman exec sabnzbd getent hosts news.frugalusenet.com >/dev/null 2>&1; then
+          echo "✅ SABnzbd container can resolve Usenet hosts"
         else
-          echo "⚠️  WARNING: May not be using Mullvad"
-          echo "   IP: $VPN_IP"
-          echo "   Org: $VPN_ORG"
+          echo "❌ SABnzbd container cannot resolve Usenet hosts"
+          exit 1
         fi
         
-        # Check if SABnzbd is accessible
+        # Check if SABnzbd is accessible from the host
         if ${pkgs.curl}/bin/curl -s http://localhost:8080 >/dev/null 2>&1; then
           echo "✅ SABnzbd web interface is accessible"
         else
           echo "❌ SABnzbd web interface is not responding"
+          exit 1
         fi
       '';
     };

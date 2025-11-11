@@ -17,6 +17,326 @@ let
       run_hass_cli "$REAL_HASS_CLI" "$@"
     ''
   );
+  keychainPackage = {
+    template = [
+      {
+        binary_sensor = [
+          {
+            name = "Josh Keychain Button Press Signal";
+            unique_id = "josh_keychain_button_pressed_signal";
+            device_class = "occupancy";
+            state = "{{ is_state('input_boolean.josh_keychain_button_pressed', 'on') }}";
+          }
+          {
+            name = "Justin Keychain Button Press Signal";
+            unique_id = "justin_keychain_button_pressed_signal";
+            device_class = "occupancy";
+            state = "{{ is_state('input_boolean.justin_keychain_button_pressed', 'on') }}";
+          }
+        ];
+      }
+    ];
+  };
+  bikePackage = {
+    template = [
+      {
+        sensor = [
+          {
+            name = "Josh Nice Bike Location";
+            unique_id = "sensor_josh_nice_bike_location";
+            icon = "mdi:bicycle";
+            state = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
+{% set area_attr = tracker.attributes.get('area') if tracker else none %}
+{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+{% if tracker %}
+  {% set raw_last = tracker.attributes.get('last_seen') %}
+  {% if raw_last %}
+    {% set last_seen_ts = as_timestamp(raw_last) %}
+  {% else %}
+    {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
+  {% endif %}
+{% else %}
+  {% set last_seen_ts = last_seen_prev %}
+{% endif %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+{% if bermuda in ['unknown', 'unavailable'] %}
+  {{ last_known }}
+{% elif offline %}
+  {{ last_known }}
+{% elif normalized_area %}
+  {{ normalized_area }}
+{% else %}
+  {{ bermuda }}
+{% endif %}
+'';
+            attributes = {
+              bermuda_state = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{{ tracker.state if tracker else 'unknown' }}
+'';
+              last_known_zone = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set area_attr = tracker.attributes.get('area') if tracker else none %}
+{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+{% if bermuda in ['unknown', 'unavailable'] %}
+  {{ last_known }}
+{% elif offline %}
+  {{ last_known }}
+{% elif normalized_area %}
+  {{ normalized_area }}
+{% else %}
+  {{ bermuda }}
+{% endif %}
+'';
+              last_seen_ts = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{% set last_prev = this.attributes.last_seen_ts | default(none) %}
+{% if tracker %}
+  {% set raw_last = tracker.attributes.get('last_seen') %}
+  {% if raw_last %}
+    {{ as_timestamp(raw_last) }}
+  {% else %}
+    {{ as_timestamp(tracker.last_changed) }}
+  {% endif %}
+{% elif last_prev is not none %}
+  {{ last_prev }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_seen = ''
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% if ts is not none %}
+  {{ ts | timestamp_utc }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_seen_seconds_ago = ''
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% if ts is not none %}
+  {{ (now().timestamp() - ts) | round(0) }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_source = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{% if tracker %}
+  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
+{% else %}
+  {{ this.attributes.last_source | default("") }}
+{% endif %}
+'';
+              offline = ''
+{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
+{{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
+'';
+              last_distance = ''
+{% set distance = states('sensor.joshs_nice_bike_distance') %}
+{% if distance not in ['unknown', 'unavailable'] %}
+  {{ distance | float }}
+{% else %}
+  {{ this.attributes.last_distance | default(none) }}
+{% endif %}
+'';
+            };
+          }
+          {
+            name = "Josh Nice Bike Last Seen";
+            unique_id = "sensor_josh_nice_bike_last_seen";
+            device_class = "timestamp";
+            state = ''
+{% set ts = state_attr('sensor.josh_nice_bike_location','last_seen_ts') %}
+{% if ts is not none %}
+  {{ ts | timestamp_utc }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+          }
+        ];
+        binary_sensor = [
+          {
+            name = "Josh Nice Bike Offline";
+            unique_id = "binary_sensor_josh_nice_bike_offline";
+            device_class = "connectivity";
+            state = "{{ 'on' if state_attr('sensor.josh_nice_bike_location','offline') else 'off' }}";
+          }
+        ];
+      }
+    ];
+  };
+  carPackage = {
+    template = [
+      {
+        sensor = [
+          {
+            name = "Honda CRV Location";
+            unique_id = "sensor_honda_crv_location";
+            icon = "mdi:car";
+            state = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
+{% set area_attr = tracker.attributes.get('area') if tracker else none %}
+{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+{% if tracker %}
+  {% set raw_last = tracker.attributes.get('last_seen') %}
+  {% if raw_last %}
+    {% set last_seen_ts = as_timestamp(raw_last) %}
+  {% else %}
+    {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
+  {% endif %}
+{% else %}
+  {% set last_seen_ts = last_seen_prev %}
+{% endif %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+{% if bermuda in ['unknown', 'unavailable'] %}
+  {{ last_known }}
+{% elif offline %}
+  {{ last_known }}
+{% elif normalized_area %}
+  {{ normalized_area }}
+{% else %}
+  {{ bermuda }}
+{% endif %}
+'';
+            attributes = {
+              bermuda_state = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{{ tracker.state if tracker else 'unknown' }}
+'';
+              last_known_zone = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set area_attr = tracker.attributes.get('area') if tracker else none %}
+{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+{% if bermuda in ['unknown', 'unavailable'] %}
+  {{ last_known }}
+{% elif offline %}
+  {{ last_known }}
+{% elif normalized_area %}
+  {{ normalized_area }}
+{% else %}
+  {{ bermuda }}
+{% endif %}
+'';
+              last_seen_ts = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{% set last_prev = this.attributes.last_seen_ts | default(none) %}
+{% if tracker %}
+  {% set raw_last = tracker.attributes.get('last_seen') %}
+  {% if raw_last %}
+    {{ as_timestamp(raw_last) }}
+  {% else %}
+    {{ as_timestamp(tracker.last_changed) }}
+  {% endif %}
+{% elif last_prev is not none %}
+  {{ last_prev }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_seen = ''
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% if ts is not none %}
+  {{ ts | timestamp_utc }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_seen_seconds_ago = ''
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% if ts is not none %}
+  {{ (now().timestamp() - ts) | round(0) }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+              last_source = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{% if tracker %}
+  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
+{% else %}
+  {{ this.attributes.last_source | default("") }}
+{% endif %}
+'';
+              offline = ''
+{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+{% set bermuda = tracker.state if tracker else 'unknown' %}
+{% set last_known = this.attributes.last_known_zone | default('not_home') %}
+{% set ts = this.attributes.last_seen_ts | default(none) %}
+{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+{% set offline_threshold = 900 %}
+{% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
+{{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
+'';
+              last_distance = ''
+{% set distance = states('sensor.bcpro_201403_distance') %}
+{% if distance not in ['unknown', 'unavailable'] %}
+  {{ distance | float }}
+{% else %}
+  {{ this.attributes.last_distance | default(none) }}
+{% endif %}
+'';
+            };
+          }
+          {
+            name = "Honda CRV Last Seen";
+            unique_id = "sensor_honda_crv_last_seen";
+            device_class = "timestamp";
+            state = ''
+{% set ts = state_attr('sensor.honda_crv_location','last_seen_ts') %}
+{% if ts is not none %}
+  {{ ts | timestamp_utc }}
+{% else %}
+  {{ none }}
+{% endif %}
+'';
+          }
+        ];
+        binary_sensor = [
+          {
+            name = "Honda CRV Offline";
+            unique_id = "binary_sensor_honda_crv_offline";
+            device_class = "connectivity";
+            state = "{{ 'on' if state_attr('sensor.honda_crv_location','offline') else 'off' }}";
+          }
+        ];
+      }
+    ];
+  };
   blePassthrough = pkgs.fetchFromGitHub {
     owner = "iHost-Open-Source-Project";
     repo = "ble_passthrough";
@@ -139,10 +459,11 @@ in
         # Use LAN-reachable IP so speakers (e.g., Sonos) can fetch TTS audio
         internal_url = "http://172.31.0.200:8123";
 
-        packages = [
-          (pkgs.writeTextDir "custom_templates/keychain_button.yaml"
-            (builtins.readFile ./home-assistant/templates/keychain_button.yaml))
-        ];
+        packages = {
+          keychain_button = keychainPackage;
+          bike = bikePackage;
+          car = carPackage;
+        };
 
         # Multi-factor authentication configuration
         auth_mfa_modules = [
@@ -319,6 +640,16 @@ in
         leak_ack_shed = {
           name = "Ack leak: Shed";
           icon = "mdi:check-circle";
+          initial = false;
+        };
+        nice_bike_should_open = {
+          name = "Nice Bike Should Open Garage";
+          icon = "mdi:bike";
+          initial = false;
+        };
+        honda_crv_should_open = {
+          name = "Honda CRV Should Open Garage";
+          icon = "mdi:car";
           initial = false;
         };
       };

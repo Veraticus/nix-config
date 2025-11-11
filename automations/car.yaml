@@ -1,0 +1,39 @@
+- id: honda_crv_arrival_home
+  alias: "Honda CRV → arriving home"
+  description: Open the garage when the Honda CRV approaches within 80 ft or returns within 50 ft of the house.
+  initial_state: "off"
+  use_blueprint:
+    path: garage/proximity_arrival.yaml
+    input:
+      distance_sensor: sensor.bcpro_201403_distance
+      location_sensor: sensor.honda_crv_location
+      control_boolean: input_boolean.honda_crv_should_open
+      garage_cover: cover.garage_door
+      paired_departure_automation: automation.honda_crv_departing_home
+      log_label: Honda CRV
+      front_deck_source_label: Front Deck
+      offline_attribute: offline
+      front_deck_threshold: 80
+      near_threshold: 50
+      cooldown_seconds: 15
+- id: honda_crv_departing_home
+  alias: "Honda CRV → leaving home"
+  description: Close the garage once the Honda CRV moves away from the garage toward the street.
+  initial_state: "off"
+  use_blueprint:
+    path: garage/proximity_departure.yaml
+    input:
+      distance_sensor: sensor.bcpro_201403_distance
+      location_sensor: sensor.honda_crv_location
+      control_boolean: input_boolean.honda_crv_should_open
+      garage_cover: cover.garage_door
+      paired_arrival_automation: automation.honda_crv_arrival_home
+      log_label: Honda CRV
+      garage_source_label: Garage
+      driveway_source_label: Driveway
+      front_deck_source_label: Front Deck
+      garage_state_name: garage
+      offline_attribute: offline
+      garage_depart_threshold: 25
+      far_threshold: 50
+      cooldown_seconds: 15

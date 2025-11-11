@@ -1,0 +1,200 @@
+blueprint:
+  name: Garage Door Arrival (Distance + Location)
+  description: >
+    Open the garage door when a tracked vehicle approaches within configurable
+    proximity, using shared logic for distance sensors and location sources.
+  domain: automation
+  input:
+    distance_sensor:
+      name: Distance sensor
+      description: Numeric sensor providing distance in feet.
+      selector:
+        entity:
+          domain: sensor
+    location_sensor:
+      name: Location sensor
+      description: Sensor that exposes `last_source` and `offline` attributes.
+      selector:
+        entity:
+          domain: sensor
+    control_boolean:
+      name: Trigger guard boolean
+      description: Helper that prevents repeated garage openings.
+      selector:
+        entity:
+          domain: input_boolean
+    garage_cover:
+      name: Garage door
+      selector:
+        entity:
+          domain: cover
+    paired_departure_automation:
+      name: Paired departure automation
+      description: Automation to consult for cooldown/current checks.
+      selector:
+        entity:
+          domain: automation
+    log_label:
+      name: Log label
+      description: Friendly name for logbook entries.
+      default: Vehicle
+      selector:
+        text:
+          multiline: false
+    front_deck_source_label:
+      name: Front deck source label
+      description: Expected substring from the location sensor for front-deck triggers.
+      default: Front Deck
+      selector:
+        text:
+          multiline: false
+    offline_attribute:
+      name: Offline attribute name
+      description: Attribute on the location sensor that indicates offline status.
+      default: offline
+      selector:
+        text:
+          multiline: false
+    front_deck_threshold:
+      name: Front deck distance threshold (ft)
+      default: 80
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          unit_of_measurement: ft
+    near_threshold:
+      name: Near distance threshold (ft)
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          unit_of_measurement: ft
+    cooldown_seconds:
+      name: Cooldown after departure (seconds)
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 600
+          step: 1
+          unit_of_measurement: s
+    home_device_tracker_ids:
+      name: Device tracker IDs to mark home
+      description: >
+        Optional list of `dev_id` values (one per line) that should be forced to
+        `home` when the garage opens.
+      default: ""
+      selector:
+        text:
+          multiline: true
+    home_device_tracker_location_name:
+      name: Device tracker arrival location name
+      default: home
+      selector:
+        text:
+          multiline: false
+mode: single
+max_exceeded: silent
+variables:
+  distance_sensor: !input distance_sensor
+  location_sensor: !input location_sensor
+  control_boolean: !input control_boolean
+  garage_cover: !input garage_cover
+  paired_departure: !input paired_departure_automation
+  log_label: !input log_label
+  front_deck_source_label: !input front_deck_source_label
+  offline_attribute: !input offline_attribute
+  cooldown_seconds: !input cooldown_seconds
+  home_tracker_ids: !input home_device_tracker_ids
+trigger:
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    below: !input front_deck_threshold
+    for:
+      seconds: 2
+    id: front_deck
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    below: !input near_threshold
+    for:
+      seconds: 2
+    id: near_any
+condition:
+  - condition: state
+    entity_id: !input control_boolean
+    state: "off"
+  - condition: template
+    value_template: >
+      {% set paired = paired_departure %}
+      {% if paired in ('', none) %}
+        true
+      {% else %}
+        {% set last_trigger = state_attr(paired, 'last_triggered') %}
+        {{ last_trigger is none or (as_timestamp(now()) - as_timestamp(last_trigger or 0)) > cooldown_seconds }}
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% set paired = paired_departure %}
+      {% if paired in ('', none) %}
+        true
+      {% else %}
+        {% set current = state_attr(paired, 'current') %}
+        {{ current is none or current == 0 }}
+      {% endif %}
+  - condition: template
+    value_template: "{{ is_state(garage_cover, 'closed') }}"
+  - condition: template
+    value_template: >
+      {% set offline = state_attr(location_sensor, offline_attribute) %}
+      {{ offline is not sameas true }}
+  - condition: template
+    value_template: >
+      {% if trigger.id == 'front_deck' %}
+        {% set last_source = state_attr(location_sensor, 'last_source') or '' %}
+        {{ front_deck_source_label in last_source }}
+      {% else %}
+        true
+      {% endif %}
+action:
+  - variables:
+      tracker_ids: >
+        {% set raw = home_tracker_ids | default('', true) %}
+        {% if raw %}
+          {{ raw.split() }}
+        {% else %}
+          []
+        {% endif %}
+  - service: logbook.log
+    data:
+      name: "{{ log_label }}"
+      entity_id: !input location_sensor
+      message: >
+        {% set distance = (states(distance_sensor) | float(0)) | round(1) %}
+        {% set source = state_attr(location_sensor, 'last_source') | default('unknown') %}
+        {% if trigger.id == 'front_deck' %}
+          arrival via front deck at {{ distance }} ft (source: {{ source }})
+        {% else %}
+          arrival via close-range reading at {{ distance }} ft (source: {{ source }})
+        {% endif %}
+  - service: input_boolean.turn_on
+    target:
+      entity_id: !input control_boolean
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ tracker_ids | length > 0 }}"
+        sequence:
+          - repeat:
+              for_each: "{{ tracker_ids }}"
+              sequence:
+                - service: device_tracker.see
+                  data:
+                    dev_id: "{{ repeat.item }}"
+                    location_name: !input home_device_tracker_location_name
+  - service: cover.open_cover
+    target:
+      entity_id: !input garage_cover

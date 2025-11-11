@@ -11,4 +11,5 @@
   deadcode = pkgs.callPackage ./deadcode { };
   golangciLintBin = pkgs.callPackage ./golangci-lint-bin { };
   coder = pkgs.callPackage ./coder-cli { unzip = pkgs.unzip; };
+  slidev = pkgs.callPackage ./slidev { };
 }

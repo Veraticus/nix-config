@@ -22,6 +22,7 @@ in {
     settings = {
       theme = "catppuccin_powerline";
       editor = {
+        default-yank-register = "+";
         line-number = "relative";
         cursor-shape = {
           insert = "bar";
@@ -54,18 +55,33 @@ in {
             "separator"
             "file-type"
           ];
-          separator = "";
+          separator = " | ";
           mode = {
-            normal = " NORMAL";
-            insert = " INSERT";
-            select = " SELECT";
+            normal = "[NORMAL]";
+            insert = "[INSERT]";
+            select = "[SELECT]";
           };
           diagnostics = [ "warning" "error" ];
           workspace-diagnostics = [ "warning" "error" ];
         };
+        soft-wrap = {
+          enable = true;
+          wrap-at-text-width = true;
+          wrap-indicator = " ";
+        };
+        indent-guides = {
+          render = true;
+          character = "╎";
+          skip-levels = 1;
+        };
+        file-picker = {
+          hidden = false;
+        };
       };
       keys = {
         normal = {
+          "^" = "goto_line_start";
+          "$" = "goto_line_end";
           "C-h" = "jump_view_left";
           "C-l" = "jump_view_right";
           "C-j" = "jump_view_down";
@@ -75,6 +91,8 @@ in {
           };
         };
         select = {
+          "^" = "goto_line_start";
+          "$" = "goto_line_end";
           "C-h" = "jump_view_left";
           "C-l" = "jump_view_right";
           "C-j" = "jump_view_down";
@@ -232,7 +250,8 @@ in {
     "ui.statusline.normal" = { fg = "crust", bg = "lavender", modifiers = ["bold"] }
     "ui.statusline.insert" = { fg = "crust", bg = "flamingo", modifiers = ["bold"] }
     "ui.statusline.select" = { fg = "crust", bg = "peach", modifiers = ["bold"] }
-    "ui.statusline.separator" = { fg = "mantle", bg = "crust" }
+    "ui.statusline.separator" = { fg = "subtext0", bg = "mantle", modifiers = ["bold"] }
+    "ui.virtual.indent-guide" = { fg = "surface2", modifiers = ["dim"] }
   '';
 
   home.packages = lib.mkAfter lspPackages;

@@ -46,10 +46,12 @@
         k9s
         killall
         kitty.terminfo
+        tmux.terminfo
         kubectl
         kubernetes-helm
         kustomize
         manix
+        moar
         ncdu
         parallel
         ranger

@@ -46,11 +46,11 @@ in
     programs.tmux = {
       enable = true;
       baseIndex = 1;
-      historyLimit = 50000;
+      historyLimit = 200000;
       keyMode = "vi";
       mouse = true;
       escapeTime = 0;
-      terminal = "xterm-256color";
+      terminal = "tmux-256color";
 
       plugins = with pkgs.tmuxPlugins; [
         sensible
@@ -86,19 +86,21 @@ in
 
       extraConfig = ''
         # Enable true color support
+        set -ga terminal-overrides ",tmux-256color:Tc"
         set -ga terminal-overrides ",xterm-256color:Tc"
         set -ga terminal-overrides ",xterm-kitty:Tc"
         # Eternal Terminal presents itself as a screen(1) derivative, so make
         # sure tmux still drives it with truecolor sequences.
         set -ga terminal-overrides ",screen-256color:Tc"
         set -ga terminal-overrides ",screen:Tc"
+        set -as terminal-features ",tmux-256color:RGB"
         set -as terminal-features ",xterm-256color:RGB"
         set -as terminal-features ",xterm-kitty:RGB"
         set -as terminal-features ",screen-256color:RGB"
         set -as terminal-features ",screen:RGB"
         
         # Ensure proper color rendering
-        set -g default-terminal "xterm-256color"
+        set -g default-terminal "tmux-256color"
         set -ag terminal-overrides ",xterm*:RGB"
         set -ag terminal-overrides ",screen*:RGB"
         
@@ -107,6 +109,7 @@ in
         set -ga update-environment "TERM_PROGRAM"
         set -ga update-environment "TERM_PROGRAM_VERSION"
         set -g allow-passthrough on
+        set -g set-clipboard on
 
         # General Settings
         setw -g pane-base-index 1
@@ -155,6 +158,10 @@ in
         bind c new-window -c "#{pane_current_path}"
         bind '"' split-window -c "#{pane_current_path}"
         bind % split-window -h -c "#{pane_current_path}"
+
+        # Smart mouse wheel behavior - scroll alternate screen apps naturally
+        bind -n WheelUpPane if -F "#{pane_in_mode}" "send-keys -M" "if -F '#{alternate_on}' 'send-keys -M' 'copy-mode -e; send-keys -M'"
+        bind -n WheelDownPane if -F "#{pane_in_mode}" "send-keys -M" "send-keys -M"
         
         # Vim-style pane navigation
         bind h select-pane -L

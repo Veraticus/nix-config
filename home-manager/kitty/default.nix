@@ -28,8 +28,8 @@
       "kitty_mod+shift+[" = "previous_tab";
       "cmd+enter" = "no_op";
       "cmd+shift+enter" = "no_op";
-      "kitty_mod+h" = "kitty_scrollback_nvim";
-      "kitty_mod+g" = "kitty_scrollback_nvim --config ksb_builtin_last_cmd_output";
+      "kitty_mod+h" = "show_scrollback";
+      "kitty_mod+g" = "show_last_non_empty_command_output";
     };
 
     settings = {
@@ -70,8 +70,8 @@
       "strip_trailing_spaces" = "smart";
       "background_opacity" = "0.9";
       "hide_window_decorations" = true;
-      "mouse_map ctrl+shift+right" = "press ungrabbed combine : mouse_select_command_output : kitty_scrollback_nvim --config ksb_builtin_last_visited_cmd_output";
-      "action_alias" = "kitty_scrollback_nvim kitten ${config.home.homeDirectory}/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py";
+      "scrollback_pager" = "moar --terminal-fg --wrap --no-statusbar --no-linenumbers --quit-if-one-screen +INPUT_LINE_NUMBER";
+      "mouse_map ctrl+shift+right" = "press ungrabbed combine : mouse_select_command_output : show_last_visited_command_output";
       "exe_search_path" = "/run/current-system/sw/bin:/etc/profiles/per-user/${config.home.username}/bin:/run/current-system/sw/bin:/opt/homebrew/bin";
       # Enable hyperlink handling
       "open_url_with" = "default";

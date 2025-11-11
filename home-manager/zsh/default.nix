@@ -1,4 +1,8 @@
-{ inputs, lib, config, pkgs, ... }:
+{ inputs, lib, config, pkgs, hostname ? null, ... }:
+let
+  isCloudbank = hostname == "cloudbank";
+  autoAttachRemoteTmux = hostname != null && !isCloudbank;
+in
 {
   xdg.configFile."zsh" = {
     source = ./zsh;
@@ -20,6 +24,8 @@
       ls = "ls --color=auto";
       vim = "nvim";
       vimdiff = "nvim -d";
+    } // lib.optionalAttrs isCloudbank {
+      t = "tmux new -A -s local";
     };
 
     envExtra = ''
@@ -53,6 +59,13 @@
     };
 
     initContent = ''
+      ${lib.optionalString autoAttachRemoteTmux ''
+        # Auto-start tmux on remote hosts unless explicitly disabled
+        if [[ $- == *i* ]] && [[ -z "''${TMUX:-}" ]] && [[ "''${NO_REMOTE_TMUX:-0}" != 1 ]]; then
+          exec tmux -u new-session -A -s main
+        fi
+      ''}
+
       # Prepend Homebrew to PATH so it takes precedence over Nix packages
       # This fixes issues with broken Nix packages like shellspec
       [ -d "/opt/homebrew/bin" ] && export PATH=/opt/homebrew/bin:''${PATH}

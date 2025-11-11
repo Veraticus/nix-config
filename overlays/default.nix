@@ -1,6 +1,10 @@
 # This file defines overlays
 { inputs, ... }:
-{
+let
+  moarRev = "25be66bf628ad02e807ca929b5e7a1128511d255";
+  moarVersion = "unstable-2025-11-09";
+  moarVersionString = "${moarVersion}+g${builtins.substring 0 7 moarRev}";
+in {
   default = final: prev:
     let
       codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
@@ -17,6 +21,7 @@
       deadcode = final.callPackage ../pkgs/deadcode { };
       golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin { };
       coder = final.callPackage ../pkgs/coder-cli { unzip = final.unzip; };
+      slidev = final.callPackage ../pkgs/slidev { };
 
       # Codex packages from local checkout
       codex-tui = codexTui;
@@ -46,6 +51,36 @@
       catppuccin-plymouth = prev.catppuccin-plymouth.override {
         variant = "mocha";
       };
+
+      moar = prev.moar.overrideAttrs (old: {
+        version = moarVersion;
+        src = final.fetchFromGitHub {
+          owner = "walles";
+          repo = "moar";
+          rev = moarRev;
+          hash = "sha256-c2ypM5xglQbvgvU2Eq7sgMpNHSAsKEBDwQZC/Sf4GPU=";
+        };
+        vendorHash = "sha256-ve8QT2dIUZGTFYESt9vIllGTan22ciZr8SQzfqtqQfw=";
+        ldflags = [
+          "-s"
+          "-w"
+          "-X"
+          "main.versionString=${moarVersionString}"
+        ];
+        postInstall = ''
+          if [ -x "$out/bin/moor" ] && [ ! -e "$out/bin/moar" ]; then
+            mv "$out/bin/moor" "$out/bin/moar"
+          fi
+          if [ -x "$out/bin/moar" ] && [ ! -e "$out/bin/moor" ]; then
+            ln -s moar "$out/bin/moor"
+          fi
+          if [ -f ./moor.1 ]; then
+            installManPage ./moor.1
+          elif [ -f ./moar.1 ]; then
+            installManPage ./moar.1
+          fi
+        '';
+      });
       
       # XIVLauncher customizations
       xivlauncher = prev.xivlauncher.override {

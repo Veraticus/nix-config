@@ -60,12 +60,6 @@
     rev = "3e72397465f774b01aa38e4fe8e6eecf23d766d9";
     hash = "sha256-uk2y8I8Hl8ufTFKLQuzchGxSujSlohV/2zcjL1aF65o=";
   };
-  "kitty-scrollback.nvim" = fetchFromGitHub {
-    owner = "mikesmithgh";
-    repo = "kitty-scrollback.nvim";
-    rev = "36d19dc85c0a1d0193e7c52d41129c4aa28b72e8";
-    hash = "sha256-UNBQMh7No5tMpgFFzjKPloqJNhy2V58nR4aFFjqOH0E=";
-  };
   "lazy.nvim" = fetchFromGitHub {
     owner = "folke";
     repo = "lazy.nvim";

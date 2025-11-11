@@ -119,7 +119,8 @@ in
     
     # System packages
     systemPackages = with pkgs; [
-      eternal-terminal  # ET - Low-latency SSH replacement
+      eternal-terminal 
+      slidev
     ];
   };
 

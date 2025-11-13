@@ -8,6 +8,7 @@
     overlays = [
       inputs.neovim-nightly.overlays.default
       outputs.overlays.default
+      outputs.overlays.darwin
       outputs.overlays.additions
       outputs.overlays.modifications
       outputs.overlays.unstable-packages

@@ -20,7 +20,6 @@ in {
     golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin {};
     coder = final.callPackage ../pkgs/coder-cli {inherit (final) unzip;};
     slidev = final.callPackage ../pkgs/slidev {};
-    aerospace = final.callPackage ../pkgs/aerospace {};
 
     # Codex packages from local checkout
     codex-tui = codexTui;
@@ -51,10 +50,6 @@ in {
     catppuccin-plymouth = prev.catppuccin-plymouth.override {
       variant = "mocha";
     };
-
-    gtk3 = prev.gtk3.overrideAttrs (old: {
-      patches = (old.patches or []) ++ [../patches/gtk3-darwin-sincos.patch];
-    });
 
     moar = prev.moar.overrideAttrs (_: {
       version = moarVersion;
@@ -111,4 +106,5 @@ in {
   additions = _: _: {};
   modifications = _: _: {};
   unstable-packages = _: _: {};
+  darwin = import ./darwin.nix;
 }

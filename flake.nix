@@ -267,6 +267,7 @@
             overlays = [
               inputs.neovim-nightly.overlays.default
               outputs.overlays.default
+              outputs.overlays.darwin
             ];
             config.allowUnfree = true;
           };

@@ -1,5 +1,8 @@
-{ lib, stdenvNoCC, fetchzip }:
-
+{
+  lib,
+  stdenvNoCC,
+  fetchzip,
+}:
 stdenvNoCC.mkDerivation rec {
   pname = "aerospace";
   version = "0.19.2-Beta";
@@ -39,7 +42,7 @@ stdenvNoCC.mkDerivation rec {
     description = "i3-inspired tiling window manager for macOS";
     homepage = "https://github.com/nikitabobko/AeroSpace";
     license = licenses.mit;
-    platforms = [ "aarch64-darwin" "x86_64-darwin" ];
+    platforms = ["aarch64-darwin" "x86_64-darwin"];
     mainProgram = "aerospace";
   };
 }

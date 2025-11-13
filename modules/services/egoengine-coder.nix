@@ -1,6 +1,11 @@
-{ config, lib, pkgs, ... }:
-let
-  inherit (lib)
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
+  inherit
+    (lib)
     mkDefault
     mkEnableOption
     mkForce
@@ -10,15 +15,18 @@ let
     mkOverride
     optional
     optionalAttrs
-    types;
+    types
+    ;
 
   cfg = config.services.egoengine.coder;
 
-  containerPrefix = if cfg.dockerSocketPath != null then "docker" else "podman";
+  containerPrefix =
+    if cfg.dockerSocketPath != null
+    then "docker"
+    else "podman";
   containerServiceName = "${containerPrefix}-${cfg.containerName}";
   containerUnit = "${containerServiceName}.service";
-in
-{
+in {
   options.services.egoengine.coder = {
     enable = mkEnableOption "self-hosted Coder service";
 
@@ -140,50 +148,52 @@ in
     dbSecretPath = config.age.secrets."coder-db-password".path;
     coderSecretPath = config.age.secrets."coder-env".path;
     internalUrl =
-      if cfg.internalUrl != null then cfg.internalUrl else "http://127.0.0.1:${toString cfg.port}";
-    dockerGroupGid = lib.attrByPath [ "users" "groups" "docker" "gid" ] null config;
+      if cfg.internalUrl != null
+      then cfg.internalUrl
+      else "http://127.0.0.1:${toString cfg.port}";
+    dockerGroupGid = lib.attrByPath ["users" "groups" "docker" "gid"] null config;
     setPasswordScript = pkgs.writeShellScript "coder-postgres-password" ''
-      set -euo pipefail
+            set -euo pipefail
 
-      if [ -f ${cfg.databaseEnvFile} ]; then
-        # shellcheck disable=SC1090
-        source ${cfg.databaseEnvFile}
-      elif [ -f ${dbSecretPath} ]; then
-        # shellcheck disable=SC1090
-        source ${dbSecretPath}
-      else
-        echo "Coder database env file ${cfg.databaseEnvFile} is missing" >&2
-        exit 1
-      fi
+            if [ -f ${cfg.databaseEnvFile} ]; then
+              # shellcheck disable=SC1090
+              source ${cfg.databaseEnvFile}
+            elif [ -f ${dbSecretPath} ]; then
+              # shellcheck disable=SC1090
+              source ${dbSecretPath}
+            else
+              echo "Coder database env file ${cfg.databaseEnvFile} is missing" >&2
+              exit 1
+            fi
 
-      if [ -z "''${CODER_DB_PASSWORD:-}" ]; then
-        echo "CODER_DB_PASSWORD is empty; refusing to continue" >&2
-        exit 1
-      fi
+            if [ -z "''${CODER_DB_PASSWORD:-}" ]; then
+              echo "CODER_DB_PASSWORD is empty; refusing to continue" >&2
+              exit 1
+            fi
 
-      delimiter="pw"
-      while [[ "$CODER_DB_PASSWORD" == *"$delimiter"* ]]; do
-        delimiter="''${delimiter}_"
-      done
+            delimiter="pw"
+            while [[ "$CODER_DB_PASSWORD" == *"$delimiter"* ]]; do
+              delimiter="''${delimiter}_"
+            done
 
-      dollar_delim=$(${pkgs.coreutils}/bin/printf '$%s$' "$delimiter")
-      do_tag="coder_pw"
-      do_delim=$(${pkgs.coreutils}/bin/printf '$%s$' "$do_tag")
+            dollar_delim=$(${pkgs.coreutils}/bin/printf '$%s$' "$delimiter")
+            do_tag="coder_pw"
+            do_delim=$(${pkgs.coreutils}/bin/printf '$%s$' "$do_tag")
 
-${cfg.postgresqlPackage}/bin/psql \
-        --dbname=postgres \
-        --tuples-only \
-        --set=ON_ERROR_STOP=1 <<SQL
-DO $do_delim
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${cfg.databaseUser}') THEN
-    EXECUTE 'CREATE ROLE ${cfg.databaseUser} LOGIN';
-  END IF;
-END;
-$do_delim;
-ALTER ROLE ${cfg.databaseUser} WITH LOGIN PASSWORD $dollar_delim$CODER_DB_PASSWORD$dollar_delim;
-GRANT ALL PRIVILEGES ON DATABASE ${cfg.databaseName} TO ${cfg.databaseUser};
-SQL
+      ${cfg.postgresqlPackage}/bin/psql \
+              --dbname=postgres \
+              --tuples-only \
+              --set=ON_ERROR_STOP=1 <<SQL
+      DO $do_delim
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${cfg.databaseUser}') THEN
+          EXECUTE 'CREATE ROLE ${cfg.databaseUser} LOGIN';
+        END IF;
+      END;
+      $do_delim;
+      ALTER ROLE ${cfg.databaseUser} WITH LOGIN PASSWORD $dollar_delim$CODER_DB_PASSWORD$dollar_delim;
+      GRANT ALL PRIVILEGES ON DATABASE ${cfg.databaseName} TO ${cfg.databaseUser};
+      SQL
     '';
 
     templateRegistrationScript = pkgs.writeShellScript "coder-register-templates" ''
@@ -199,7 +209,11 @@ SQL
 
       CODER_URL="''${CODER_INTERNAL_URL:-${internalUrl}}"
       if [ -z "''${CODER_URL}" ]; then
-        CODER_URL="${if cfg.accessUrl != null then cfg.accessUrl else ""}"
+        CODER_URL="${
+        if cfg.accessUrl != null
+        then cfg.accessUrl
+        else ""
+      }"
       fi
       if [ -z "''${CODER_URL}" ]; then
         CODER_URL="''${CODER_ACCESS_URL:-}"
@@ -238,171 +252,178 @@ SQL
         echo "coder CLI is not available; skipping template registration" >&2
       fi
     '';
-  in mkMerge [
-    {
-      assertions = [
-        {
-          assertion = cfg.accessUrl != null;
-          message = "services.egoengine.coder.accessUrl must be set when enabling the Coder service.";
-        }
-      ];
-
-      age.secrets."coder-db-password" = {
-        file = ../../secrets/shared/coder-db-password.age;
-        owner = "postgres";
-        group = "postgres";
-        mode = "0400";
-      };
-
-      age.secrets."coder-env" = {
-        file = ../../secrets/shared/coder-env.age;
-        owner = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      environment.etc."coder/db.env" = {
-        source = dbSecretPath;
-        user = "postgres";
-        group = "postgres";
-        mode = "0400";
-      };
-
-      environment.etc."coder/coder.env" = {
-        source = coderSecretPath;
-        user = "root";
-        group = "root";
-        mode = "0400";
-      };
-
-      systemd.tmpfiles.rules = [
-        "d ${cfg.dataDir} 0750 root root -"
-        "d /etc/coder 0750 root root -"
-      ];
-
-      services.postgresql = {
-        enable = true;
-        package = cfg.postgresqlPackage;
-        ensureDatabases = [ cfg.databaseName ];
-        ensureUsers = [
+  in
+    mkMerge [
+      {
+        assertions = [
           {
-            name = cfg.databaseUser;
-            ensureDBOwnership = true;
+            assertion = cfg.accessUrl != null;
+            message = "services.egoengine.coder.accessUrl must be set when enabling the Coder service.";
           }
         ];
-        settings = {
-          listen_addresses = mkForce "127.0.0.1";
+
+        age.secrets."coder-db-password" = {
+          file = ../../secrets/shared/coder-db-password.age;
+          owner = "postgres";
+          group = "postgres";
+          mode = "0400";
         };
-        authentication = mkOverride 50 ''
-          local   all             all                                     peer
-          host    all             all             127.0.0.1/32            scram-sha-256
-          host    all             all             ::1/128                 scram-sha-256
-        '';
-      };
 
-      virtualisation.oci-containers.backend = mkDefault (
-        if cfg.dockerSocketPath != null then "docker" else "podman"
-      );
+        age.secrets."coder-env" = {
+          file = ../../secrets/shared/coder-env.age;
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
 
-      virtualisation.oci-containers.containers.${cfg.containerName} = {
-        image = cfg.image;
-        autoStart = true;
-        extraOptions =
-          [ "--network=host" ]
-          ++ optional (cfg.dockerSocketPath != null) "--user=root"
-          ++ optional (cfg.dockerSocketPath != null && dockerGroupGid != null)
-            "--group-add=${toString dockerGroupGid}";
-        environment =
-          (optionalAttrs (cfg.accessUrl != null) {
-            CODER_ACCESS_URL = cfg.accessUrl;
-          })
-          // {
-            CODER_HTTP_ADDRESS = "0.0.0.0:${toString cfg.port}";
-          }
-          // optionalAttrs (cfg.dockerSocketPath != null) {
-            CODER_PROVISIONER_DOCKER_HOST = "unix://${cfg.dockerSocketPath}";
+        environment.etc."coder/db.env" = {
+          source = dbSecretPath;
+          user = "postgres";
+          group = "postgres";
+          mode = "0400";
+        };
+
+        environment.etc."coder/coder.env" = {
+          source = coderSecretPath;
+          user = "root";
+          group = "root";
+          mode = "0400";
+        };
+
+        systemd = {
+          tmpfiles.rules = [
+            "d ${cfg.dataDir} 0750 root root -"
+            "d /etc/coder 0750 root root -"
+          ];
+
+          services =
+            {
+              ${containerServiceName} = {
+                after =
+                  [
+                    "postgresql.service"
+                    "coder-postgres-password.service"
+                    "run-agenix.d.mount"
+                  ]
+                  ++ optional (cfg.dockerSocketPath != null) "docker.service";
+                requires =
+                  [
+                    "postgresql.service"
+                    "coder-postgres-password.service"
+                    "run-agenix.d.mount"
+                  ]
+                  ++ optional (cfg.dockerSocketPath != null) "docker.service";
+              };
+
+              "coder-postgres-password" = {
+                description = "Set password for the Coder PostgreSQL user";
+                unitConfig.RequiresMountsFor = [
+                  cfg.databaseEnvFile
+                  cfg.environmentFile
+                  dbSecretPath
+                  coderSecretPath
+                ];
+                wants = [
+                  "postgresql.service"
+                  "run-agenix.d.mount"
+                ];
+                after = [
+                  "postgresql.service"
+                  "run-agenix.d.mount"
+                ];
+                requires = [
+                  "postgresql.service"
+                  "run-agenix.d.mount"
+                ];
+                wantedBy = ["multi-user.target"];
+                partOf = [containerUnit];
+                serviceConfig = {
+                  Type = "oneshot";
+                  User = "postgres";
+                  Group = "postgres";
+                  ExecStart = setPasswordScript;
+                };
+              };
+            }
+            // lib.optionalAttrs cfg.autoRegisterTemplates {
+              "coder-register-templates" = {
+                description = "Register Egoengine templates with Coder";
+                wants = [containerUnit];
+                after = [
+                  containerUnit
+                  "network-online.target"
+                  "agenix.service"
+                ];
+                requires = [containerUnit];
+                partOf = [containerUnit];
+                wantedBy = ["multi-user.target"];
+                path = [
+                  pkgs.coreutils
+                  pkgs.coder
+                  pkgs.git
+                ];
+                serviceConfig = {
+                  Type = "oneshot";
+                  ExecStart = templateRegistrationScript;
+                  Restart = "on-failure";
+                  RestartSec = 30;
+                };
+              };
+            };
+        };
+
+        services.postgresql = {
+          enable = true;
+          package = cfg.postgresqlPackage;
+          ensureDatabases = [cfg.databaseName];
+          ensureUsers = [
+            {
+              name = cfg.databaseUser;
+              ensureDBOwnership = true;
+            }
+          ];
+          settings = {
+            listen_addresses = mkForce "127.0.0.1";
           };
-        environmentFiles = [ cfg.environmentFile ];
-        volumes =
-          [
-            "${cfg.dataDir}:/var/lib/coder"
-          ]
-          ++ optional (cfg.dockerSocketPath != null)
+          authentication = mkOverride 50 ''
+            local   all             all                                     peer
+            host    all             all             127.0.0.1/32            scram-sha-256
+            host    all             all             ::1/128                 scram-sha-256
+          '';
+        };
+
+        virtualisation.oci-containers.backend = mkDefault (
+          if cfg.dockerSocketPath != null
+          then "docker"
+          else "podman"
+        );
+
+        virtualisation.oci-containers.containers.${cfg.containerName} = {
+          inherit (cfg) image;
+          autoStart = true;
+          extraOptions =
+            ["--network=host"]
+            ++ optional (cfg.dockerSocketPath != null) "--user=root"
+            ++ optional (cfg.dockerSocketPath != null && dockerGroupGid != null)
+            "--group-add=${toString dockerGroupGid}";
+          environment =
+            (optionalAttrs (cfg.accessUrl != null) {
+              CODER_ACCESS_URL = cfg.accessUrl;
+            })
+            // {
+              CODER_HTTP_ADDRESS = "0.0.0.0:${toString cfg.port}";
+            }
+            // optionalAttrs (cfg.dockerSocketPath != null) {
+              CODER_PROVISIONER_DOCKER_HOST = "unix://${cfg.dockerSocketPath}";
+            };
+          environmentFiles = [cfg.environmentFile];
+          volumes =
+            [
+              "${cfg.dataDir}:/var/lib/coder"
+            ]
+            ++ optional (cfg.dockerSocketPath != null)
             "${cfg.dockerSocketPath}:${cfg.dockerSocketPath}";
-      };
-
-      systemd.services.${containerServiceName} = {
-        after =
-          [
-            "postgresql.service"
-            "coder-postgres-password.service"
-            "run-agenix.d.mount"
-          ]
-          ++ optional (cfg.dockerSocketPath != null) "docker.service";
-        requires =
-          [
-            "postgresql.service"
-            "coder-postgres-password.service"
-            "run-agenix.d.mount"
-          ]
-          ++ optional (cfg.dockerSocketPath != null) "docker.service";
-      };
-
-      systemd.services."coder-postgres-password" = {
-        description = "Set password for the Coder PostgreSQL user";
-        unitConfig.RequiresMountsFor = [
-          cfg.databaseEnvFile
-          cfg.environmentFile
-          dbSecretPath
-          coderSecretPath
-        ];
-        wants = [
-          "postgresql.service"
-          "run-agenix.d.mount"
-        ];
-        after = [
-          "postgresql.service"
-          "run-agenix.d.mount"
-        ];
-        requires = [
-          "postgresql.service"
-          "run-agenix.d.mount"
-        ];
-        wantedBy = [ "multi-user.target" ];
-        partOf = [ containerUnit ];
-        serviceConfig = {
-          Type = "oneshot";
-          User = "postgres";
-          Group = "postgres";
-          ExecStart = setPasswordScript;
         };
-      };
-    }
-
-    (mkIf cfg.autoRegisterTemplates {
-      systemd.services."coder-register-templates" = {
-        description = "Register Egoengine templates with Coder";
-        wants = [ containerUnit ];
-        after = [
-          containerUnit
-          "network-online.target"
-          "agenix.service"
-        ];
-        requires = [ containerUnit ];
-        partOf = [ containerUnit ];
-        wantedBy = [ "multi-user.target" ];
-        path = [
-          pkgs.coreutils
-          pkgs.coder
-          pkgs.git
-        ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = templateRegistrationScript;
-          Restart = "on-failure";
-          RestartSec = 30;
-        };
-      };
-    })
-  ]);
+      }
+    ]);
 }

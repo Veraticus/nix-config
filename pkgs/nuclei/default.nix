@@ -1,5 +1,8 @@
-{ lib, buildGoModule, fetchFromGitHub }:
-
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+}:
 buildGoModule rec {
   pname = "nuclei";
   version = "3.3.7";
@@ -27,7 +30,7 @@ buildGoModule rec {
     description = "Fast and customizable vulnerability scanner based on simple YAML based DSL";
     homepage = "https://nuclei.projectdiscovery.io/";
     license = licenses.mit;
-    maintainers = with maintainers; [ ];
+    maintainers = with maintainers; [];
     mainProgram = "nuclei";
   };
 }

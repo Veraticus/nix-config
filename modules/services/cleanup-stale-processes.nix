@@ -1,5 +1,4 @@
-{ pkgs, lib, ... }:
-let
+{pkgs, ...}: let
   cleanupScript = pkgs.writeShellScript "cleanup-stale-processes" ''
     #!/usr/bin/env bash
     set -euo pipefail
@@ -48,7 +47,7 @@ in {
 
   systemd.timers.cleanup-stale-processes = {
     description = "Timer for cleaning up stale processes";
-    wantedBy = [ "timers.target" ];
+    wantedBy = ["timers.target"];
     timerConfig = {
       OnCalendar = "daily";
       OnBootSec = "30min";

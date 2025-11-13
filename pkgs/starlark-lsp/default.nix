@@ -1,5 +1,8 @@
-{ lib, buildGoModule, fetchFromGitHub }:
-
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
+}:
 buildGoModule rec {
   pname = "starlark-lsp";
   version = "0.0.0-20240730211532";
@@ -14,14 +17,14 @@ buildGoModule rec {
   vendorHash = "sha256-PqMed2czM5BxnQs9O641W9MlrVZe0Uv+bII1KK4h974=";
 
   # Build the specific binary we want
-  subPackages = [ "cmd/starlark-lsp" ];
+  subPackages = ["cmd/starlark-lsp"];
 
-  ldflags = [ "-s" "-w" ];
+  ldflags = ["-s" "-w"];
 
   meta = with lib; {
     description = "Starlark Language Server Protocol implementation";
     homepage = "https://github.com/tilt-dev/starlark-lsp";
     license = licenses.asl20;
-    maintainers = with maintainers; [ ];
+    maintainers = with maintainers; [];
   };
 }

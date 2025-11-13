@@ -1,4 +1,9 @@
-{ inputs, outputs, lib, config, pkgs, ... }: {
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}: {
   imports = [
     ../modules/nix/defaults.nix
     ../modules/services/age-identity.nix
@@ -15,8 +20,8 @@
     # Automatic garbage collection
     gc = {
       automatic = true;
-      dates = "daily";  # Run every night
-      options = "--delete-older-than 3d";  # Keep derivations for 3 days
+      dates = "daily"; # Run every night
+      options = "--delete-older-than 3d"; # Keep derivations for 3 days
     };
 
     # Automatic store optimization (hard-linking identical files)
@@ -25,7 +30,7 @@
 
   # Common packages for all headless Linux hosts
   environment.systemPackages = with pkgs; [
-    yamllint  # YAML linter, useful for Home Assistant configurations
+    yamllint # YAML linter, useful for Home Assistant configurations
     inputs.agenix.packages.${pkgs.system}.agenix
     ssh-to-age
   ];
@@ -52,12 +57,13 @@
   };
 
   # Open firewall for ET
-  networking.firewall.allowedTCPPorts = [ 2022 ];
+  networking.firewall.allowedTCPPorts = [2022];
 
   services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
 
   users.users.joshsymonds = {
     hashedPassword = lib.mkDefault "";
+    group = "joshsymonds";
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAQ4hwNjF4SMCeYcqm3tzUxZWadcv7ZLJbCa/mLHzsvw josh+cloudbank@joshsymonds.com"
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINTWmaNJwRqzDMdfVOXbX6FNjcJ94VRK+aKLI2NqrcWV josh+morningstar@joshsymonds.com"
@@ -67,4 +73,5 @@
     ];
   };
 
+  users.groups.joshsymonds = {};
 }

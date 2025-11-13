@@ -1,10 +1,8 @@
 {
-  config,
   pkgs,
   lib,
   ...
-}:
-let
+}: let
   # Create a package for the backup script
   ha-backup-script = pkgs.writeShellScriptBin "backup-ha" (
     builtins.readFile ./home-assistant/scripts/backup-ha.sh
@@ -46,120 +44,120 @@ let
             unique_id = "sensor_josh_nice_bike_location";
             icon = "mdi:bicycle";
             state = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
-{% set area_attr = tracker.attributes.get('area') if tracker else none %}
-{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
-{% if tracker %}
-  {% set raw_last = tracker.attributes.get('last_seen') %}
-  {% if raw_last %}
-    {% set last_seen_ts = as_timestamp(raw_last) %}
-  {% else %}
-    {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
-  {% endif %}
-{% else %}
-  {% set last_seen_ts = last_seen_prev %}
-{% endif %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
-{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
-{% if bermuda in ['unknown', 'unavailable'] %}
-  {{ last_known }}
-{% elif offline %}
-  {{ last_known }}
-{% elif normalized_area %}
-  {{ normalized_area }}
-{% else %}
-  {{ bermuda }}
-{% endif %}
-'';
+              {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+              {% set bermuda = tracker.state if tracker else 'unknown' %}
+              {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+              {% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
+              {% set area_attr = tracker.attributes.get('area') if tracker else none %}
+              {% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+              {% if tracker %}
+                {% set raw_last = tracker.attributes.get('last_seen') %}
+                {% if raw_last %}
+                  {% set last_seen_ts = as_timestamp(raw_last) %}
+                {% else %}
+                  {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
+                {% endif %}
+              {% else %}
+                {% set last_seen_ts = last_seen_prev %}
+              {% endif %}
+              {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+              {% set offline_threshold = 900 %}
+              {% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+              {% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+              {% if bermuda in ['unknown', 'unavailable'] %}
+                {{ last_known }}
+              {% elif offline %}
+                {{ last_known }}
+              {% elif normalized_area %}
+                {{ normalized_area }}
+              {% else %}
+                {{ bermuda }}
+              {% endif %}
+            '';
             attributes = {
               bermuda_state = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{{ tracker.state if tracker else 'unknown' }}
-'';
+                {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+                {{ tracker.state if tracker else 'unknown' }}
+              '';
               last_known_zone = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set area_attr = tracker.attributes.get('area') if tracker else none %}
-{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
-{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
-{% if bermuda in ['unknown', 'unavailable'] %}
-  {{ last_known }}
-{% elif offline %}
-  {{ last_known }}
-{% elif normalized_area %}
-  {{ normalized_area }}
-{% else %}
-  {{ bermuda }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+                {% set bermuda = tracker.state if tracker else 'unknown' %}
+                {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+                {% set area_attr = tracker.attributes.get('area') if tracker else none %}
+                {% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+                {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+                {% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
+                {% set offline_threshold = 900 %}
+                {% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+                {% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+                {% if bermuda in ['unknown', 'unavailable'] %}
+                  {{ last_known }}
+                {% elif offline %}
+                  {{ last_known }}
+                {% elif normalized_area %}
+                  {{ normalized_area }}
+                {% else %}
+                  {{ bermuda }}
+                {% endif %}
+              '';
               last_seen_ts = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{% set last_prev = this.attributes.last_seen_ts | default(none) %}
-{% if tracker %}
-  {% set raw_last = tracker.attributes.get('last_seen') %}
-  {% if raw_last %}
-    {{ as_timestamp(raw_last) }}
-  {% else %}
-    {{ as_timestamp(tracker.last_changed) }}
-  {% endif %}
-{% elif last_prev is not none %}
-  {{ last_prev }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+                {% set last_prev = this.attributes.last_seen_ts | default(none) %}
+                {% if tracker %}
+                  {% set raw_last = tracker.attributes.get('last_seen') %}
+                  {% if raw_last %}
+                    {{ as_timestamp(raw_last) }}
+                  {% else %}
+                    {{ as_timestamp(tracker.last_changed) }}
+                  {% endif %}
+                {% elif last_prev is not none %}
+                  {{ last_prev }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_seen = ''
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% if ts is not none %}
-  {{ ts | timestamp_utc }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% if ts is not none %}
+                  {{ ts | timestamp_utc }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_seen_seconds_ago = ''
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% if ts is not none %}
-  {{ (now().timestamp() - ts) | round(0) }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% if ts is not none %}
+                  {{ (now().timestamp() - ts) | round(0) }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_source = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{% if tracker %}
-  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
-{% else %}
-  {{ this.attributes.last_source | default("") }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+                {% if tracker %}
+                  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
+                {% else %}
+                  {{ this.attributes.last_source | default("") }}
+                {% endif %}
+              '';
               offline = ''
-{% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
-{{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
-'';
+                {% set tracker = states.device_tracker.joshs_nice_bike_bermuda_tracker %}
+                {% set bermuda = tracker.state if tracker else 'unknown' %}
+                {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+                {% set offline_threshold = 900 %}
+                {% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
+                {{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
+              '';
               last_distance = ''
-{% set distance = states('sensor.joshs_nice_bike_distance') %}
-{% if distance not in ['unknown', 'unavailable'] %}
-  {{ distance | float }}
-{% else %}
-  {{ this.attributes.last_distance | default(none) }}
-{% endif %}
-'';
+                {% set distance = states('sensor.joshs_nice_bike_distance') %}
+                {% if distance not in ['unknown', 'unavailable'] %}
+                  {{ distance | float }}
+                {% else %}
+                  {{ this.attributes.last_distance | default(none) }}
+                {% endif %}
+              '';
             };
           }
           {
@@ -167,13 +165,13 @@ let
             unique_id = "sensor_josh_nice_bike_last_seen";
             device_class = "timestamp";
             state = ''
-{% set ts = state_attr('sensor.josh_nice_bike_location','last_seen_ts') %}
-{% if ts is not none %}
-  {{ ts | timestamp_utc }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+              {% set ts = state_attr('sensor.josh_nice_bike_location','last_seen_ts') %}
+              {% if ts is not none %}
+                {{ ts | timestamp_utc }}
+              {% else %}
+                {{ none }}
+              {% endif %}
+            '';
           }
         ];
         binary_sensor = [
@@ -196,120 +194,120 @@ let
             unique_id = "sensor_honda_crv_location";
             icon = "mdi:car";
             state = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
-{% set area_attr = tracker.attributes.get('area') if tracker else none %}
-{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
-{% if tracker %}
-  {% set raw_last = tracker.attributes.get('last_seen') %}
-  {% if raw_last %}
-    {% set last_seen_ts = as_timestamp(raw_last) %}
-  {% else %}
-    {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
-  {% endif %}
-{% else %}
-  {% set last_seen_ts = last_seen_prev %}
-{% endif %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
-{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
-{% if bermuda in ['unknown', 'unavailable'] %}
-  {{ last_known }}
-{% elif offline %}
-  {{ last_known }}
-{% elif normalized_area %}
-  {{ normalized_area }}
-{% else %}
-  {{ bermuda }}
-{% endif %}
-'';
+              {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+              {% set bermuda = tracker.state if tracker else 'unknown' %}
+              {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+              {% set last_seen_prev = this.attributes.last_seen_ts | default(none) %}
+              {% set area_attr = tracker.attributes.get('area') if tracker else none %}
+              {% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+              {% if tracker %}
+                {% set raw_last = tracker.attributes.get('last_seen') %}
+                {% if raw_last %}
+                  {% set last_seen_ts = as_timestamp(raw_last) %}
+                {% else %}
+                  {% set last_seen_ts = as_timestamp(tracker.last_changed) %}
+                {% endif %}
+              {% else %}
+                {% set last_seen_ts = last_seen_prev %}
+              {% endif %}
+              {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+              {% set offline_threshold = 900 %}
+              {% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+              {% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+              {% if bermuda in ['unknown', 'unavailable'] %}
+                {{ last_known }}
+              {% elif offline %}
+                {{ last_known }}
+              {% elif normalized_area %}
+                {{ normalized_area }}
+              {% else %}
+                {{ bermuda }}
+              {% endif %}
+            '';
             attributes = {
               bermuda_state = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{{ tracker.state if tracker else 'unknown' }}
-'';
+                {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+                {{ tracker.state if tracker else 'unknown' }}
+              '';
               last_known_zone = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set area_attr = tracker.attributes.get('area') if tracker else none %}
-{% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
-{% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
-{% if bermuda in ['unknown', 'unavailable'] %}
-  {{ last_known }}
-{% elif offline %}
-  {{ last_known }}
-{% elif normalized_area %}
-  {{ normalized_area }}
-{% else %}
-  {{ bermuda }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+                {% set bermuda = tracker.state if tracker else 'unknown' %}
+                {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+                {% set area_attr = tracker.attributes.get('area') if tracker else none %}
+                {% set normalized_area = area_attr | lower | replace(' ', '_') if area_attr is not none else none %}
+                {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+                {% set last_seen_ts = this.attributes.last_seen_ts | default(none) %}
+                {% set offline_threshold = 900 %}
+                {% set elapsed = (now().timestamp() - last_seen_ts) if last_seen_ts is not none else none %}
+                {% set offline = bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold %}
+                {% if bermuda in ['unknown', 'unavailable'] %}
+                  {{ last_known }}
+                {% elif offline %}
+                  {{ last_known }}
+                {% elif normalized_area %}
+                  {{ normalized_area }}
+                {% else %}
+                  {{ bermuda }}
+                {% endif %}
+              '';
               last_seen_ts = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{% set last_prev = this.attributes.last_seen_ts | default(none) %}
-{% if tracker %}
-  {% set raw_last = tracker.attributes.get('last_seen') %}
-  {% if raw_last %}
-    {{ as_timestamp(raw_last) }}
-  {% else %}
-    {{ as_timestamp(tracker.last_changed) }}
-  {% endif %}
-{% elif last_prev is not none %}
-  {{ last_prev }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+                {% set last_prev = this.attributes.last_seen_ts | default(none) %}
+                {% if tracker %}
+                  {% set raw_last = tracker.attributes.get('last_seen') %}
+                  {% if raw_last %}
+                    {{ as_timestamp(raw_last) }}
+                  {% else %}
+                    {{ as_timestamp(tracker.last_changed) }}
+                  {% endif %}
+                {% elif last_prev is not none %}
+                  {{ last_prev }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_seen = ''
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% if ts is not none %}
-  {{ ts | timestamp_utc }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% if ts is not none %}
+                  {{ ts | timestamp_utc }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_seen_seconds_ago = ''
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% if ts is not none %}
-  {{ (now().timestamp() - ts) | round(0) }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% if ts is not none %}
+                  {{ (now().timestamp() - ts) | round(0) }}
+                {% else %}
+                  {{ none }}
+                {% endif %}
+              '';
               last_source = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{% if tracker %}
-  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
-{% else %}
-  {{ this.attributes.last_source | default("") }}
-{% endif %}
-'';
+                {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+                {% if tracker %}
+                  {{ tracker.attributes.get('scanner') or tracker.attributes.get('source') or tracker.attributes.get('source_type') or "" }}
+                {% else %}
+                  {{ this.attributes.last_source | default("") }}
+                {% endif %}
+              '';
               offline = ''
-{% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
-{% set bermuda = tracker.state if tracker else 'unknown' %}
-{% set last_known = this.attributes.last_known_zone | default('not_home') %}
-{% set ts = this.attributes.last_seen_ts | default(none) %}
-{% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
-{% set offline_threshold = 900 %}
-{% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
-{{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
-'';
+                {% set tracker = states.device_tracker.bcpro_201403_bermuda_tracker %}
+                {% set bermuda = tracker.state if tracker else 'unknown' %}
+                {% set last_known = this.attributes.last_known_zone | default('not_home') %}
+                {% set ts = this.attributes.last_seen_ts | default(none) %}
+                {% set homeish = ['garage', 'driveway', 'front_deck', 'home'] %}
+                {% set offline_threshold = 900 %}
+                {% set elapsed = (now().timestamp() - ts) if ts is not none else none %}
+                {{ bermuda == 'not_home' and last_known in homeish and elapsed is not none and elapsed > offline_threshold }}
+              '';
               last_distance = ''
-{% set distance = states('sensor.bcpro_201403_distance') %}
-{% if distance not in ['unknown', 'unavailable'] %}
-  {{ distance | float }}
-{% else %}
-  {{ this.attributes.last_distance | default(none) }}
-{% endif %}
-'';
+                {% set distance = states('sensor.bcpro_201403_distance') %}
+                {% if distance not in ['unknown', 'unavailable'] %}
+                  {{ distance | float }}
+                {% else %}
+                  {{ this.attributes.last_distance | default(none) }}
+                {% endif %}
+              '';
             };
           }
           {
@@ -317,13 +315,13 @@ let
             unique_id = "sensor_honda_crv_last_seen";
             device_class = "timestamp";
             state = ''
-{% set ts = state_attr('sensor.honda_crv_location','last_seen_ts') %}
-{% if ts is not none %}
-  {{ ts | timestamp_utc }}
-{% else %}
-  {{ none }}
-{% endif %}
-'';
+              {% set ts = state_attr('sensor.honda_crv_location','last_seen_ts') %}
+              {% if ts is not none %}
+                {{ ts | timestamp_utc }}
+              {% else %}
+                {{ none }}
+              {% endif %}
+            '';
           }
         ];
         binary_sensor = [
@@ -343,15 +341,14 @@ let
     rev = "79d807f1bdbc46a8358869cd283ca85e93b20c9c";
     sha256 = "sha256-hUALGWg22QYCqZk1J4kMy2fJtbOOve4930LzNx+mPGQ=";
   };
-in
-{
+in {
   services.home-assistant = {
     enable = true;
     package = pkgs.home-assistant;
 
     # Add extra Python packages for integrations that need them
-    extraPackages =
-      python3Packages: with python3Packages; [
+    extraPackages = python3Packages:
+      with python3Packages; [
         grpcio
         grpcio-status
         grpcio-reflection
@@ -441,10 +438,9 @@ in
 
     config = {
       # Basic configuration
-      default_config = { };
+      default_config = {};
 
       homeassistant = {
-
         name = "Home";
         # Location is loaded from secrets.yaml to keep it out of git
         latitude = "!secret latitude";
@@ -540,7 +536,7 @@ in
         themes = "!include_dir_merge_named themes";
       };
 
-      ble_passthrough = { };
+      ble_passthrough = {};
 
       # Lovelace configuration
       lovelace = {
@@ -577,7 +573,7 @@ in
       };
 
       # Enable Browser Mod integration for dynamic popups
-      browser_mod = { };
+      browser_mod = {};
 
       # Controls for leak alert TTS behavior
       input_boolean = {
@@ -770,15 +766,251 @@ in
     '';
   };
 
-  # Create necessary directories and files
-  systemd.tmpfiles.rules = [
-    "d /var/lib/hass/themes 0755 hass hass -"
-    "d /var/lib/hass/custom_components 0755 hass hass -"
-    "d /var/lib/hass/www 0755 hass hass -"
-    "d /var/lib/hass/dashboards 0755 hass hass -"
-    "d /etc/homepage/keys 0755 root root -"
-    "d /var/lib/hass/packages 0755 hass hass -"
-  ];
+  systemd = {
+    # Create necessary directories and files
+    tmpfiles.rules = [
+      "d /var/lib/hass/themes 0755 hass hass -"
+      "d /var/lib/hass/custom_components 0755 hass hass -"
+      "d /var/lib/hass/www 0755 hass hass -"
+      "d /var/lib/hass/dashboards 0755 hass hass -"
+      "d /etc/homepage/keys 0755 root root -"
+      "d /var/lib/hass/packages 0755 hass hass -"
+    ];
+
+    services = {
+      # Setup HACS and secrets file
+      # We use a separate service to install HACS to avoid systemd sandboxing issues
+      home-assistant-setup-hacs = {
+        description = "Setup HACS for Home Assistant";
+        wantedBy = ["multi-user.target"];
+        before = ["home-assistant.service"];
+
+        serviceConfig = {
+          Type = "oneshot";
+          User = "hass";
+          Group = "hass";
+          RemainAfterExit = true;
+        };
+
+        script = ''
+          set -e
+
+          # Ensure custom_components directory exists
+          mkdir -p /var/lib/hass/custom_components
+
+          # Download and install HACS if not present or outdated
+          if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
+            echo "Installing HACS..."
+
+            # Change to custom_components directory (following official script)
+            cd /var/lib/hass/custom_components
+
+            # Download latest HACS release
+            ${pkgs.wget}/bin/wget -q "https://github.com/hacs/integration/releases/latest/download/hacs.zip"
+
+            # Remove old HACS if it exists
+            if [ -d "hacs" ]; then
+              rm -rf hacs
+            fi
+
+            # Create HACS directory
+            mkdir hacs
+
+            # Unpack HACS (exactly like official script)
+            ${pkgs.unzip}/bin/unzip -q hacs.zip -d hacs
+
+            # Cleanup
+            rm -f hacs.zip
+
+            echo "HACS installation complete"
+          else
+            echo "HACS already installed"
+          fi
+        '';
+      };
+
+      # Dashboard files are handled directly in preStart script
+
+      # Setup secrets file on startup and sync Lovelace YAML
+      home-assistant = {
+        preStart = lib.mkAfter ''
+              # Copy secrets file if it doesn't exist
+              if [ ! -f /var/lib/hass/secrets.yaml ]; then
+                cp /etc/hass-secrets.yaml /var/lib/hass/secrets.yaml
+                chown hass:hass /var/lib/hass/secrets.yaml
+                chmod 600 /var/lib/hass/secrets.yaml
+                echo "Created secrets.yaml - please edit it with your actual values"
+              fi
+
+              # Deploy dashboard structure from the Nix config on every start
+              rm -rf /var/lib/hass/dashboards
+              mkdir -p /var/lib/hass/dashboards
+              cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
+              find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
+              find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
+              # Files already have correct ownership since service runs as hass user
+              # Create symlink for main dashboard file
+              ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
+
+              # Sync Git-managed automations directory (merged list include)
+              rm -rf /var/lib/hass/automations
+              mkdir -p /var/lib/hass/automations
+          ${lib.optionalString (builtins.pathExists ../../automations) ''
+            cp -r ${../../automations}/* /var/lib/hass/automations/
+            find /var/lib/hass/automations -type f -exec chmod 644 {} \;
+            find /var/lib/hass/automations -type d -exec chmod 755 {} \;
+          ''}
+          ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
+            echo "No automations directory found in Nix repo; skipping copy"
+          ''}
+
+              # Deploy BLE passthrough custom component from Nix store each start
+              mkdir -p /var/lib/hass/custom_components
+              rm -rf /var/lib/hass/custom_components/ble_passthrough
+              cp -r ${blePassthrough}/custom_components/ble_passthrough /var/lib/hass/custom_components/
+              find /var/lib/hass/custom_components/ble_passthrough -type f -exec chmod 644 {} \;
+              find /var/lib/hass/custom_components/ble_passthrough -type d -exec chmod 755 {} \;
+        '';
+
+        # Ensure Home Assistant restarts when dashboard sources change,
+        # so the preStart sync copies new/updated YAML (e.g., new popups)
+        restartTriggers = [
+          ../../dashboards
+          ../../automations
+        ];
+      };
+
+      # Backup service for Home Assistant
+      home-assistant-backup = {
+        description = "Backup Home Assistant configuration to NAS";
+        after = [
+          "home-assistant.service"
+          "mnt-backups.mount"
+        ];
+        requires = ["mnt-backups.mount"];
+
+        path = with pkgs; [
+          coreutils
+          rsync
+          util-linux # for mountpoint and logger
+          findutils
+          gnused
+        ];
+
+        serviceConfig = {
+          Type = "oneshot";
+          User = "root";
+          # Use the backup script we've created
+          # For scheduled backups, don't pass a label argument
+          ExecStart = "${ha-backup-script}/bin/backup-ha";
+        };
+      };
+
+      # Restore service for Home Assistant
+      home-assistant-restore = {
+        description = "Restore Home Assistant configuration from NAS backup";
+        after = ["mnt-backups.mount"];
+        requires = ["mnt-backups.mount"];
+        before = ["home-assistant.service"];
+
+        serviceConfig = {
+          Type = "oneshot";
+          User = "root";
+          RemainAfterExit = false;
+          ExecStart = pkgs.writeShellScript "ha-restore" ''
+                set -e
+
+                BACKUP_DIR="/mnt/backups/home-assistant"
+            RESTORE_DIR="/var/lib/hass"
+
+            # Parse arguments
+            BACKUP_NAME="''${1:-latest}"
+
+            # Determine which backup to restore
+            if [ "$BACKUP_NAME" = "latest" ]; then
+              if [ -L "$BACKUP_DIR/latest" ]; then
+                BACKUP_PATH="$BACKUP_DIR/latest"
+                echo "Restoring from latest backup: $(readlink -f "$BACKUP_PATH")"
+              else
+                echo "Error: No 'latest' symlink found. Please specify a backup name."
+                echo "Available backups:"
+                ls -1d "$BACKUP_DIR"/backup-* 2>/dev/null | sed 's|.*/||' || echo "No backups found"
+                exit 1
+              fi
+            elif [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
+              BACKUP_PATH="$BACKUP_DIR/$BACKUP_NAME"
+              echo "Restoring from backup: $BACKUP_NAME"
+            else
+              echo "Error: Backup '$BACKUP_NAME' not found"
+              echo "Available backups:"
+              ls -1d "$BACKUP_DIR"/backup-* 2>/dev/null | sed 's|.*/||' || echo "No backups found"
+              exit 1
+            fi
+
+            # Safety check - confirm if Home Assistant is running
+            if systemctl is-active --quiet home-assistant.service; then
+              echo "WARNING: Home Assistant is currently running!"
+              echo "It's recommended to stop it before restoring:"
+              echo "  sudo systemctl stop home-assistant.service"
+              echo ""
+              echo "Proceed anyway? This might cause issues. (y/N)"
+              read -r response
+              if [[ ! "$response" =~ ^[Yy]$ ]]; then
+                echo "Restore cancelled"
+                exit 0
+              fi
+            fi
+
+            # Create backup of current config before restoring
+            if [ -d "$RESTORE_DIR" ] && [ "$(ls -A "$RESTORE_DIR")" ]; then
+              SAFETY_BACKUP="/var/lib/hass-backup-before-restore-$(date +%Y%m%d-%H%M%S)"
+              echo "Creating safety backup of current config at $SAFETY_BACKUP"
+              ${pkgs.rsync}/bin/rsync -rlptD "$RESTORE_DIR/" "$SAFETY_BACKUP/"
+            fi
+
+            # Ensure target directory exists
+            mkdir -p "$RESTORE_DIR"
+
+            # Perform the restore
+            echo "Restoring configuration from $BACKUP_PATH..."
+            ${pkgs.rsync}/bin/rsync -rlptDv --delete \
+              --exclude='home-assistant_v2.db-shm' \
+              --exclude='home-assistant_v2.db-wal' \
+              --exclude='*.log' \
+              --exclude='*.log.*' \
+              "$BACKUP_PATH/" "$RESTORE_DIR/"
+
+            # Fix ownership
+            chown -R hass:hass "$RESTORE_DIR"
+
+            echo ""
+            echo "✅ Restore completed successfully!"
+            echo ""
+                echo "Next steps:"
+                echo "1. Start Home Assistant: sudo systemctl start home-assistant.service"
+                echo "2. Check the logs: sudo journalctl -fu home-assistant.service"
+                echo "3. Access the UI at https://home.husbuddies.gay"
+                echo ""
+                if [ -n "$SAFETY_BACKUP" ]; then
+                  echo "Safety backup preserved at: $SAFETY_BACKUP"
+                  echo "You can remove it once everything is working: sudo rm -rf $SAFETY_BACKUP"
+                fi
+          '';
+        };
+      };
+    };
+
+    # Timer to run backup daily at 3 AM
+    timers.home-assistant-backup = {
+      description = "Daily Home Assistant backup timer";
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnCalendar = "*-*-* 03:00:00"; # Daily at 3 AM
+        Persistent = true; # Run backup if system was off at scheduled time
+        RandomizedDelaySec = "10m"; # Add some randomness to prevent exact time conflicts
+      };
+    };
+  };
 
   # Create a secrets.yaml template for Home Assistant
   # This file can be edited after deployment to add your actual secrets
@@ -793,7 +1025,7 @@ in
       # Location data - MUST UPDATE with your actual location
       # Find your coordinates at https://www.latlong.net/
       latitude: 0.0
-      longitude: 0.0  
+      longitude: 0.0
       elevation: 0
 
       # Z-Wave JS WebSocket URL (update if using different host/port)
@@ -810,236 +1042,6 @@ in
       ntfy_topic_water: water-sensors-CHANGEME
       ntfy_topic_security: door-sensors-CHANGEME
     '';
-  };
-
-  # Setup HACS and secrets file
-  # We use a separate service to install HACS to avoid systemd sandboxing issues
-  systemd.services.home-assistant-setup-hacs = {
-    description = "Setup HACS for Home Assistant";
-    wantedBy = [ "multi-user.target" ];
-    before = [ "home-assistant.service" ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      User = "hass";
-      Group = "hass";
-      RemainAfterExit = true;
-    };
-
-    script = ''
-      set -e
-
-      # Ensure custom_components directory exists
-      mkdir -p /var/lib/hass/custom_components
-
-      # Download and install HACS if not present or outdated
-      if [ ! -f /var/lib/hass/custom_components/hacs/manifest.json ]; then
-        echo "Installing HACS..."
-        
-        # Change to custom_components directory (following official script)
-        cd /var/lib/hass/custom_components
-        
-        # Download latest HACS release
-        ${pkgs.wget}/bin/wget -q "https://github.com/hacs/integration/releases/latest/download/hacs.zip"
-        
-        # Remove old HACS if it exists
-        if [ -d "hacs" ]; then
-          rm -rf hacs
-        fi
-        
-        # Create HACS directory
-        mkdir hacs
-        
-        # Unpack HACS (exactly like official script)
-        ${pkgs.unzip}/bin/unzip -q hacs.zip -d hacs
-        
-        # Cleanup
-        rm -f hacs.zip
-        
-        echo "HACS installation complete"
-      else
-        echo "HACS already installed"
-      fi
-    '';
-  };
-
-  # Dashboard files are handled directly in preStart script
-
-  # Setup secrets file on startup and sync Lovelace YAML
-  systemd.services.home-assistant.preStart = lib.mkAfter ''
-        # Copy secrets file if it doesn't exist
-        if [ ! -f /var/lib/hass/secrets.yaml ]; then
-          cp /etc/hass-secrets.yaml /var/lib/hass/secrets.yaml
-          chown hass:hass /var/lib/hass/secrets.yaml
-          chmod 600 /var/lib/hass/secrets.yaml
-          echo "Created secrets.yaml - please edit it with your actual values"
-        fi
-
-        # Deploy dashboard structure from the Nix config on every start
-        rm -rf /var/lib/hass/dashboards
-        mkdir -p /var/lib/hass/dashboards
-        cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
-        find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
-        find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
-        # Files already have correct ownership since service runs as hass user
-        # Create symlink for main dashboard file
-        ln -sf /var/lib/hass/dashboards/ui-lovelace.yaml /var/lib/hass/ui-lovelace.yaml
-
-        # Sync Git-managed automations directory (merged list include)
-        rm -rf /var/lib/hass/automations
-        mkdir -p /var/lib/hass/automations
-    ${lib.optionalString (builtins.pathExists ../../automations) ''
-      cp -r ${../../automations}/* /var/lib/hass/automations/
-      find /var/lib/hass/automations -type f -exec chmod 644 {} \;
-      find /var/lib/hass/automations -type d -exec chmod 755 {} \;
-    ''}
-    ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
-      echo "No automations directory found in Nix repo; skipping copy"
-    ''}
-
-        # Deploy BLE passthrough custom component from Nix store each start
-        mkdir -p /var/lib/hass/custom_components
-        rm -rf /var/lib/hass/custom_components/ble_passthrough
-        cp -r ${blePassthrough}/custom_components/ble_passthrough /var/lib/hass/custom_components/
-        find /var/lib/hass/custom_components/ble_passthrough -type f -exec chmod 644 {} \;
-        find /var/lib/hass/custom_components/ble_passthrough -type d -exec chmod 755 {} \;
-  '';
-
-  # Ensure Home Assistant restarts when dashboard sources change,
-  # so the preStart sync copies new/updated YAML (e.g., new popups)
-  systemd.services.home-assistant.restartTriggers = [
-    ../../dashboards
-    ../../automations
-  ];
-
-  # Backup service for Home Assistant
-  systemd.services.home-assistant-backup = {
-    description = "Backup Home Assistant configuration to NAS";
-    after = [
-      "home-assistant.service"
-      "mnt-backups.mount"
-    ];
-    requires = [ "mnt-backups.mount" ];
-
-    path = with pkgs; [
-      coreutils
-      rsync
-      util-linux # for mountpoint and logger
-      findutils
-      gnused
-    ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      # Use the backup script we've created
-      # For scheduled backups, don't pass a label argument
-      ExecStart = "${ha-backup-script}/bin/backup-ha";
-    };
-  };
-
-  # Timer to run backup daily at 3 AM
-  systemd.timers.home-assistant-backup = {
-    description = "Daily Home Assistant backup timer";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "*-*-* 03:00:00"; # Daily at 3 AM
-      Persistent = true; # Run backup if system was off at scheduled time
-      RandomizedDelaySec = "10m"; # Add some randomness to prevent exact time conflicts
-    };
-  };
-
-  # Restore service for Home Assistant
-  systemd.services.home-assistant-restore = {
-    description = "Restore Home Assistant configuration from NAS backup";
-    after = [ "mnt-backups.mount" ];
-    requires = [ "mnt-backups.mount" ];
-    before = [ "home-assistant.service" ];
-
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
-      RemainAfterExit = false;
-      ExecStart = pkgs.writeShellScript "ha-restore" ''
-        set -e
-
-        BACKUP_DIR="/mnt/backups/home-assistant"
-        RESTORE_DIR="/var/lib/hass"
-
-        # Parse arguments
-        BACKUP_NAME="''${1:-latest}"
-
-        # Determine which backup to restore
-        if [ "$BACKUP_NAME" = "latest" ]; then
-          if [ -L "$BACKUP_DIR/latest" ]; then
-            BACKUP_PATH="$BACKUP_DIR/latest"
-            echo "Restoring from latest backup: $(readlink -f "$BACKUP_PATH")"
-          else
-            echo "Error: No 'latest' symlink found. Please specify a backup name."
-            echo "Available backups:"
-            ls -1d "$BACKUP_DIR"/backup-* 2>/dev/null | sed 's|.*/||' || echo "No backups found"
-            exit 1
-          fi
-        elif [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
-          BACKUP_PATH="$BACKUP_DIR/$BACKUP_NAME"
-          echo "Restoring from backup: $BACKUP_NAME"
-        else
-          echo "Error: Backup '$BACKUP_NAME' not found"
-          echo "Available backups:"
-          ls -1d "$BACKUP_DIR"/backup-* 2>/dev/null | sed 's|.*/||' || echo "No backups found"
-          exit 1
-        fi
-
-        # Safety check - confirm if Home Assistant is running
-        if systemctl is-active --quiet home-assistant.service; then
-          echo "WARNING: Home Assistant is currently running!"
-          echo "It's recommended to stop it before restoring:"
-          echo "  sudo systemctl stop home-assistant.service"
-          echo ""
-          echo "Proceed anyway? This might cause issues. (y/N)"
-          read -r response
-          if [[ ! "$response" =~ ^[Yy]$ ]]; then
-            echo "Restore cancelled"
-            exit 0
-          fi
-        fi
-
-        # Create backup of current config before restoring
-        if [ -d "$RESTORE_DIR" ] && [ "$(ls -A "$RESTORE_DIR")" ]; then
-          SAFETY_BACKUP="/var/lib/hass-backup-before-restore-$(date +%Y%m%d-%H%M%S)"
-          echo "Creating safety backup of current config at $SAFETY_BACKUP"
-          ${pkgs.rsync}/bin/rsync -rlptD "$RESTORE_DIR/" "$SAFETY_BACKUP/"
-        fi
-
-        # Ensure target directory exists
-        mkdir -p "$RESTORE_DIR"
-
-        # Perform the restore
-        echo "Restoring configuration from $BACKUP_PATH..."
-        ${pkgs.rsync}/bin/rsync -rlptDv --delete \
-          --exclude='home-assistant_v2.db-shm' \
-          --exclude='home-assistant_v2.db-wal' \
-          --exclude='*.log' \
-          --exclude='*.log.*' \
-          "$BACKUP_PATH/" "$RESTORE_DIR/"
-
-        # Fix ownership
-        chown -R hass:hass "$RESTORE_DIR"
-
-        echo ""
-        echo "✅ Restore completed successfully!"
-        echo ""
-        echo "Next steps:"
-        echo "1. Start Home Assistant: sudo systemctl start home-assistant.service"
-        echo "2. Check the logs: sudo journalctl -fu home-assistant.service"
-        echo "3. Access the UI at https://home.husbuddies.gay"
-        echo ""
-        if [ -n "$SAFETY_BACKUP" ]; then
-          echo "Safety backup preserved at: $SAFETY_BACKUP"
-          echo "You can remove it once everything is working: sudo rm -rf $SAFETY_BACKUP"
-        fi
-      '';
-    };
   };
 
   # Create convenient restore command
@@ -1079,10 +1081,10 @@ in
             echo "Stopping Home Assistant for restore..."
             sudo systemctl stop home-assistant.service
           fi
-          
+
           # Run the restore
           sudo systemctl start home-assistant-restore.service "''${1:-latest}"
-          
+
           # Follow the logs
           sudo journalctl -u home-assistant-restore.service -f --no-pager
           ;;

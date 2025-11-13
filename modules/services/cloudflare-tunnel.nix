@@ -1,9 +1,11 @@
-{ config, pkgs, lib, ... }:
-
-let
-  cfg = config.services.cloudflareTunnel;
- in
 {
+  config,
+  pkgs,
+  lib,
+  ...
+}: let
+  cfg = config.services.cloudflareTunnel;
+in {
   options.services.cloudflareTunnel = {
     enable = lib.mkEnableOption "Cloudflare Tunnel using a token";
 
@@ -20,7 +22,7 @@ let
   };
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ cfg.package ];
+    environment.systemPackages = [cfg.package];
 
     systemd.tmpfiles.rules = [
       "d /var/lib/cloudflared 0700 cloudflared cloudflared -"
@@ -37,9 +39,9 @@ let
 
     systemd.services.cloudflare-tunnel = {
       description = "Cloudflare Tunnel";
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
-      wantedBy = [ "multi-user.target" ];
+      after = ["network-online.target"];
+      wants = ["network-online.target"];
+      wantedBy = ["multi-user.target"];
 
       serviceConfig = {
         Type = "simple";
@@ -52,7 +54,7 @@ let
         '';
         PrivateTmp = true;
         NoNewPrivileges = true;
-        ReadOnlyPaths = [ cfg.tokenFile ];
+        ReadOnlyPaths = [cfg.tokenFile];
       };
 
       unitConfig.ConditionPathExists = cfg.tokenFile;

@@ -1,13 +1,16 @@
-{ lib, pkgs, config, ... }:
-let
-  hostName = config.networking.hostName;
+{
+  pkgs,
+  config,
+  ...
+}: let
+  inherit (config.networking) hostName;
   ageDir = "/etc/age";
   hostKey = "/etc/ssh/ssh_host_ed25519_key";
   hostAgeKey = "${ageDir}/${hostName}.agekey";
   keysFile = "${ageDir}/keys.txt";
   recipientsFile = "${ageDir}/recipients.txt";
 in {
-  age.identityPaths = [ hostAgeKey ];
+  age.identityPaths = [hostAgeKey];
 
   system.activationScripts.ageHostKey = ''
     set -euo pipefail

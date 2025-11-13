@@ -1,6 +1,6 @@
-{ inputs, lib, config, pkgs, ... }: {
+{lib, ...}: {
   imports = [
-    ../minimal.nix  # Use minimal config for this resource-constrained box
+    ../minimal.nix # Use minimal config for this resource-constrained box
   ];
 
   # Override any specific settings for bluedesert if needed

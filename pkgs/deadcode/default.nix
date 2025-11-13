@@ -1,8 +1,8 @@
-{ lib
-, buildGoModule
-, fetchFromGitHub
+{
+  lib,
+  buildGoModule,
+  fetchFromGitHub,
 }:
-
 buildGoModule rec {
   pname = "deadcode";
   version = "0.38.0";
@@ -14,7 +14,7 @@ buildGoModule rec {
     hash = "sha256-hIPIWcCeCWYRP7pUL6NeMtykDaCn4phDdIpPDb5k5XE=";
   };
 
-  subPackages = [ "cmd/deadcode" ];
+  subPackages = ["cmd/deadcode"];
 
   vendorHash = "sha256-jweDfh6rOmhnIql8Sa6yCOOjyRj2Pq7As7nPgStP204=";
 
@@ -27,7 +27,7 @@ buildGoModule rec {
     description = "Reports unused declarations in Go packages";
     homepage = "https://pkg.go.dev/golang.org/x/tools/cmd/deadcode";
     license = lib.licenses.bsd3;
-    maintainers = with lib.maintainers; [ ];
+    maintainers = with lib.maintainers; [];
     mainProgram = "deadcode";
   };
 }

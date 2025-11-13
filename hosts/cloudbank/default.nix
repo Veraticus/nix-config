@@ -1,87 +1,90 @@
 let
-  system = "aarch64-darwin";
   user = "joshsymonds";
 in
-{ inputs, outputs, lib, config, pkgs, ... }: {
-  # You can import other NixOS modules here
-  imports = [
-    ../../modules/nix/defaults.nix
-    ../../modules/darwin/applications.nix
-    ../../modules/darwin/defaults.nix
-    ../../modules/darwin/software.nix
-  ];
-
-  # Set primary user for nix-darwin
-  system.primaryUser = "joshsymonds";
-
-  nix = {
-    package = pkgs.nix;
-
-    gc = {
-      automatic = true;
-      interval = { Hour = 3; Minute = 30; };
-      options = "--delete-older-than 3d";
-    };
-
-    # Configure the nix registry
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs;
-    };
-
-    # Configure the nixPath
-    nixPath = [
-      "nixpkgs=${inputs.nixpkgs}"
+  {
+    inputs,
+    lib,
+    config,
+    pkgs,
+    ...
+  }: {
+    # You can import other NixOS modules here
+    imports = [
+      ../../modules/nix/defaults.nix
+      ../../modules/darwin/applications.nix
+      ../../modules/darwin/defaults.nix
+      ../../modules/darwin/software.nix
     ];
 
-    settings.trusted-users = [ "root" user ];
-  };
+    nix = {
+      package = pkgs.nix;
 
+      gc = {
+        automatic = true;
+        interval = {
+          Hour = 3;
+          Minute = 30;
+        };
+        options = "--delete-older-than 3d";
+      };
 
-  networking.hostName = "cloudbank";
+      # Configure the nix registry
+      registry = {
+        nixpkgs.flake = inputs.nixpkgs;
+      };
 
-  # Time and internationalization
-  time.timeZone = "America/Los_Angeles";
+      # Configure the nixPath
+      nixPath = [
+        "nixpkgs=${inputs.nixpkgs}"
+      ];
 
-  # Users and their homes
-  users.users.${user} = {
-    shell = pkgs.zsh;
-    home = "/Users/${user}";
-  };
-
-
-  # Security
-  security.pam.services.sudo_local = {
-    enable = true;
-    text = ''
-      auth       optional       ${pkgs.pam-reattach}/lib/pam/pam_reattach.so
-      auth       sufficient     pam_tid.so
-    '';
-  };
-
-  # Services
-  programs.zsh.enable = true; # This is necessary to set zsh paths properly
-
-  # System setup
-  system = {
-    keyboard = {
-      enableKeyMapping = true;
-      remapCapsLockToEscape = true;
+      settings.trusted-users = ["root" user];
     };
-  };
 
-  # Environment
-  environment = {
-    pathsToLink = [
-      "/bin"
-      "/share/locale"
-      "/share/terminfo"
-      "/share/zsh"
-    ];
-    variables = {
-      EDITOR = "nvim";
+    networking.hostName = "cloudbank";
+
+    # Time and internationalization
+    time.timeZone = "America/Los_Angeles";
+
+    # Users and their homes
+    users.users.${user} = {
+      shell = pkgs.zsh;
+      home = "/Users/${user}";
     };
-  };
 
-  # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-  system.stateVersion = 4;
-}
+    # Security
+    security.pam.services.sudo_local = {
+      enable = true;
+      text = ''
+        auth       optional       ${pkgs.pam-reattach}/lib/pam/pam_reattach.so
+        auth       sufficient     pam_tid.so
+      '';
+    };
+
+    # Services
+    programs.zsh.enable = true; # This is necessary to set zsh paths properly
+
+    # Environment
+    environment = {
+      pathsToLink = [
+        "/bin"
+        "/share/locale"
+        "/share/terminfo"
+        "/share/zsh"
+      ];
+      variables = {
+        EDITOR = "nvim";
+      };
+    };
+
+    # System setup
+    system = {
+      primaryUser = "joshsymonds";
+      keyboard = {
+        enableKeyMapping = true;
+        remapCapsLockToEscape = true;
+      };
+      # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
+      stateVersion = 4;
+    };
+  }

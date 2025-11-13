@@ -1,12 +1,11 @@
 # Clean Nix-based Docker image for development environments
 # Uses dockerTools.buildLayeredImage (not NixOS) for proper FHS compatibility
-{ inputs
-, outputs
-, lib
-, pkgs
-, ...
-}:
-let
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}: let
   user = "joshsymonds";
   uid = "1000";
   gid = "1000";
@@ -27,30 +26,31 @@ let
 
   # Pre-build home directory structure from home-manager configuration
   # This extracts dotfiles and configurations without running activation
-  prebuiltHome = pkgs.runCommand "egoengine-home" {
-    nativeBuildInputs = [ pkgs.rsync ];
-  } ''
-    set -euo pipefail
+  prebuiltHome =
+    pkgs.runCommand "egoengine-home" {
+      nativeBuildInputs = [pkgs.rsync];
+    } ''
+      set -euo pipefail
 
-    # Create home directory structure
-    mkdir -p $out
+      # Create home directory structure
+      mkdir -p $out
 
-    # Extract home-files from home-manager build
-    # Home-manager stores dotfiles in the activation package
-    if [ -d "${homeConfig.activationPackage}/home-files" ]; then
-      echo "Copying home-files from activation package..."
-      rsync -a "${homeConfig.activationPackage}/home-files/" "$out/"
-    fi
+      # Extract home-files from home-manager build
+      # Home-manager stores dotfiles in the activation package
+      if [ -d "${homeConfig.activationPackage}/home-files" ]; then
+        echo "Copying home-files from activation package..."
+        rsync -a "${homeConfig.activationPackage}/home-files/" "$out/"
+      fi
 
-    # Ensure standard directories exist
-    mkdir -p $out/.config
-    mkdir -p $out/.local/bin
-    mkdir -p $out/.local/share
-    mkdir -p $out/.cache
+      # Ensure standard directories exist
+      mkdir -p $out/.config
+      mkdir -p $out/.local/bin
+      mkdir -p $out/.local/share
+      mkdir -p $out/.cache
 
-    # Set proper permissions
-    chmod -R u+w $out
-  '';
+      # Set proper permissions
+      chmod -R u+w $out
+    '';
 
   # Core system packages needed in container
   # This mirrors the packages from the NixOS configuration
@@ -97,83 +97,83 @@ let
   combinedEnv = pkgs.buildEnv {
     name = "egoengine-env";
     paths = systemPackages;
-    pathsToLink = [ "/bin" "/share" "/lib" ];
+    pathsToLink = ["/bin" "/share" "/lib"];
   };
 
   # Create FHS-compatible directory structure
   # This is needed because Coder agent init script expects /usr/bin/env, grep, tar, etc.
   fhsSetup = pkgs.runCommand "egoengine-fhs-setup" {} ''
-    set -euo pipefail
+        set -euo pipefail
 
-    # Create directory structure
-    mkdir -p $out/usr/bin $out/bin $out/etc $out/home/${user}
-    mkdir -p $out/etc/pam.d
+        # Create directory structure
+        mkdir -p $out/usr/bin $out/bin $out/etc $out/home/${user}
+        mkdir -p $out/etc/pam.d
 
-    # /usr/bin symlinks (for Coder agent compatibility)
-    # The Coder agent init script needs these tools in /usr/bin
-    ln -s ${pkgs.coreutils}/bin/env $out/usr/bin/env
-    ln -s ${pkgs.gnugrep}/bin/grep $out/usr/bin/grep
-    ln -s ${pkgs.gnutar}/bin/tar $out/usr/bin/tar
-    ln -s ${pkgs.gzip}/bin/gzip $out/usr/bin/gzip
-    ln -s ${pkgs.coreutils}/bin/head $out/usr/bin/head
-    ln -s ${pkgs.which}/bin/which $out/usr/bin/which
-    ln -s ${pkgs.zsh}/bin/zsh $out/usr/bin/zsh
-    ln -s ${pkgs.bashInteractive}/bin/bash $out/usr/bin/bash
+        # /usr/bin symlinks (for Coder agent compatibility)
+        # The Coder agent init script needs these tools in /usr/bin
+        ln -s ${pkgs.coreutils}/bin/env $out/usr/bin/env
+        ln -s ${pkgs.gnugrep}/bin/grep $out/usr/bin/grep
+        ln -s ${pkgs.gnutar}/bin/tar $out/usr/bin/tar
+        ln -s ${pkgs.gzip}/bin/gzip $out/usr/bin/gzip
+        ln -s ${pkgs.coreutils}/bin/head $out/usr/bin/head
+        ln -s ${pkgs.which}/bin/which $out/usr/bin/which
+        ln -s ${pkgs.zsh}/bin/zsh $out/usr/bin/zsh
+        ln -s ${pkgs.bashInteractive}/bin/bash $out/usr/bin/bash
 
-    # /bin symlinks (common FHS locations)
-    ln -s ${pkgs.bashInteractive}/bin/bash $out/bin/sh
-    ln -s ${pkgs.coreutils}/bin/env $out/bin/env
+        # /bin symlinks (common FHS locations)
+        ln -s ${pkgs.bashInteractive}/bin/bash $out/bin/sh
+        ln -s ${pkgs.coreutils}/bin/env $out/bin/env
 
-    # Create user account files
-    cat > $out/etc/passwd <<EOF
-root:x:0:0::/root:/bin/sh
-${user}:x:${uid}:${gid}::${homeDirectory}:${pkgs.zsh}/bin/zsh
-EOF
+        # Create user account files
+        cat > $out/etc/passwd <<EOF
+    root:x:0:0::/root:/bin/sh
+    ${user}:x:${uid}:${gid}::${homeDirectory}:${pkgs.zsh}/bin/zsh
+    EOF
 
-    cat > $out/etc/group <<EOF
-root:x:0:
-${user}:x:${gid}:${user}
-docker:x:998:${user}
-wheel:x:10:${user}
-EOF
+        cat > $out/etc/group <<EOF
+    root:x:0:
+    ${user}:x:${gid}:${user}
+    docker:x:998:${user}
+    wheel:x:10:${user}
+    EOF
 
-    cat > $out/etc/shadow <<EOF
-root:!:1::::::
-${user}:!:1::::::
-EOF
+        cat > $out/etc/shadow <<EOF
+    root:!:1::::::
+    ${user}:!:1::::::
+    EOF
 
-    cat > $out/etc/gshadow <<EOF
-root:!::
-${user}:!::
-docker:!::${user}
-wheel:!::${user}
-EOF
+        cat > $out/etc/gshadow <<EOF
+    root:!::
+    ${user}:!::
+    docker:!::${user}
+    wheel:!::${user}
+    EOF
 
-    mkdir -p $out/etc/sudoers.d
-    cat > $out/etc/sudoers <<EOF
-# Generated by egoengine docker image
-Defaults env_reset
-Defaults lecture = never
-Defaults secure_path="/usr/bin:/bin:/nix/var/nix/profiles/default/bin"
+        mkdir -p $out/etc/sudoers.d
+        cat > $out/etc/sudoers <<EOF
+    # Generated by egoengine docker image
+    Defaults env_reset
+    Defaults lecture = never
+    Defaults secure_path="/usr/bin:/bin:/nix/var/nix/profiles/default/bin"
 
-root ALL=(ALL:ALL) ALL
-${user} ALL=(ALL:ALL) NOPASSWD:ALL
-%wheel ALL=(ALL:ALL) NOPASSWD:ALL
+    root ALL=(ALL:ALL) ALL
+    ${user} ALL=(ALL:ALL) NOPASSWD:ALL
+    %wheel ALL=(ALL:ALL) NOPASSWD:ALL
 
-# Include additional sudoers configuration
-@includedir /etc/sudoers.d
-EOF
-    chmod 0440 $out/etc/sudoers
-    cat > $out/etc/pam.d/sudo <<EOF
-auth       sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
-account    sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
-password   sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
-session    sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
-EOF
-    chmod 0644 $out/etc/pam.d/sudo
+    # Include additional sudoers configuration
+    @includedir /etc/sudoers.d
+    EOF
+        chmod 0440 $out/etc/sudoers
+        cat > $out/etc/pam.d/sudo <<EOF
+    auth       sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
+    account    sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
+    password   sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
+    session    sufficient ${pkgs.linux-pam}/lib/security/pam_permit.so
+    EOF
+        chmod 0644 $out/etc/pam.d/sudo
 
-    # Set proper permissions on home directory
-    chmod 0700 $out/home/${user}
+        # Set proper permissions on home directory
+        chmod 0700 $out/home/${user}
   '';
 
   # Construct PATH for container
@@ -186,149 +186,147 @@ EOF
     "/usr/bin"
     "/bin"
   ];
-
-
 in
-pkgs.dockerTools.buildLayeredImage {
-  name = "egoengine";
-  tag = "latest";
+  pkgs.dockerTools.buildLayeredImage {
+    name = "egoengine";
+    tag = "latest";
 
-  # Enable Nix database for nix commands to work
-  enableFakechroot = true;
-  fakeRootCommands = ''
-    set -euo pipefail
+    # Enable Nix database for nix commands to work
+    enableFakechroot = true;
+    fakeRootCommands = ''
+      set -euo pipefail
 
-    # Create necessary directories with proper ownership
-    mkdir -p ./home/${user}
-    mkdir -p ./workspace
-    mkdir -p ./tmp
-    mkdir -p ./nix/var/nix/profiles/per-user/${user}
-    mkdir -p ./root
+      # Create necessary directories with proper ownership
+      mkdir -p ./home/${user}
+      mkdir -p ./workspace
+      mkdir -p ./tmp
+      mkdir -p ./nix/var/nix/profiles/per-user/${user}
+      mkdir -p ./root
 
-    # Install sudo binary into the image root so setuid can be applied
-    cp ${pkgs.sudo}/bin/sudo ./usr/bin/sudo
+      # Install sudo binary into the image root so setuid can be applied
+      cp ${pkgs.sudo}/bin/sudo ./usr/bin/sudo
 
-    # Copy pre-built home directory structure
-    # This contains dotfiles, configs, etc. from home-manager
-    # Using cp instead of rsync for better compatibility in fakechroot
-    echo "Installing home directory structure..."
-    cp -r ${prebuiltHome}/. ./home/${user}/
+      # Copy pre-built home directory structure
+      # This contains dotfiles, configs, etc. from home-manager
+      # Using cp instead of rsync for better compatibility in fakechroot
+      echo "Installing home directory structure..."
+      cp -r ${prebuiltHome}/. ./home/${user}/
 
-    # Ensure Claude CLI directories are writable
-    if [ -d "./home/${user}/.claude" ]; then
-      chmod 755 ./home/${user}/.claude
-      for dir in bin commands hooks projects statsig todos; do
-        if [ -d "./home/${user}/.claude/$dir" ]; then
-          chmod 755 "./home/${user}/.claude/$dir"
-        fi
-      done
-      mkdir -p "./home/${user}/.claude/debug"
-      chmod 755 "./home/${user}/.claude/debug"
-    fi
-
-    # Ensure Codex directories are writable
-    if [ -d "./home/${user}/.codex" ]; then
-      chmod 755 "./home/${user}/.codex"
-      if [ -d "./home/${user}/.codex/hooks" ]; then
-        chmod 755 "./home/${user}/.codex/hooks"
+      # Ensure Claude CLI directories are writable
+      if [ -d "./home/${user}/.claude" ]; then
+        chmod 755 ./home/${user}/.claude
+        for dir in bin commands hooks projects statsig todos; do
+          if [ -d "./home/${user}/.claude/$dir" ]; then
+            chmod 755 "./home/${user}/.claude/$dir"
+          fi
+        done
+        mkdir -p "./home/${user}/.claude/debug"
+        chmod 755 "./home/${user}/.claude/debug"
       fi
-    fi
 
-    # Create profile symlink for home-manager
-    # Point to the home-path which contains all the binaries, not the generation itself
-    ln -sf ${homeConfig.activationPackage}/home-path ./nix/var/nix/profiles/per-user/${user}/profile
+      # Ensure Codex directories are writable
+      if [ -d "./home/${user}/.codex" ]; then
+        chmod 755 "./home/${user}/.codex"
+        if [ -d "./home/${user}/.codex/hooks" ]; then
+          chmod 755 "./home/${user}/.codex/hooks"
+        fi
+      fi
 
-    # Link .nix-profile to the actual profile
-    rm -f ./home/${user}/.nix-profile
-    ln -sf /nix/var/nix/profiles/per-user/${user}/profile ./home/${user}/.nix-profile
+      # Create profile symlink for home-manager
+      # Point to the home-path which contains all the binaries, not the generation itself
+      ln -sf ${homeConfig.activationPackage}/home-path ./nix/var/nix/profiles/per-user/${user}/profile
 
-    # Set ownership and permissions
-    chown -R ${uid}:${gid} ./home/${user}
-    chmod 0700 ./home/${user}
+      # Link .nix-profile to the actual profile
+      rm -f ./home/${user}/.nix-profile
+      ln -sf /nix/var/nix/profiles/per-user/${user}/profile ./home/${user}/.nix-profile
 
-    # Create runtime writable directories that might not exist yet
-    mkdir -p ./home/${user}/.rbenv/shims
-    mkdir -p ./home/${user}/.rbenv/versions
-    mkdir -p ./home/${user}/.local/share/atuin
-    mkdir -p ./home/${user}/.cache
-    mkdir -p ./home/${user}/.config
+      # Set ownership and permissions
+      chown -R ${uid}:${gid} ./home/${user}
+      chmod 0700 ./home/${user}
 
-    # Fix permissions on writable directories
-    # These need to be writable by the user at runtime
-    chmod -R u+w ./home/${user}/.cache
-    chmod -R u+w ./home/${user}/.local
-    chmod -R u+w ./home/${user}/.config
-    chmod -R u+w ./home/${user}/.rbenv
-    chmod -R u+w ./home/${user}/.ssh
+      # Create runtime writable directories that might not exist yet
+      mkdir -p ./home/${user}/.rbenv/shims
+      mkdir -p ./home/${user}/.rbenv/versions
+      mkdir -p ./home/${user}/.local/share/atuin
+      mkdir -p ./home/${user}/.cache
+      mkdir -p ./home/${user}/.config
 
-    # Ensure ownership after mkdir
-    chown -R ${uid}:${gid} ./home/${user}
+      # Fix permissions on writable directories
+      # These need to be writable by the user at runtime
+      chmod -R u+w ./home/${user}/.cache
+      chmod -R u+w ./home/${user}/.local
+      chmod -R u+w ./home/${user}/.config
+      chmod -R u+w ./home/${user}/.rbenv
+      chmod -R u+w ./home/${user}/.ssh
 
-    chown ${uid}:${gid} ./workspace
-    chmod 0755 ./workspace
+      # Ensure ownership after mkdir
+      chown -R ${uid}:${gid} ./home/${user}
 
-    chmod 1777 ./tmp
+      chown ${uid}:${gid} ./workspace
+      chmod 0755 ./workspace
 
-    chown ${uid}:${gid} ./nix/var/nix/profiles/per-user/${user}
+      chmod 1777 ./tmp
 
-    # Ensure sudo has proper ownership and permissions for setuid
-    chown 0:0 ./usr/bin/sudo
-    chmod 4755 ./usr/bin/sudo
-  '';
+      chown ${uid}:${gid} ./nix/var/nix/profiles/per-user/${user}
 
-  # Contents to copy into the image
-  contents = [
-    # FHS compatibility layer (user accounts, symlinks)
-    fhsSetup
+      # Ensure sudo has proper ownership and permissions for setuid
+      chown 0:0 ./usr/bin/sudo
+      chmod 4755 ./usr/bin/sudo
+    '';
 
-    # Official dockerTools helpers
-    pkgs.dockerTools.usrBinEnv    # Provides /usr/bin/env
-    pkgs.dockerTools.binSh        # Provides /bin/sh
-    pkgs.dockerTools.caCertificates # SSL certificates
-    pkgs.dockerTools.fakeNss      # NSS configuration
+    # Contents to copy into the image
+    contents = [
+      # FHS compatibility layer (user accounts, symlinks)
+      fhsSetup
 
-    # Combined environment with all packages
-    combinedEnv
+      # Official dockerTools helpers
+      pkgs.dockerTools.usrBinEnv # Provides /usr/bin/env
+      pkgs.dockerTools.binSh # Provides /bin/sh
+      pkgs.dockerTools.caCertificates # SSL certificates
+      pkgs.dockerTools.fakeNss # NSS configuration
 
-    # Home-manager activation package (for the profile)
-    homeConfig.activationPackage
-  ];
+      # Combined environment with all packages
+      combinedEnv
 
-  # Container configuration
-  config = {
-    # Run as non-root user
-    User = user;
-    WorkingDir = homeDirectory;
-
-    # Default command: login shell
-    Cmd = [ "${pkgs.zsh}/bin/zsh" "-l" ];
-
-    # Environment variables
-    Env = [
-      "USER=${user}"
-      "HOME=${homeDirectory}"
-      "SHELL=${pkgs.zsh}/bin/zsh"
-      "LANG=en_US.UTF-8"
-      "LC_ALL=en_US.UTF-8"
-      "EDITOR=nvim"
-      "PATH=${containerPath}"
-
-      # Nix configuration
-      "NIX_CONFIG=experimental-features = nix-command flakes"
-      "NIX_USER_PROFILE_DIR=/nix/var/nix/profiles/per-user/${user}"
-      "NIX_PROFILES=/nix/var/nix/profiles/per-user/${user}/profile"
-      "LOCALE_ARCHIVE=${minimalLocales}/lib/locale/locale-archive"
-
-      # Prevent warnings
-      "NO_COLOR=1"
+      # Home-manager activation package (for the profile)
+      homeConfig.activationPackage
     ];
 
-    # OCI labels
-    Labels = {
-      "org.opencontainers.image.title" = "egoengine";
-      "org.opencontainers.image.description" = "Nix-based development environment";
-      "org.opencontainers.image.source" = "https://github.com/Veraticus/nix-config";
-      "org.opencontainers.image.licenses" = "MIT";
+    # Container configuration
+    config = {
+      # Run as non-root user
+      User = user;
+      WorkingDir = homeDirectory;
+
+      # Default command: login shell
+      Cmd = ["${pkgs.zsh}/bin/zsh" "-l"];
+
+      # Environment variables
+      Env = [
+        "USER=${user}"
+        "HOME=${homeDirectory}"
+        "SHELL=${pkgs.zsh}/bin/zsh"
+        "LANG=en_US.UTF-8"
+        "LC_ALL=en_US.UTF-8"
+        "EDITOR=nvim"
+        "PATH=${containerPath}"
+
+        # Nix configuration
+        "NIX_CONFIG=experimental-features = nix-command flakes"
+        "NIX_USER_PROFILE_DIR=/nix/var/nix/profiles/per-user/${user}"
+        "NIX_PROFILES=/nix/var/nix/profiles/per-user/${user}/profile"
+        "LOCALE_ARCHIVE=${minimalLocales}/lib/locale/locale-archive"
+
+        # Prevent warnings
+        "NO_COLOR=1"
+      ];
+
+      # OCI labels
+      Labels = {
+        "org.opencontainers.image.title" = "egoengine";
+        "org.opencontainers.image.description" = "Nix-based development environment";
+        "org.opencontainers.image.source" = "https://github.com/Veraticus/nix-config";
+        "org.opencontainers.image.licenses" = "MIT";
+      };
     };
-  };
-}
+  }

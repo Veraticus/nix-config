@@ -1,5 +1,8 @@
-{ lib, config, pkgs, ... }:
-let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   nodePackages = pkgs.nodePackages_latest;
   lspPackages = [
     pkgs.lua-language-server
@@ -44,7 +47,7 @@ in {
             "file-name"
             "file-modification-indicator"
           ];
-          center = [ ];
+          center = [];
           right = [
             "diagnostics"
             "separator"
@@ -61,8 +64,8 @@ in {
             insert = "[INSERT]";
             select = "[SELECT]";
           };
-          diagnostics = [ "warning" "error" ];
-          workspace-diagnostics = [ "warning" "error" ];
+          diagnostics = ["warning" "error"];
+          workspace-diagnostics = ["warning" "error"];
         };
         soft-wrap = {
           enable = true;
@@ -109,82 +112,82 @@ in {
         {
           name = "lua";
           scope = "source.lua";
-          file-types = [ "lua" ];
+          file-types = ["lua"];
           auto-format = true;
-          "language-servers" = [ "lua-language-server" ];
+          "language-servers" = ["lua-language-server"];
         }
         {
           name = "go";
           scope = "source.go";
-          file-types = [ "go" ];
+          file-types = ["go"];
           auto-format = true;
-          "language-servers" = [ "gopls" ];
+          "language-servers" = ["gopls"];
         }
         {
           name = "python";
           scope = "source.python";
-          file-types = [ "py" "pyi" ];
+          file-types = ["py" "pyi"];
           auto-format = true;
-          "language-servers" = [ "pyright" ];
+          "language-servers" = ["pyright"];
         }
         {
           name = "nix";
           scope = "source.nix";
-          file-types = [ "nix" ];
+          file-types = ["nix"];
           formatter = {
             command = "${pkgs.alejandra}/bin/alejandra";
           };
-          "language-servers" = [ "nil" ];
+          "language-servers" = ["nil"];
         }
         {
           name = "javascript";
           scope = "source.js";
-          file-types = [ "js" "mjs" "cjs" ];
+          file-types = ["js" "mjs" "cjs"];
           auto-format = true;
-          "language-servers" = [ "typescript-language-server" ];
+          "language-servers" = ["typescript-language-server"];
         }
         {
           name = "typescript";
           scope = "source.ts";
-          file-types = [ "ts" "tsx" ];
+          file-types = ["ts" "tsx"];
           auto-format = true;
-          "language-servers" = [ "typescript-language-server" ];
+          "language-servers" = ["typescript-language-server"];
         }
         {
           name = "html";
           scope = "text.html.basic";
-          file-types = [ "html" "htm" ];
-          "language-servers" = [ "html-ls" ];
+          file-types = ["html" "htm"];
+          "language-servers" = ["html-ls"];
         }
         {
           name = "css";
           scope = "source.css";
-          file-types = [ "css" "pcss" "scss" ];
-          "language-servers" = [ "css-ls" ];
+          file-types = ["css" "pcss" "scss"];
+          "language-servers" = ["css-ls"];
         }
         {
           name = "json";
           scope = "source.json";
-          file-types = [ "json" ];
-          "language-servers" = [ "json-ls" ];
+          file-types = ["json"];
+          "language-servers" = ["json-ls"];
         }
         {
           name = "terraform";
           scope = "source.terraform";
-          file-types = [ "tf" "tfvars" ];
+          file-types = ["tf" "tfvars"];
           auto-format = true;
-          "language-servers" = [ "terraform-ls" ];
+          "language-servers" = ["terraform-ls"];
           formatter = {
             command = "${pkgs.terraform}/bin/terraform";
-            args = [ "fmt" "-" ];
+            args = ["fmt" "-"];
           };
         }
         {
           name = "yaml";
           scope = "source.yaml";
           auto-format = true;
-          file-types = [ "yaml" "yml" "helm" ];
-          "language-servers" = [ "yaml-language-server" ];
+          file-types = ["yaml" "yml" "helm"];
+          "language-servers" = ["yaml-language-server"];
         }
       ];
 
@@ -197,43 +200,43 @@ in {
         };
         pyright = {
           command = "${pkgs.pyright}/bin/pyright-langserver";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
         };
         nil = {
           command = "${pkgs.nil}/bin/nil";
         };
         "typescript-language-server" = {
           command = "${nodePackages.typescript-language-server}/bin/typescript-language-server";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
         };
         "html-ls" = {
           command = "${nodePackages.vscode-langservers-extracted}/bin/vscode-html-language-server";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
         };
         "css-ls" = {
           command = "${nodePackages.vscode-langservers-extracted}/bin/vscode-css-language-server";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
         };
         "json-ls" = {
           command = "${nodePackages.vscode-langservers-extracted}/bin/vscode-json-language-server";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
         };
         "terraform-ls" = {
           command = "${pkgs.terraform-ls}/bin/terraform-ls";
-          args = [ "serve" ];
+          args = ["serve"];
         };
         "yaml-language-server" = {
           command = "${nodePackages.yaml-language-server}/bin/yaml-language-server";
-          args = [ "--stdio" ];
+          args = ["--stdio"];
           config = {
             yaml = {
-              schemaStore = { enable = true; };
-              format = { enable = true; };
+              schemaStore = {enable = true;};
+              format = {enable = true;};
               validate = true;
               completion = true;
               hover = true;
               schemas = {
-                kubernetes = [ "*.k8s.yaml" "kustomization.yaml" "**/values.yaml" "helm/*.yaml" ];
+                kubernetes = ["*.k8s.yaml" "kustomization.yaml" "**/values.yaml" "helm/*.yaml"];
               };
             };
           };

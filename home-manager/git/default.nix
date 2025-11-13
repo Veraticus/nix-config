@@ -1,11 +1,11 @@
-{ inputs, lib, config, pkgs, ... }: {
+_: {
   programs.git = {
     enable = true;
-    userName  = "Josh Symonds";
+    userName = "Josh Symonds";
     userEmail = "josh@joshsymonds.com";
 
     aliases = {
-      co = "checkout"; 
+      co = "checkout";
       st = "status";
       a = "add --all";
       pl = "pull -u";
@@ -13,18 +13,18 @@
     };
 
     extraConfig = {
-      core = { 
+      core = {
         editor = "hx";
         whitespace = "fix,-indent-with-non-tab,trailing-space,cr-at-eol";
       };
       url."ssh://git@github.com/".insteadOf = "https://github.com/";
-      pull = { rebase = true; };
-      web = { browser = "firefox"; };
+      pull = {rebase = true;};
+      web = {browser = "firefox";};
       rerere = {
         enabled = 1;
         autoupdate = 1;
       };
-      push = { default = "simple"; };
+      push = {default = "simple";};
     };
   };
 }

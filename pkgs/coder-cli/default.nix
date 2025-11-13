@@ -1,6 +1,9 @@
-{ lib, stdenv, fetchurl, unzip }:
-
-let
+{
+  lib,
+  stdenv,
+  fetchurl,
+  unzip,
+}: let
   version = "2.14.1";
 
   sources = {
@@ -29,32 +32,32 @@ let
   info = sources.${stdenv.hostPlatform.system}
     or (throw "coder-cli: unsupported platform ${stdenv.hostPlatform.system}");
 in
-stdenv.mkDerivation {
-  pname = "coder";
-  inherit version;
+  stdenv.mkDerivation {
+    pname = "coder";
+    inherit version;
 
-  src = fetchurl {
-    inherit (info) url hash;
-  };
+    src = fetchurl {
+      inherit (info) url hash;
+    };
 
-  nativeBuildInputs = lib.optionals (lib.hasSuffix ".zip" info.url) [ unzip ];
+    nativeBuildInputs = lib.optionals (lib.hasSuffix ".zip" info.url) [unzip];
 
-  unpackPhase = info.unpackCmd;
+    unpackPhase = info.unpackCmd;
 
-  installPhase = ''
-    runHook preInstall
-    install -Dm755 coder "$out/bin/coder"
-    install -Dm644 LICENSE "$out/share/doc/coder/LICENSE"
-    install -Dm644 LICENSE.enterprise "$out/share/doc/coder/LICENSE.enterprise"
-    install -Dm644 README.md "$out/share/doc/coder/README.md"
-    runHook postInstall
-  '';
+    installPhase = ''
+      runHook preInstall
+      install -Dm755 coder "$out/bin/coder"
+      install -Dm644 LICENSE "$out/share/doc/coder/LICENSE"
+      install -Dm644 LICENSE.enterprise "$out/share/doc/coder/LICENSE.enterprise"
+      install -Dm644 README.md "$out/share/doc/coder/README.md"
+      runHook postInstall
+    '';
 
-  meta = with lib; {
-    description = "Coder CLI ${version}";
-    homepage = "https://coder.com";
-    license = licenses.agpl3Plus;
-    maintainers = [ ];
-    platforms = builtins.attrNames sources;
-  };
-}
+    meta = with lib; {
+      description = "Coder CLI ${version}";
+      homepage = "https://coder.com";
+      license = licenses.agpl3Plus;
+      maintainers = [];
+      platforms = builtins.attrNames sources;
+    };
+  }

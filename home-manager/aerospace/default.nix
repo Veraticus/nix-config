@@ -1,4 +1,4 @@
-{ inputs, lib, config, pkgs, ... }: {
+_: {
   xdg.configFile."aerospace" = {
     source = ./aerospace;
     recursive = true;

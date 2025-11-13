@@ -1,8 +1,12 @@
 .DS_Store
 result*
+*.img
+*.img.zst
+*.raw
 .direnv/
 venv/
 .venv/
+.env
 .aider*
 !.aider.model*
 

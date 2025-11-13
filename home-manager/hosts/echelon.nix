@@ -1,4 +1,4 @@
-{ inputs, lib, config, pkgs, ... }: {
+{pkgs, ...}: {
   imports = [
     ../common.nix
     ../devspaces-host

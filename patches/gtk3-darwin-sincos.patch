@@ -1,0 +1,15 @@
+diff --git a/tests/gtkgears.c b/tests/gtkgears.c
+index 86c7f74b4a..8803a4df8e 100644
+--- a/tests/gtkgears.c
++++ b/tests/gtkgears.c
+@@ -37,6 +37,10 @@
+ #define STRIPS_PER_TOOTH 7
+ #define VERTICES_PER_TOOTH 34
+ #define GEAR_VERTEX_STRIDE 6
++#if defined(__APPLE__)
++#  undef HAVE_SINCOS
++#endif
++
+ 
+ #ifndef HAVE_SINCOS
+ static void

@@ -1,6 +1,4 @@
-{ lib, config, pkgs, ... }:
-
-{
+_: {
   # Devspace host configuration - for running ON ultraviolet
   programs.zsh.shellAliases = let
     contextAlias = name: icon: "t ${name} ${icon}";

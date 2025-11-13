@@ -1,4 +1,4 @@
-{ inputs, lib, config, pkgs, ... }: {
+{pkgs, ...}: {
   imports = [
     ../common.nix
     ../devspaces-host
@@ -19,7 +19,7 @@
       jq
       httpie
       websocat # WebSocket client
-      
+
       # Development tools
       awscli2 # AWS CLI for AWS operations
       kind # Kubernetes in Docker for local K8s clusters

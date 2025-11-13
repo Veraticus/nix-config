@@ -1,4 +1,8 @@
-{ inputs, lib, config, pkgs, ... }: {
+{
+  lib,
+  pkgs,
+  ...
+}: {
   imports = [
     ./common.nix
     ./devspaces-host
@@ -27,7 +31,7 @@
         sudo nixos-rebuild switch --flake ".#$(hostname)" --option warn-dirty false
       fi
     }
-    
+
     # Function for updating bluedesert from ultraviolet
     update-bluedesert() {
       cd ~/nix-config && sudo nixos-rebuild switch --flake '.#bluedesert' --target-host joshsymonds@172.31.0.201 --use-remote-sudo --option warn-dirty false

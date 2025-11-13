@@ -1,11 +1,4 @@
-{
-  inputs,
-  lib,
-  config,
-  pkgs,
-  ...
-}:
-{
+{pkgs, ...}: {
   programs.starship = {
     package = pkgs.starship;
     enable = true;
@@ -75,7 +68,7 @@
           when = ''test -n "$CODER_WORKSPACE_NAME" || test -n "$DEV_CONTEXT"'';
           command = ''
             if [ -n "$CODER_WORKSPACE_NAME" ]; then
-              icon="${DEV_CONTEXT_ICON:-}"
+              icon="''${DEV_CONTEXT_ICON:-}"
               printf " %s %s" "$icon" "$CODER_WORKSPACE_NAME"
             elif [ -n "$DEV_CONTEXT" ]; then
               if [ -n "$DEV_CONTEXT_ICON" ]; then

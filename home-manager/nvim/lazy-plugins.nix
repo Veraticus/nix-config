@@ -1,5 +1,4 @@
-{ fetchFromGitHub }:
-{
+{fetchFromGitHub}: {
   "blink-cmp-copilot" = fetchFromGitHub {
     owner = "giuxtaposition";
     repo = "blink-cmp-copilot";

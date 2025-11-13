@@ -1,9 +1,13 @@
-{ inputs, lib, config, pkgs, hostname ? null, ... }:
-let
+{
+  lib,
+  config,
+  pkgs,
+  hostname ? null,
+  ...
+}: let
   isCloudbank = hostname == "cloudbank";
   autoAttachRemoteTmux = hostname != null && !isCloudbank;
-in
-{
+in {
   xdg.configFile."zsh" = {
     source = ./zsh;
     recursive = true;
@@ -77,9 +81,11 @@ in
         local label="$1"
         shift
 
-        local -a icon_args=()
+        local icon_flag=""
+        local icon_value=""
         if [[ $# -gt 0 && "$1" != "--" ]]; then
-          icon_args=( "--icon" "$1" )
+          icon_flag="--icon"
+          icon_value="$1"
           shift
         fi
 
@@ -88,9 +94,17 @@ in
         fi
 
         if [[ $# -gt 0 ]]; then
-          tmux-devspace attach "${icon_args[@]}" "$label" -- "$@"
+          if [[ -n "$icon_flag" ]]; then
+            tmux-devspace attach "$icon_flag" "$icon_value" "$label" -- "$@"
+          else
+            tmux-devspace attach "$label" -- "$@"
+          fi
         else
-          tmux-devspace attach "${icon_args[@]}" "$label"
+          if [[ -n "$icon_flag" ]]; then
+            tmux-devspace attach "$icon_flag" "$icon_value" "$label"
+          else
+            tmux-devspace attach "$label"
+          fi
         fi
       }
 
@@ -133,19 +147,19 @@ in
       fi
 
       # Derive a unified dev context for prompts and titles
-      if [ -n "${CODER_WORKSPACE_NAME:-}" ]; then
+      if [ -n "''${CODER_WORKSPACE_NAME:-}" ]; then
         export DEV_CONTEXT="$CODER_WORKSPACE_NAME"
-        : "${DEV_CONTEXT_KIND:=coder}"
+        : "''${DEV_CONTEXT_KIND:=coder}"
         export DEV_CONTEXT_KIND
-      elif [ -n "${TMUX_DEVSPACE:-}" ]; then
+      elif [ -n "''${TMUX_DEVSPACE:-}" ]; then
         export DEV_CONTEXT="$TMUX_DEVSPACE"
-        : "${DEV_CONTEXT_KIND:=tmux}"
+        : "''${DEV_CONTEXT_KIND:=tmux}"
         export DEV_CONTEXT_KIND
       else
-        if [ -z "${DEV_CONTEXT:-}" ]; then
+        if [ -z "''${DEV_CONTEXT:-}" ]; then
           DEV_CONTEXT="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo host)"
           export DEV_CONTEXT
-          : "${DEV_CONTEXT_KIND:=host}"
+          : "''${DEV_CONTEXT_KIND:=host}"
           export DEV_CONTEXT_KIND
         fi
       fi

@@ -1,4 +1,4 @@
-{ inputs, darwin, lib, config, pkgs, ... }: {
+{pkgs, ...}: {
   imports = [
     ./common.nix
     ./aerospace

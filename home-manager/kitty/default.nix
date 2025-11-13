@@ -1,4 +1,4 @@
-{ inputs, lib, config, pkgs, ... }: {
+{config, ...}: {
   programs.kitty = {
     enable = true;
 
@@ -60,7 +60,7 @@
       "clipboard_control" = "write-clipboard write-primary read-clipboard read-primary";
       "term" = "xterm-kitty";
       # SSH configuration
-      "ssh_env" = "TERM=xterm-256color";  # Use compatible TERM for SSH
+      "ssh_env" = "TERM=xterm-256color"; # Use compatible TERM for SSH
       # SSH clipboard integration
       "share_connections" = true;
       "remote_kitty" = "if-needed";

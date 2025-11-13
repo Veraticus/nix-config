@@ -31,6 +31,11 @@
     # Hardware-specific optimizations
     hardware.url = "github:nixos/nixos-hardware/master";
 
+    disko = {
+      url = "github:nix-community/disko";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Linkpearl - clipboard sync
     linkpearl.url = "github:Veraticus/linkpearl";
 
@@ -57,183 +62,246 @@
     ];
   };
 
-  outputs = { nixpkgs, darwin, home-manager, agenix, neovim-nightly, self, ... }@inputs:
-    let
-      inherit (self) outputs;
-      inherit (nixpkgs) lib;
+  outputs = {
+    nixpkgs,
+    darwin,
+    home-manager,
+    self,
+    ...
+  } @ inputs: let
+    inherit (self) outputs;
+    inherit (nixpkgs) lib;
 
-      # Only the systems we actually use
-      systems = [ "x86_64-linux" "aarch64-darwin" ];
-      forAllSystems = f: lib.genAttrs systems f;
+    # Only the systems we actually use
+    systems = ["x86_64-linux" "aarch64-darwin"];
+    forAllSystems = f: lib.genAttrs systems f;
 
-      # Common special arguments for all configurations
-      mkSpecialArgs = system: {
-        inherit inputs outputs;
-      };
+    # Common special arguments for all configurations
+    mkSpecialArgs = _: {
+      inherit inputs outputs;
+    };
 
-      mkHomeManagerModules = { hostname, system, module }: [
-        home-manager.nixosModules.home-manager
-        {
-          home-manager.useGlobalPkgs = true;
-          home-manager.useUserPackages = true;
-          home-manager.backupFileExtension = "backup";
-          home-manager.users.joshsymonds = import module;
-          home-manager.extraSpecialArgs = mkSpecialArgs system // {
+    mkHomeManagerModules = {
+      hostname,
+      system,
+      module,
+    }: [
+      home-manager.nixosModules.home-manager
+      {
+        home-manager = {
+          useGlobalPkgs = true;
+          useUserPackages = true;
+          backupFileExtension = "backup";
+          users.joshsymonds = import module;
+          extraSpecialArgs =
+            mkSpecialArgs system
+            // {
+              inherit hostname;
+            };
+          sharedModules = [inputs.agenix.homeManagerModules.default];
+        };
+      }
+    ];
+
+    mkNixosHost = hostname: cfg:
+      lib.nixosSystem {
+        inherit (cfg) system;
+        specialArgs = mkSpecialArgs cfg.system;
+        modules =
+          cfg.modules
+          ++ lib.optionals (cfg ? homeModule)
+          (mkHomeManagerModules {
             inherit hostname;
-          };
-          home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-        }
-      ];
-
-      mkNixosHost = hostname: cfg:
-        lib.nixosSystem {
-          inherit (cfg) system;
-          specialArgs = mkSpecialArgs cfg.system;
-          modules =
-            cfg.modules
-            ++ lib.optionals (cfg ? homeModule)
-              (mkHomeManagerModules {
-                inherit hostname;
-                inherit (cfg) system;
-                module = cfg.homeModule;
-              });
-        };
-
-      nixosHostDefinitions = {
-        egoengine = {
-          system = "x86_64-linux";
-          modules = [
-            ./hosts/egoengine
-            inputs.agenix.nixosModules.default
-          ];
-        };
-
-        ultraviolet = {
-          system = "x86_64-linux";
-          modules = [
-            ./hosts/ultraviolet
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-          ];
-          homeModule = ./home-manager/hosts/ultraviolet.nix;
-        };
-
-        bluedesert = {
-          system = "x86_64-linux";
-          modules = [
-            ./hosts/bluedesert
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-          ];
-          homeModule = ./home-manager/hosts/bluedesert.nix;
-        };
-
-        echelon = {
-          system = "x86_64-linux";
-          modules = [
-            ./hosts/echelon
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-          ];
-          homeModule = ./home-manager/hosts/echelon.nix;
-        };
-
-        vermissian = {
-          system = "x86_64-linux";
-          modules = [
-            ./hosts/vermissian
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-          ];
-          homeModule = ./home-manager/hosts/vermissian.nix;
-        };
+            inherit (cfg) system;
+            module = cfg.homeModule;
+          });
       };
+
+    nixosHostDefinitions = {
+      egoengine = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/egoengine
+          inputs.agenix.nixosModules.default
+        ];
+      };
+
+      ultraviolet = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/ultraviolet
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+        ];
+        homeModule = ./home-manager/hosts/ultraviolet.nix;
+      };
+
+      bluedesert = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/bluedesert
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+        ];
+        homeModule = ./home-manager/hosts/bluedesert.nix;
+      };
+
+      echelon = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/echelon
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+        ];
+        homeModule = ./home-manager/hosts/echelon.nix;
+      };
+
+      vermissian = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/vermissian
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+        ];
+        homeModule = ./home-manager/hosts/vermissian.nix;
+      };
+
+      stygianlibrary = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/stygianlibrary
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+          inputs.disko.nixosModules.disko
+        ];
+        homeModule = ./home-manager/hosts/stygianlibrary.nix;
+      };
+    };
+  in {
+    packages = let
+      base = forAllSystems (
+        system: let
+          pkgs = import nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+            overlays = [inputs.neovim-nightly.overlays.default];
+          };
+        in
+          import ./pkgs {
+            inherit pkgs;
+          }
+      );
     in
-    {
-      packages =
-        let
-          base = forAllSystems (system:
-            let
-              pkgs = import nixpkgs {
-                inherit system;
-                config.allowUnfree = true;
-                overlays = [ inputs.neovim-nightly.overlays.default ];
-              };
-            in import ./pkgs {
-              inherit pkgs inputs outputs;
-            }
-          );
-        in base // {
-          x86_64-linux = base.x86_64-linux // {
+      base
+      // {
+        x86_64-linux =
+          base.x86_64-linux
+          // {
             egoengine = self.nixosConfigurations.egoengine.config.system.build.egoengineDockerImage;
           };
-        };
-
-      overlays = import ./overlays { inherit inputs outputs; };
-
-      # NixOS configurations - inlined for clarity
-      nixosConfigurations =
-        lib.mapAttrs mkNixosHost nixosHostDefinitions;
-
-      # Darwin configuration - inlined for clarity
-      darwinConfigurations = {
-        cloudbank = darwin.lib.darwinSystem {
-          system = "aarch64-darwin";
-          specialArgs = mkSpecialArgs "aarch64-darwin";
-          modules = [
-            ./hosts/cloudbank
-            home-manager.darwinModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "backup";
-              home-manager.users.joshsymonds = import ./home-manager/aarch64-darwin.nix;
-              home-manager.extraSpecialArgs = mkSpecialArgs "aarch64-darwin" // {
-                hostname = "cloudbank";
-              };
-              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-            }
-          ];
-        };
       };
 
-      # Simplified home configurations - generated programmatically
-      homeConfigurations = 
-        let
-          mkHome = { system, module, hostname }: home-manager.lib.homeManagerConfiguration {
-            pkgs = import nixpkgs {
-              inherit system;
-              overlays = [
-                inputs.neovim-nightly.overlays.default
-                outputs.overlays.default
-              ];
-              config.allowUnfree = true;
-            };
-            extraSpecialArgs = mkSpecialArgs system // { inherit hostname; };
-            modules = [ inputs.agenix.homeManagerModules.default module ];
-          };
-          
-          linuxHosts = builtins.attrNames (lib.filterAttrs (_: cfg: cfg ? homeModule) nixosHostDefinitions);
-          darwinHosts = [ "cloudbank" ];
-        in
-          (lib.genAttrs 
-            (map (h: "joshsymonds@${h}") linuxHosts)
-            (h: let hostname = lib.removePrefix "joshsymonds@" h; in
-              mkHome { 
-                system = "x86_64-linux"; 
-                module = ./home-manager/hosts/${hostname}.nix; 
-                inherit hostname;
-              })
-          ) // (lib.genAttrs 
-            (map (h: "joshsymonds@${h}") darwinHosts)
-            (h: let hostname = lib.removePrefix "joshsymonds@" h; in
-              mkHome { 
-                system = "aarch64-darwin"; 
-                module = ./home-manager/aarch64-darwin.nix; 
-                inherit hostname;
-              })
-          );
+    overlays = import ./overlays {inherit inputs outputs;};
 
-      egoengine = self.packages.x86_64-linux.egoengine;
+    devShells = forAllSystems (
+      system: let
+        pkgs = import nixpkgs {
+          inherit system;
+          config.allowUnfree = true;
+        };
+      in {
+        default = pkgs.mkShell {
+          name = "nix-config-dev";
+          packages = with pkgs; [
+            alejandra
+            nixpkgs-fmt
+            statix
+            deadnix
+            shellcheck
+            git
+          ];
+        };
+      }
+    );
+
+    # NixOS configurations - inlined for clarity
+    nixosConfigurations =
+      lib.mapAttrs mkNixosHost nixosHostDefinitions;
+
+    # Darwin configuration - inlined for clarity
+    darwinConfigurations = {
+      cloudbank = darwin.lib.darwinSystem {
+        system = "aarch64-darwin";
+        specialArgs = mkSpecialArgs "aarch64-darwin";
+        modules = [
+          ./hosts/cloudbank
+          home-manager.darwinModules.home-manager
+          {
+            home-manager = {
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              backupFileExtension = "backup";
+              users.joshsymonds = import ./home-manager/aarch64-darwin.nix;
+              extraSpecialArgs =
+                mkSpecialArgs "aarch64-darwin"
+                // {
+                  hostname = "cloudbank";
+                };
+              sharedModules = [inputs.agenix.homeManagerModules.default];
+            };
+          }
+        ];
+      };
     };
+
+    # Simplified home configurations - generated programmatically
+    homeConfigurations = let
+      mkHome = {
+        system,
+        module,
+        hostname,
+      }:
+        home-manager.lib.homeManagerConfiguration {
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [
+              inputs.neovim-nightly.overlays.default
+              outputs.overlays.default
+            ];
+            config.allowUnfree = true;
+          };
+          extraSpecialArgs = mkSpecialArgs system // {inherit hostname;};
+          modules = [inputs.agenix.homeManagerModules.default module];
+        };
+
+      linuxHosts = builtins.attrNames (lib.filterAttrs (_: cfg: cfg ? homeModule) nixosHostDefinitions);
+      darwinHosts = ["cloudbank"];
+    in
+      (
+        lib.genAttrs
+        (map (h: "joshsymonds@${h}") linuxHosts)
+        (h: let
+          hostname = lib.removePrefix "joshsymonds@" h;
+        in
+          mkHome {
+            system = "x86_64-linux";
+            module = ./home-manager/hosts/${hostname}.nix;
+            inherit hostname;
+          })
+      )
+      // (
+        lib.genAttrs
+        (map (h: "joshsymonds@${h}") darwinHosts)
+        (h: let
+          hostname = lib.removePrefix "joshsymonds@" h;
+        in
+          mkHome {
+            system = "aarch64-darwin";
+            module = ./home-manager/aarch64-darwin.nix;
+            inherit hostname;
+          })
+      );
+
+    inherit (self.packages.x86_64-linux) egoengine;
+  };
 }

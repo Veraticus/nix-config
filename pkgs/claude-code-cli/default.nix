@@ -1,10 +1,10 @@
-{ lib
-, stdenv
-, fetchurl
-, makeWrapper
-, nodejs_24
+{
+  lib,
+  stdenv,
+  fetchurl,
+  makeWrapper,
+  nodejs_24,
 }:
-
 stdenv.mkDerivation rec {
   pname = "claude-code-cli";
   version = "2.0.28";
@@ -14,7 +14,7 @@ stdenv.mkDerivation rec {
     hash = "sha256-VyqSWl73wW+/83et6JXBpp2uTUW9JLnZpYmn4cn/dQw=";
   };
 
-  nativeBuildInputs = [ makeWrapper ];
+  nativeBuildInputs = [makeWrapper];
 
   dontConfigure = true;
   dontBuild = true;
@@ -37,7 +37,7 @@ stdenv.mkDerivation rec {
     description = "Anthropic Claude Code CLI for interacting with Claude from the terminal";
     homepage = "https://github.com/anthropics/claude-code";
     license = lib.licenses.mit;
-    maintainers = with lib.maintainers; [ ];
+    maintainers = with lib.maintainers; [];
     platforms = lib.platforms.all;
     mainProgram = "claude";
   };

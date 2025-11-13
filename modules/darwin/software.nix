@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{pkgs, ...}: {
   # GUI + CLI apps delivered via nixpkgs (appear in ~/Applications through activation helper)
   environment.systemPackages = with pkgs; [
     aerospace
@@ -27,7 +27,7 @@
         name = "sketchybar";
         restart_service = "changed";
         start_service = true;
-        args = [ "HEAD" ];
+        args = ["HEAD"];
       }
       "pyenv"
       "borders"

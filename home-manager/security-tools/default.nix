@@ -1,4 +1,4 @@
-{ inputs, lib, config, pkgs, ... }: {
+{pkgs, ...}: {
   home.packages = with pkgs; [
     # Cloud security assessment
     prowler

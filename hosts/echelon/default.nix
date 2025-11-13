@@ -1,175 +1,183 @@
 let
-  system = "x86_64-linux";
   user = "joshsymonds";
 in
-{ inputs, outputs, lib, config, pkgs, ... }: {
-  # You can import other NixOS modules here
-  imports = [
-    inputs.hardware.nixosModules.common-cpu-intel
+  {
+    inputs,
+    lib,
+    config,
+    pkgs,
+    ...
+  }: {
+    # You can import other NixOS modules here
+    imports = [
+      inputs.hardware.nixosModules.common-cpu-intel
 
-    # You can also split up your configuration and import pieces of it here:
-    # ./users.nix
+      # You can also split up your configuration and import pieces of it here:
+      # ./users.nix
 
-    # Import your generated (nixos-generate-config) hardware configuration
-    ./hardware-configuration.nix
-  ];
+      # Import your generated (nixos-generate-config) hardware configuration
+      ./hardware-configuration.nix
+    ];
 
-  # Hardware setup
-  hardware = {
-    cpu = {
-      intel.updateMicrocode = true;
+    # Hardware setup
+    hardware = {
+      cpu = {
+        intel.updateMicrocode = true;
+      };
+      graphics = {
+        enable = true;
+        enable32Bit = true;
+        extraPackages = with pkgs; [
+          intel-media-driver
+          libvdpau-va-gl
+        ];
+      };
+      enableAllFirmware = true;
     };
-    graphics = {
-      enable = true;
-      enable32Bit = true;
-      extraPackages = with pkgs; [
-        intel-media-driver
-        libvdpau-va-gl
+
+    nix = {
+      # This will add each flake input as a registry
+      # To make nix3 commands consistent with your flake
+      registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
+
+      # This will additionally add your inputs to the system's legacy channels
+      # Making legacy nix commands consistent as well, awesome!
+      nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
+
+      gc = {
+        automatic = true;
+        dates = "daily";
+        options = "--delete-older-than 3d";
+      };
+      optimise.automatic = true;
+      settings = {
+        # Enable flakes and new 'nix' command
+        experimental-features = "nix-command flakes";
+        # Deduplicate and optimize nix store
+        auto-optimise-store = true;
+
+        # Caches handled by shared nix defaults
+      };
+    };
+
+    boot.kernel.sysctl = {
+      "net.ipv4.ip_forward" = 1; # Enable IPv4 forwarding
+      "net.ipv6.conf.all.forwarding" = 1; # Enable IPv6 forwarding if needed
+    };
+
+    networking = {
+      useDHCP = false;
+      hostName = "echelon";
+      firewall = {
+        enable = true;
+        allowPing = true;
+        checkReversePath = "loose";
+        trustedInterfaces = ["tailscale0"];
+        allowedUDPPorts = [51820 config.services.tailscale.port];
+        allowedTCPPorts = [22 80 443];
+      };
+      defaultGateway = "192.168.1.1";
+      nameservers = ["8.8.8.8" "1.1.1.1"];
+      interfaces.enp2s0.ipv4.addresses = [
+        {
+          address = "192.168.1.200";
+          prefixLength = 24;
+        }
+      ];
+      interfaces.enp2s0.useDHCP = false;
+      nat = {
+        enable = true;
+        internalInterfaces = ["enp2s0"];
+        externalInterface = "tailscale0";
+      };
+    };
+
+    boot = {
+      kernelModules = ["coretemp" "kvm-intel"];
+      supportedFilesystems = ["ntfs"];
+      kernelParams = [];
+      loader = {
+        systemd-boot = {
+          enable = true;
+          configurationLimit = 8;
+        };
+        efi = {
+          canTouchEfiVariables = true;
+          efiSysMountPoint = "/boot";
+        };
+      };
+    };
+
+    # Time and internationalization
+    time.timeZone = "America/Los_Angeles";
+    i18n.defaultLocale = "en_US.UTF-8";
+
+    # Users and their homes
+    users.defaultUserShell = pkgs.zsh;
+    users.users.${user} = {
+      shell = pkgs.zsh;
+      home = "/home/${user}";
+      isNormalUser = true;
+      extraGroups = ["wheel" config.users.groups.keys.name];
+    };
+
+    # Security
+    security = {
+      rtkit.enable = true;
+      sudo.extraRules = [
+        {
+          users = ["${user}"];
+          commands = [
+            {
+              command = "ALL";
+              options = ["SETENV" "NOPASSWD"];
+            }
+          ];
+        }
       ];
     };
-    enableAllFirmware = true;
-  };
 
+    # Services
+    services = {
+      thermald.enable = true;
 
-  nix = {
-    # This will add each flake input as a registry
-    # To make nix3 commands consistent with your flake
-    registry = lib.mapAttrs (_: value: { flake = value; }) inputs;
-
-    # This will additionally add your inputs to the system's legacy channels
-    # Making legacy nix commands consistent as well, awesome!
-    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-
-    gc = {
-      automatic = true;
-      dates = "daily";
-      options = "--delete-older-than 3d";
-    };
-    optimise.automatic = true;
-    settings = {
-      # Enable flakes and new 'nix' command
-      experimental-features = "nix-command flakes";
-      # Deduplicate and optimize nix store
-      auto-optimise-store = true;
-
-      # Caches handled by shared nix defaults
-    };
-  };
-
-  boot.kernel.sysctl = {
-    "net.ipv4.ip_forward" = 1;  # Enable IPv4 forwarding
-    "net.ipv6.conf.all.forwarding" = 1;  # Enable IPv6 forwarding if needed
-  };
-
-  networking = {
-    useDHCP = false;
-    hostName = "echelon";
-    firewall = {
-      enable = true;
-      allowPing = true;
-      checkReversePath = "loose";
-      trustedInterfaces = [ "tailscale0" ];
-      allowedUDPPorts = [ 51820 config.services.tailscale.port ];
-      allowedTCPPorts = [ 22 80 443 ];
-    };
-    defaultGateway = "192.168.1.1";
-    nameservers = [ "8.8.8.8" "1.1.1.1" ];
-    interfaces.enp2s0.ipv4.addresses = [{
-      address = "192.168.1.200";
-      prefixLength = 24;
-    }];
-    interfaces.enp2s0.useDHCP = false;
-    nat = {
-      enable = true;
-      internalInterfaces = [ "enp2s0" ];
-      externalInterface = "tailscale0";
-    };
-  };
-
-  boot = {
-    kernelModules = [ "coretemp" "kvm-intel" ];
-    supportedFilesystems = [ "ntfs" ];
-    kernelParams = [ ];
-    loader = {
-      systemd-boot = {
+      openssh = {
         enable = true;
-        configurationLimit = 8;
+        settings = {
+          PermitRootLogin = "no";
+          PasswordAuthentication = false;
+        };
       };
-      efi = {
-        canTouchEfiVariables = true;
-        efiSysMountPoint = "/boot";
+
+      rpcbind.enable = true;
+
+      tailscale = {
+        enable = true;
+        package = pkgs.tailscale;
+        useRoutingFeatures = "both";
       };
     };
-  };
-
-  # Time and internationalization
-  time.timeZone = "America/Los_Angeles";
-  i18n.defaultLocale = "en_US.UTF-8";
-
-  # Users and their homes
-  users.defaultUserShell = pkgs.zsh;
-  users.users.${user} = {
-    shell = pkgs.zsh;
-    home = "/home/${user}";
-    isNormalUser = true;
-    extraGroups = [ "wheel" config.users.groups.keys.name ];
-  };
-
-
-  # Security
-  security = {
-    rtkit.enable = true;
-    sudo.extraRules = [
-      {
-        users = [ "${user}" ];
-        commands = [
-          {
-            command = "ALL";
-            options = [ "SETENV" "NOPASSWD" ];
-          }
-        ];
-      }
-    ];
-  };
-
-  # Services
-  services.thermald.enable = true;
-
-  services.openssh = {
-    enable = true;
-    settings = {
-      PermitRootLogin = "no";
-      PasswordAuthentication = false;
+    programs = {
+      ssh.startAgent = true;
+      zsh.enable = true;
     };
-  };
-  programs.ssh.startAgent = true;
 
-  programs.zsh.enable = true;
+    # Environment
+    environment = {
+      pathsToLink = ["/share/zsh"];
 
-  services.rpcbind.enable = true;
+      systemPackages = with pkgs; [
+        polkit
+        pciutils
+        hwdata
+        cachix
+        unar
+        traceroute
+      ];
 
-  services.tailscale = {
-    enable = true;
-    package = pkgs.tailscale;
-    useRoutingFeatures = "both";
-  };
+      # SSH agent is now managed by systemd user service
+    };
 
-   # Environment
-  environment = {
-    pathsToLink = [ "/share/zsh" ];
-
-    systemPackages = with pkgs; [
-      polkit
-      pciutils
-      hwdata
-      cachix
-      unar
-      traceroute
-    ];
-
-    # SSH agent is now managed by systemd user service
-  };
-
-  # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
-  system.stateVersion = "25.05";
-}
+    # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
+    system.stateVersion = "25.05";
+  }

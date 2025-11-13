@@ -1,7 +1,10 @@
-{ lib, python3Packages, fetchFromGitHub, fetchPypi }:
-
-with python3Packages;
-let
+{
+  lib,
+  python3Packages,
+  fetchFromGitHub,
+  fetchPypi,
+}:
+with python3Packages; let
   # Custom openapi-pydantic package (not in nixpkgs)
   openapi-pydantic = buildPythonPackage rec {
     pname = "openapi-pydantic";
@@ -12,8 +15,8 @@ let
       hash = "sha256-/2g1r2veekWfuT65O7krh0m3VPxuUbLxWQoZ3DAF7g0=";
     };
     pyproject = true;
-    build-system = [ poetry-core ];
-    propagatedBuildInputs = [ pydantic ];
+    build-system = [poetry-core];
+    propagatedBuildInputs = [pydantic];
     doCheck = false;
   };
 
@@ -26,11 +29,11 @@ let
       hash = "sha256-CeEXI8ZYjYwTVi1esE1CsTuR6zL1PO93zIwO4SGy+Qc=";
     };
     pyproject = true;
-    build-system = [ 
-      hatchling 
+    build-system = [
+      hatchling
       uv-dynamic-versioning
     ];
-    propagatedBuildInputs = [ 
+    propagatedBuildInputs = [
       exceptiongroup
       httpx
       mcp
@@ -41,7 +44,7 @@ let
       websockets
     ];
     pythonRelaxDeps = [
-      "mcp"  # Allow newer mcp versions
+      "mcp" # Allow newer mcp versions
     ];
     doCheck = false;
   };
@@ -56,9 +59,9 @@ let
       hash = "sha256-CgnDujEYw9SgLVyZsFdaihQsq11OtI6JjJFcAukE/M4=";
     };
     pyproject = true;
-    build-system = [ setuptools ];
-    propagatedBuildInputs = [ 
-      markdown 
+    build-system = [setuptools];
+    propagatedBuildInputs = [
+      markdown
       lxml
       pymdown-extensions
       pyyaml
@@ -71,65 +74,64 @@ let
     ];
     doCheck = false;
   };
-
 in
-buildPythonApplication rec {
-  pname = "mcp-atlassian";
-  version = "0.11.9";
+  buildPythonApplication rec {
+    pname = "mcp-atlassian";
+    version = "0.11.9";
 
-  src = fetchFromGitHub {
-    owner = "sooperset";
-    repo = "mcp-atlassian";
-    rev = "v${version}";
-    hash = "sha256-R6edqlPgM63KRZO2rVmVWGjMRSNzIvD8P00A9vpdW9Y=";
-  };
-  
-  pyproject = true;
+    src = fetchFromGitHub {
+      owner = "sooperset";
+      repo = "mcp-atlassian";
+      rev = "v${version}";
+      hash = "sha256-R6edqlPgM63KRZO2rVmVWGjMRSNzIvD8P00A9vpdW9Y=";
+    };
 
-  build-system = [
-    hatchling
-    uv-dynamic-versioning
-  ];
+    pyproject = true;
 
-  propagatedBuildInputs = [
-    atlassian-python-api
-    requests
-    beautifulsoup4
-    httpx
-    mcp
-    fastmcp-2_3_5
-    python-dotenv
-    markdownify
-    markdown
-    markdown-to-confluence
-    pydantic
-    trio
-    click
-    uvicorn
-    starlette
-    thefuzz
-    python-dateutil
-    keyring
-    cachetools
-  ];
+    build-system = [
+      hatchling
+      uv-dynamic-versioning
+    ];
 
-  pythonRelaxDeps = [
-    "fastmcp"  # We're using 2.3.5 instead of required 2.3.4
-  ];
-  
-  # Remove type stub dependencies that are only needed for development
-  pythonRemoveDeps = [
-    "types-python-dateutil"
-    "types-cachetools"
-  ];
+    propagatedBuildInputs = [
+      atlassian-python-api
+      requests
+      beautifulsoup4
+      httpx
+      mcp
+      fastmcp-2_3_5
+      python-dotenv
+      markdownify
+      markdown
+      markdown-to-confluence
+      pydantic
+      trio
+      click
+      uvicorn
+      starlette
+      thefuzz
+      python-dateutil
+      keyring
+      cachetools
+    ];
 
-  # Disable checks for now as they require pytest
-  doCheck = false;
+    pythonRelaxDeps = [
+      "fastmcp" # We're using 2.3.5 instead of required 2.3.4
+    ];
 
-  meta = with lib; {
-    description = "MCP server for Atlassian products (Jira and Confluence)";
-    homepage = "https://github.com/sooperset/mcp-atlassian";
-    license = licenses.mit;
-    maintainers = [ ];
-  };
-}
+    # Remove type stub dependencies that are only needed for development
+    pythonRemoveDeps = [
+      "types-python-dateutil"
+      "types-cachetools"
+    ];
+
+    # Disable checks for now as they require pytest
+    doCheck = false;
+
+    meta = with lib; {
+      description = "MCP server for Atlassian products (Jira and Confluence)";
+      homepage = "https://github.com/sooperset/mcp-atlassian";
+      license = licenses.mit;
+      maintainers = [];
+    };
+  }

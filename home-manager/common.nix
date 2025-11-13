@@ -1,9 +1,12 @@
-{ inputs, lib, config, pkgs, ... }:
-let
+{
+  inputs,
+  lib,
+  pkgs,
+  ...
+}: let
   tmuxDevspaceHelper =
     pkgs.writeShellScriptBin "tmux-devspace" (builtins.readFile ./tmux/scripts/tmux-devspace.sh);
-in
-{
+in {
   imports = [
     ./atuin
     ./claude-code
@@ -66,7 +69,7 @@ in
         shellspec
         socat
         talosctl
-        vivid  # For LS_COLORS generation
+        vivid # For LS_COLORS generation
         wget
         wireguard-tools
         xdg-utils
@@ -75,30 +78,34 @@ in
       ];
     };
 
-    programs.rbenv = {
-      enable = true;
-      enableBashIntegration = true;
-      enableZshIntegration = true;
-      plugins = [
-        {
-          name = "ruby-build";
-          src = pkgs.fetchFromGitHub {
-            owner = "rbenv";
-            repo = "ruby-build";
-            rev = "v20251008";
-            hash = "sha256-FZRp7O4YjDV+EOvwuaqWaQ6LfzL9vENBaIPot5G89Z0=";
-          };
-        }
-      ];
-    };
+    programs = {
+      rbenv = {
+        enable = true;
+        enableBashIntegration = true;
+        enableZshIntegration = true;
+        plugins = [
+          {
+            name = "ruby-build";
+            src = pkgs.fetchFromGitHub {
+              owner = "rbenv";
+              repo = "ruby-build";
+              rev = "v20251008";
+              hash = "sha256-FZRp7O4YjDV+EOvwuaqWaQ6LfzL9vENBaIPot5G89Z0=";
+            };
+          }
+        ];
+      };
 
-    programs.direnv.enable = true;
-    programs.direnv.nix-direnv.enable = true;
+      direnv = {
+        enable = true;
+        nix-direnv.enable = true;
+      };
 
-    programs.htop = {
-      enable = true;
-      package = pkgs.htop;
-      settings.show_program_path = true;
+      htop = {
+        enable = true;
+        package = pkgs.htop;
+        settings.show_program_path = true;
+      };
     };
 
     xdg.enable = true;

@@ -1,10 +1,4 @@
-{ inputs
-, lib
-, config
-, pkgs
-, ...
-}:
-{
+{pkgs, ...}: {
   imports = [
     ../common.nix
     ../devspaces-host
@@ -24,7 +18,7 @@
       # Media server specific tools
       mediainfo
       ffmpeg
-      
+
       # Network debugging tools (useful for media server)
       tcpdump # Packet capture tool
       lsof # List open files/ports

@@ -1,4 +1,9 @@
-{ inputs, outputs, lib, ... }: {
+{
+  inputs,
+  outputs,
+  lib,
+  ...
+}: {
   nixpkgs = {
     overlays = [
       inputs.neovim-nightly.overlays.default
@@ -24,7 +29,7 @@
         "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
         "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
       ];
-      trusted-users = lib.mkDefault [ "root" "joshsymonds" ];
+      trusted-users = lib.mkDefault ["root" "joshsymonds"];
     };
   };
 }

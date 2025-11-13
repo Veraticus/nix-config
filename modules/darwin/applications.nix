@@ -1,13 +1,17 @@
-{ config, lib, ... }:
-
-let
-  inherit (lib) attrByPath mkForce;
-  primaryUser = attrByPath [ "system" "primaryUser" ] null config;
-in
-if primaryUser == null then
-  throw "modules/darwin/applications.nix requires system.primaryUser to be set"
-else
 {
+  config,
+  lib,
+  ...
+}: let
+  inherit (lib) mkForce;
+in {
+  assertions = [
+    {
+      assertion = config.system.primaryUser != null;
+      message = "modules/darwin/applications.nix requires system.primaryUser to be set";
+    }
+  ];
+
   # Nix-darwin does not link installed applications to the user environment. This means apps will not show up
   # in spotlight, and when launched through the dock they come with a terminal window. This is a workaround.
   # Upstream issue: https://github.com/LnL7/nix-darwin/issues/214
@@ -19,7 +23,7 @@ else
     # Needs to be writable by the user so that home-manager can symlink into it
     if ! test -d "$applications"; then
         mkdir -p "$applications"
-        chown ${primaryUser}: "$applications"
+        chown ${config.system.primaryUser}: "$applications"
         chmod u+w "$applications"
     fi
 

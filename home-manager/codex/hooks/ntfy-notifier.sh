@@ -50,6 +50,86 @@ truncate_text() {
   fi
 }
 
+tmux_env_value() {
+  local key="$1"
+  if [[ -z "${TMUX:-}" ]]; then
+    return 1
+  fi
+  if ! command -v tmux >/dev/null 2>&1; then
+    return 1
+  fi
+  local raw
+  raw=$(tmux show-environment "$key" 2>/dev/null || true)
+  if [[ -z "$raw" ]]; then
+    return 1
+  fi
+  if [[ "$raw" == -* ]]; then
+    return 1
+  fi
+  if [[ "$raw" == *=* ]]; then
+    raw="${raw#*=}"
+  fi
+  printf '%s' "$raw"
+}
+
+derive_dev_context_metadata() {
+  DEV_CONTEXT_VALUE="${DEV_CONTEXT:-}"
+  DEV_CONTEXT_KIND_VALUE="${DEV_CONTEXT_KIND:-}"
+  DEV_CONTEXT_ICON_VALUE="${DEV_CONTEXT_ICON:-}"
+
+  if [[ -z "$DEV_CONTEXT_VALUE" ]] && [[ -n "${CODER_WORKSPACE_NAME:-}" ]]; then
+    DEV_CONTEXT_VALUE="$CODER_WORKSPACE_NAME"
+    if [[ -z "$DEV_CONTEXT_KIND_VALUE" ]]; then
+      DEV_CONTEXT_KIND_VALUE="coder"
+    fi
+  fi
+
+  if [[ -z "$DEV_CONTEXT_VALUE" ]]; then
+    local tmux_context
+    tmux_context=$(tmux_env_value DEV_CONTEXT 2>/dev/null || true)
+    if [[ -n "$tmux_context" ]]; then
+      DEV_CONTEXT_VALUE="$tmux_context"
+    fi
+  fi
+
+  if [[ -z "$DEV_CONTEXT_KIND_VALUE" ]]; then
+    local tmux_kind
+    tmux_kind=$(tmux_env_value DEV_CONTEXT_KIND 2>/dev/null || true)
+    if [[ -n "$tmux_kind" ]]; then
+      DEV_CONTEXT_KIND_VALUE="$tmux_kind"
+    fi
+  fi
+
+  if [[ -z "$DEV_CONTEXT_ICON_VALUE" ]]; then
+    local tmux_icon
+    tmux_icon=$(tmux_env_value DEV_CONTEXT_ICON 2>/dev/null || true)
+    if [[ -n "$tmux_icon" ]]; then
+      DEV_CONTEXT_ICON_VALUE="$tmux_icon"
+    fi
+  fi
+
+  if [[ -z "$DEV_CONTEXT_VALUE" ]] && [[ -n "${TMUX_DEVSPACE:-}" ]]; then
+    DEV_CONTEXT_VALUE="$TMUX_DEVSPACE"
+    if [[ -z "$DEV_CONTEXT_KIND_VALUE" ]]; then
+      DEV_CONTEXT_KIND_VALUE="tmux"
+    fi
+  fi
+
+  if [[ -z "$DEV_CONTEXT_VALUE" ]]; then
+    DEV_CONTEXT_VALUE="$HOSTNAME_VALUE"
+    if [[ -z "$DEV_CONTEXT_KIND_VALUE" ]]; then
+      DEV_CONTEXT_KIND_VALUE="host"
+    fi
+  fi
+
+  if [[ "$DEV_CONTEXT_KIND_VALUE" == "coder" ]] && [[ -z "$DEV_CONTEXT_ICON_VALUE" ]]; then
+    DEV_CONTEXT_ICON_VALUE=""
+  fi
+
+  DEV_CONTEXT_VALUE=$(clean_text "$DEV_CONTEXT_VALUE")
+  DEV_CONTEXT_ICON_VALUE=$(clean_text "$DEV_CONTEXT_ICON_VALUE")
+}
+
 CONFIG_FILE="$HOME/.config/claude-code-ntfy/config.yaml"
 NTFY_URL="${CODEX_NTFY_URL:-${CLAUDE_HOOKS_NTFY_URL:-}}"
 NTFY_TOKEN="${CODEX_NTFY_TOKEN:-${CLAUDE_HOOKS_NTFY_TOKEN:-}}"
@@ -82,6 +162,27 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
+HOSTNAME_VALUE=$(hostname -s 2>/dev/null || hostname 2>/dev/null || printf 'unknown-host')
+PWD_DISPLAY="${PWD:-$(pwd)}"
+PWD_DISPLAY="${PWD_DISPLAY/#$HOME/~}"
+
+derive_dev_context_metadata
+
+DEV_CONTEXT_DISPLAY=""
+if [[ -n "$DEV_CONTEXT_VALUE" ]]; then
+  DEV_CONTEXT_DISPLAY="$DEV_CONTEXT_VALUE"
+  if [[ -n "$DEV_CONTEXT_ICON_VALUE" ]]; then
+    DEV_CONTEXT_DISPLAY="${DEV_CONTEXT_ICON_VALUE} ${DEV_CONTEXT_DISPLAY}"
+  fi
+fi
+
+CONTEXT_STRING="$HOSTNAME_VALUE"
+if [[ -n "$DEV_CONTEXT_DISPLAY" && ( "$DEV_CONTEXT_KIND_VALUE" != "host" || "$DEV_CONTEXT_VALUE" != "$HOSTNAME_VALUE" ) ]]; then
+  CONTEXT_STRING+=":${DEV_CONTEXT_DISPLAY}"
+fi
+CONTEXT_STRING+=" • ${PWD_DISPLAY}"
+CONTEXT_STRING=$(clean_text "$CONTEXT_STRING")
+
 RATE_LIMIT_FILE="/tmp/.codex-ntfy-rate-limit"
 if [[ -f "$RATE_LIMIT_FILE" ]]; then
   LAST_TS=$(cat "$RATE_LIMIT_FILE" 2>/dev/null || printf '0')
@@ -100,11 +201,7 @@ fi
 if [[ -z "$JSON_INPUT" ]]; then
   log_debug "No JSON payload supplied; sending test notification"
   TITLE="Codex: Test Notification"
-  HOSTNAME_VALUE=$(hostname -s 2>/dev/null || hostname 2>/dev/null || printf 'unknown-host')
-  PWD_PATH="${PWD:-$(pwd)}"
-  PWD_DISPLAY="${PWD_PATH/#$HOME/~}"
-  CONTEXT="Host $HOSTNAME_VALUE • $PWD_DISPLAY"
-  MESSAGE="${CONTEXT}"
+  MESSAGE="Host ${CONTEXT_STRING}"
 else
   if ! echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
     log_debug "Invalid JSON payload"
@@ -116,17 +213,6 @@ else
     log_debug "Ignoring unsupported notification type: $TYPE"
     exit 0
   fi
-
-  HOSTNAME_VALUE=$(hostname -s 2>/dev/null || hostname 2>/dev/null || printf 'unknown-host')
-  DEVSPACE="${TMUX_DEVSPACE:-}"; DEVSPACE=$(printf '%s' "$DEVSPACE" | tr -d '[:cntrl:]')
-  PWD_PATH="${PWD:-$(pwd)}"
-  PWD_DISPLAY="${PWD_PATH/#$HOME/~}"
-
-  CONTEXT="${HOSTNAME_VALUE}"
-  if [[ -n "$DEVSPACE" ]]; then
-    CONTEXT+=":${DEVSPACE}"
-  fi
-  CONTEXT+=" • ${PWD_DISPLAY}"
 
   INPUT_SUMMARY=$(echo "$JSON_INPUT" | jq -r '."input-messages" | select(type=="array") | map(tostring) | join(" ") // empty')
   LAST_ASSISTANT=$(echo "$JSON_INPUT" | jq -r '."last-assistant-message" // empty')
@@ -145,7 +231,7 @@ else
   fi
   TITLE=$(truncate_text "$(clean_text "$TITLE")" 160)
 
-  MESSAGE="Host ${CONTEXT}"
+  MESSAGE="Host ${CONTEXT_STRING}"
   if [[ -n "$LAST_ASSISTANT" ]]; then
     MESSAGE+=" — ${LAST_ASSISTANT}"
   elif [[ -n "$INPUT_SUMMARY" ]]; then

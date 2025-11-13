@@ -1,5 +1,8 @@
 .DS_Store
 result*
+.direnv/
+venv/
+.venv/
 .aider*
 !.aider.model*
 

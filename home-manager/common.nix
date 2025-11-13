@@ -1,4 +1,8 @@
 { inputs, lib, config, pkgs, ... }:
+let
+  tmuxDevspaceHelper =
+    pkgs.writeShellScriptBin "tmux-devspace" (builtins.readFile ./tmux/scripts/tmux-devspace.sh);
+in
 {
   imports = [
     ./atuin
@@ -67,6 +71,7 @@
         wireguard-tools
         xdg-utils
         yq
+        tmuxDevspaceHelper
       ];
     };
 

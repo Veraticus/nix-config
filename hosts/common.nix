@@ -1,19 +1,12 @@
 { inputs, outputs, lib, config, pkgs, ... }: {
-  age.identityPaths = [ "/etc/age/${config.networking.hostName}.agekey" ];
+  imports = [
+    ../modules/nix/defaults.nix
+    ../modules/services/age-identity.nix
+    ../modules/services/cleanup-stale-processes.nix
+  ];
 
   nix = {
     settings = {
-      trusted-users = [ "root" "joshsymonds" ];
-      extra-substituters = [
-        "https://nix-community.cachix.org"
-        "https://neovim-nightly.cachix.org"
-        "https://joshsymonds.cachix.org"
-      ];
-      extra-trusted-public-keys = [
-        "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-        "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
-        "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
-      ];
       # Trigger GC when disk space is low
       min-free = "${toString (10 * 1024 * 1024 * 1024)}"; # 10GB free space minimum
       max-free = "${toString (50 * 1024 * 1024 * 1024)}"; # Clean up to 50GB when triggered
@@ -36,41 +29,6 @@
     inputs.agenix.packages.${pkgs.system}.agenix
     ssh-to-age
   ];
-
-  system.activationScripts.ageHostKey = let
-    hostKey       = "/etc/ssh/ssh_host_ed25519_key";
-    hostKeyPub    = "${hostKey}.pub";
-    ageDir        = "/etc/age";
-    ageHostKey    = "${ageDir}/${config.networking.hostName}.agekey";
-    ageKeys       = "${ageDir}/keys.txt";
-    ageRecipients = "${ageDir}/recipients.txt";
-  in ''
-    set -euo pipefail
-
-    mkdir -p ${ageDir}
-    chmod 700 ${ageDir}
-
-    if [ ! -f ${hostKey} ]; then
-      echo "WARNING: ${hostKey} not found; skipping age identity generation"
-      exit 0
-    fi
-
-    SSH_TO_AGE=${pkgs.ssh-to-age}/bin/ssh-to-age
-
-    if [ ! -f ${ageHostKey} ]; then
-      echo "Generating age identity from ${hostKey}"
-      $SSH_TO_AGE --private-key < ${hostKey} > ${ageHostKey}.tmp
-      mv ${ageHostKey}.tmp ${ageHostKey}
-      chmod 600 ${ageHostKey}
-    fi
-
-    cat ${ageHostKey} > ${ageKeys}
-    chmod 600 ${ageKeys}
-
-    $SSH_TO_AGE < ${hostKeyPub} > ${ageRecipients}.tmp
-    mv ${ageRecipients}.tmp ${ageRecipients}
-    chmod 644 ${ageRecipients}
-  '';
 
   fileSystems = {
     "/mnt/video" = {
@@ -98,60 +56,15 @@
 
   services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
 
-  # Automatic cleanup of stale browser/Playwright processes
-  systemd.services.cleanup-stale-processes = {
-    description = "Clean up stale browser and Playwright processes";
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = pkgs.writeShellScript "cleanup-stale-processes" ''
-        #!/usr/bin/env bash
-        
-        # Kill Firefox processes older than 24 hours
-        for pid in $(${pkgs.procps}/bin/pgrep -f firefox); do
-          # Get process start time in seconds since epoch
-          start_time=$(${pkgs.coreutils}/bin/stat -c %Y /proc/$pid 2>/dev/null || echo 0)
-          current_time=$(${pkgs.coreutils}/bin/date +%s)
-          age=$((current_time - start_time))
-          
-          # If older than 24 hours (86400 seconds), kill it
-          if [ $age -gt 86400 ]; then
-            echo "Killing stale Firefox process $pid (age: $((age/3600)) hours)"
-            ${pkgs.util-linux}/bin/kill -TERM $pid 2>/dev/null || true
-            sleep 2
-            ${pkgs.util-linux}/bin/kill -KILL $pid 2>/dev/null || true
-          fi
-        done
-        
-        # Kill Playwright server processes older than 24 hours
-        for pid in $(${pkgs.procps}/bin/pgrep -f playwright-mcp-server); do
-          start_time=$(${pkgs.coreutils}/bin/stat -c %Y /proc/$pid 2>/dev/null || echo 0)
-          current_time=$(${pkgs.coreutils}/bin/date +%s)
-          age=$((current_time - start_time))
-          
-          if [ $age -gt 86400 ]; then
-            echo "Killing stale Playwright server $pid (age: $((age/3600)) hours)"
-            ${pkgs.util-linux}/bin/kill -TERM $pid 2>/dev/null || true
-            sleep 2
-            ${pkgs.util-linux}/bin/kill -KILL $pid 2>/dev/null || true
-          fi
-        done
-        
-        # Clean up temporary Playwright profiles
-        ${pkgs.findutils}/bin/find /tmp -maxdepth 1 -type d -name "playwright_*" -mtime +1 -exec rm -rf {} + 2>/dev/null || true
-        
-        echo "Cleanup completed at $(${pkgs.coreutils}/bin/date)"
-      '';
-    };
-  };
-  
-  systemd.timers.cleanup-stale-processes = {
-    description = "Timer for cleaning up stale processes";
-    wantedBy = [ "timers.target" ];
-    timerConfig = {
-      OnCalendar = "daily";
-      OnBootSec = "30min";
-      Persistent = true;
-    };
+  users.users.joshsymonds = {
+    hashedPassword = lib.mkDefault "";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAQ4hwNjF4SMCeYcqm3tzUxZWadcv7ZLJbCa/mLHzsvw josh+cloudbank@joshsymonds.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINTWmaNJwRqzDMdfVOXbX6FNjcJ94VRK+aKLI2NqrcWV josh+morningstar@joshsymonds.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAID0OvTKlW2Vk5WA11YOQ6SNDS4KsT9I1ffVGomswscZA josh+ultraviolet@joshsymonds.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEhL0xP1eFVuYEPAvO6t+Mb9ragHnk4dxeBd/1Tmka41 josh+phone@joshsymonds.com"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIORmNHlIFi2MWPh9H0olD2VBvPNK7+wJkA+A/3wCOtZN josh+vermissian@joshsymonds.com"
+    ];
   };
 
 }

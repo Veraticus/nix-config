@@ -3,15 +3,15 @@
 {
   # Devspace client configuration
   programs.zsh.shellAliases = let
-    devspaceAlias = name:
-      "et vermissian:2022 -c \"if tmux has-session -t ${name} >/dev/null 2>&1; then tmux set-environment -t ${name} -g TMUX_DEVSPACE ${name}; else tmux new-session -d -s ${name} -e TMUX_DEVSPACE=${name}; fi; exec tmux attach-session -t ${name}\"";
+    devspaceAlias = name: icon:
+      "et vermissian:2022 -c \"tmux-devspace attach --icon '${icon}' ${name}\"";
   in {
-    # Direct connection aliases - ensure TMUX_DEVSPACE is always set
-    mercury = devspaceAlias "mercury";
-    venus = devspaceAlias "venus";
-    earth = devspaceAlias "earth";
-    mars = devspaceAlias "mars";
-    jupiter = devspaceAlias "jupiter";
+    # Direct connection aliases - ensure TMUX_DEVSPACE/DEV_CONTEXT metadata is set
+    mercury = devspaceAlias "mercury" "☿";
+    venus = devspaceAlias "venus" "♀";
+    earth = devspaceAlias "earth" "♁";
+    mars = devspaceAlias "mars" "♂";
+    jupiter = devspaceAlias "jupiter" "♃";
 
     # Status command to see what's running
     devspace-status = "ssh vermissian 'tmux list-sessions 2>/dev/null || echo \"No active sessions\"'";

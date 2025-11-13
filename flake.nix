@@ -70,6 +70,84 @@
       mkSpecialArgs = system: {
         inherit inputs outputs;
       };
+
+      mkHomeManagerModules = { hostname, system, module }: [
+        home-manager.nixosModules.home-manager
+        {
+          home-manager.useGlobalPkgs = true;
+          home-manager.useUserPackages = true;
+          home-manager.backupFileExtension = "backup";
+          home-manager.users.joshsymonds = import module;
+          home-manager.extraSpecialArgs = mkSpecialArgs system // {
+            inherit hostname;
+          };
+          home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
+        }
+      ];
+
+      mkNixosHost = hostname: cfg:
+        lib.nixosSystem {
+          inherit (cfg) system;
+          specialArgs = mkSpecialArgs cfg.system;
+          modules =
+            cfg.modules
+            ++ lib.optionals (cfg ? homeModule)
+              (mkHomeManagerModules {
+                inherit hostname;
+                inherit (cfg) system;
+                module = cfg.homeModule;
+              });
+        };
+
+      nixosHostDefinitions = {
+        egoengine = {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/egoengine
+            inputs.agenix.nixosModules.default
+          ];
+        };
+
+        ultraviolet = {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/ultraviolet
+            ./hosts/common.nix
+            inputs.agenix.nixosModules.default
+          ];
+          homeModule = ./home-manager/hosts/ultraviolet.nix;
+        };
+
+        bluedesert = {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/bluedesert
+            ./hosts/common.nix
+            inputs.agenix.nixosModules.default
+          ];
+          homeModule = ./home-manager/hosts/bluedesert.nix;
+        };
+
+        echelon = {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/echelon
+            ./hosts/common.nix
+            inputs.agenix.nixosModules.default
+          ];
+          homeModule = ./home-manager/hosts/echelon.nix;
+        };
+
+        vermissian = {
+          system = "x86_64-linux";
+          modules = [
+            ./hosts/vermissian
+            ./hosts/common.nix
+            inputs.agenix.nixosModules.default
+          ];
+          homeModule = ./home-manager/hosts/vermissian.nix;
+        };
+      };
     in
     {
       packages =
@@ -94,100 +172,8 @@
       overlays = import ./overlays { inherit inputs outputs; };
 
       # NixOS configurations - inlined for clarity
-      nixosConfigurations = {
-        egoengine = lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = mkSpecialArgs "x86_64-linux";
-          modules = [
-            ./hosts/egoengine
-            inputs.agenix.nixosModules.default
-          ];
-        };
-
-        ultraviolet = lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = mkSpecialArgs "x86_64-linux";
-          modules = [
-            ./hosts/ultraviolet
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "backup";
-              home-manager.users.joshsymonds = import ./home-manager/hosts/ultraviolet.nix;
-              home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
-                hostname = "ultraviolet";
-              };
-              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-            }
-          ];
-        };
-        
-        bluedesert = lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = mkSpecialArgs "x86_64-linux";
-          modules = [
-            ./hosts/bluedesert
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "backup";
-              home-manager.users.joshsymonds = import ./home-manager/hosts/bluedesert.nix;
-              home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
-                hostname = "bluedesert";
-              };
-              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-            }
-          ];
-        };
-        
-        echelon = lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = mkSpecialArgs "x86_64-linux";
-          modules = [
-            ./hosts/echelon  # Fixed: was using bluedesert
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "backup";
-              home-manager.users.joshsymonds = import ./home-manager/hosts/echelon.nix;
-              home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
-                hostname = "echelon";
-              };
-              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-            }
-          ];
-        };
-
-        vermissian = lib.nixosSystem {
-          system = "x86_64-linux";
-          specialArgs = mkSpecialArgs "x86_64-linux";
-          modules = [
-            ./hosts/vermissian
-            ./hosts/common.nix
-            inputs.agenix.nixosModules.default
-            home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "backup";
-              home-manager.users.joshsymonds = import ./home-manager/hosts/vermissian.nix;
-              home-manager.extraSpecialArgs = mkSpecialArgs "x86_64-linux" // {
-                hostname = "vermissian";
-              };
-              home-manager.sharedModules = [ inputs.agenix.homeManagerModules.default ];
-            }
-          ];
-        };
-      };
+      nixosConfigurations =
+        lib.mapAttrs mkNixosHost nixosHostDefinitions;
 
       # Darwin configuration - inlined for clarity
       darwinConfigurations = {
@@ -227,7 +213,7 @@
             modules = [ inputs.agenix.homeManagerModules.default module ];
           };
           
-          linuxHosts = [ "ultraviolet" "bluedesert" "echelon" "vermissian" ];
+          linuxHosts = builtins.attrNames (lib.filterAttrs (_: cfg: cfg ? homeModule) nixosHostDefinitions);
           darwinHosts = [ "cloudbank" ];
         in
           (lib.genAttrs 

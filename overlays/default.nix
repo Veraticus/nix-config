@@ -22,6 +22,7 @@ in {
       golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin { };
       coder = final.callPackage ../pkgs/coder-cli { unzip = final.unzip; };
       slidev = final.callPackage ../pkgs/slidev { };
+      aerospace = final.callPackage ../pkgs/aerospace { };
 
       # Codex packages from local checkout
       codex-tui = codexTui;
@@ -89,6 +90,10 @@ in {
         };
       } // {
         desktopItems = [];
+      };
+
+      vaapiIntel = prev.vaapiIntel.override {
+        enableHybridCodec = true;
       };
       
       # Stable packages available under pkgs.stable (if needed)

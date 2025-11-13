@@ -1,5 +1,8 @@
 .PHONY: test lint check update help hooks-test hooks-lint
 
+STATIX ?= $(shell if command -v statix >/dev/null 2>&1; then printf '%s' statix; else printf '%s' "nix run nixpkgs#statix --"; fi)
+DEADNIX ?= $(shell if command -v deadnix >/dev/null 2>&1; then printf '%s' deadnix; else printf '%s' "nix run nixpkgs#deadnix --"; fi)
+
 # Default target
 all: check
 
@@ -32,25 +35,17 @@ lint:
 	elif [ -n "$(FILE)" ]; then \
 		echo "File changed: $(FILE)"; \
 		echo "Running standard linters..."; \
-		if command -v statix >/dev/null 2>&1; then \
-			echo "Running statix..."; \
-			statix check . || exit 1; \
-		fi; \
-		if command -v deadnix >/dev/null 2>&1; then \
-			echo "Running deadnix..."; \
-			deadnix . || exit 1; \
-		fi; \
+		echo "Running statix..."; \
+		$(STATIX) check . || exit 1; \
+		echo "Running deadnix..."; \
+		$(DEADNIX) . || exit 1; \
 	else \
 		$(MAKE) hooks-lint; \
 		echo "Running Nix linters..."; \
-		if command -v statix >/dev/null 2>&1; then \
-			echo "Running statix..."; \
-			statix check . || exit 1; \
-		fi; \
-		if command -v deadnix >/dev/null 2>&1; then \
-			echo "Running deadnix..."; \
-			deadnix . || exit 1; \
-		fi; \
+		echo "Running statix..."; \
+		$(STATIX) check . || exit 1; \
+		echo "Running deadnix..."; \
+		$(DEADNIX) . || exit 1; \
 	fi
 	@echo "✅ All linting passed!"
 

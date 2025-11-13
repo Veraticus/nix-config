@@ -108,173 +108,39 @@ To add a new package:
 2. Add to `pkgs/default.nix`
 3. Add to overlay in `overlays/default.nix` if needed globally
 
-## Devspace Development Environment
+## Dev Contexts
 
-The Devspace system provides persistent, theme-aware tmux-based development environments on remote servers. Each devspace maintains its own project context, git worktrees, and color theme.
+The dev context system unifies the metadata that describes where a shell is running. Every session exports `DEV_CONTEXT`, `DEV_CONTEXT_KIND`, and an optional `DEV_CONTEXT_ICON`, and all UI surfaces read from those variables. Starship prompts, Kitty tab titles, tmux status lines, and mobile notifications now stay in sync regardless of whether the context came from tmux, Coder, or a plain host shell.
 
-### Key Features
-- **Persistent Sessions**: Tmux sessions survive SSH disconnections and system reboots
-- **Automatic Restoration**: Sessions and project links are restored after system rebuilds
-- **Minimal Resource Usage**: Uninitialized devspaces show only a setup prompt
-- **Smart Expansion**: Full environment (claude, nvim, term, logs windows) created on demand
-- **Git Worktree Isolation**: Automatic worktree creation when multiple devspaces use the same repo
-- **Theme Integration**: Each devspace has its own color scheme from Catppuccin palette
-- **State Persistence**: Session state saved automatically on meaningful events
+### How contexts are created
+- `tmux-devspace` wraps `tmux new-session`/`attach` and immediately sets `DEV_CONTEXT`, `DEV_CONTEXT_KIND=tmux`, plus whatever `DEV_CONTEXT_ICON` value the caller provides via `--icon`. Legacy `TMUX_DEVSPACE` variables still exist for older scripts but should be treated as compatibility shims.
+- `t` (defined in `home-manager/zsh/default.nix`) is the main entry point. Running `t` with no arguments creates an auto-named context. `t feature-login ☾` sanitizes the label, records the icon, and spawns/attaches to `feature-login`. Use `t feature-login -- cargo watch` to skip the icon while forwarding a command after `--`.
+- Planetary aliases (`mercury`, `venus`, `earth`, `mars`, `jupiter`) remain for muscle memory on both the servers and macOS clients. Each alias now calls `t <planet> <icon>` (or `tmux-devspace attach --icon ...` on macOS), so the icon travels with the context from the moment it is created.
+- On Coder, `CODER_WORKSPACE_NAME` seeds `DEV_CONTEXT` with `DEV_CONTEXT_KIND=coder`, so prompts stay labeled even when tmux is not involved.
 
-### Available Devspaces
-- **Mercury** 🚀 (flamingo) - Quick experiments and prototypes
-- **Venus** 🎨 (pink) - Personal creative projects
-- **Earth** 🌍 (green) - Primary work project
-- **Mars** 🔴 (red) - Secondary work project
-- **Jupiter** 🪐 (peach) - Large personal project
-
-### Quick Start
-
-From your Mac:
-```bash
-# Connect to a devspace (creates minimal session if needed)
-earth                          # Connect to Earth devspace
-
-# First time setup - link a project
-earth ~/Work/my-project        # Links project and expands to full environment
-earth .                        # Link current directory
-
-# Subsequent connections go straight to your dev environment
-earth                          # Reconnects to existing session
+### Quick commands
+```
+t                          # Create/switch to an auto-named context
+t feature-login ☾          # Spawn or attach to feature-login with a moon icon
+t feature-login -- cargo watch  # Run a command without setting an icon
+earth                      # Attach to the earth planetary context (via t earth ♁)
+mars status                # Invoke helper subcommands inside that context
+devspace-status            # List sessions on the current host (alias: ds)
+dsl                        # Detailed tmux session listing
 ```
 
-### Command Reference
+### Shell and prompt integration
+- During shell init we import tmux-provided context variables (when inside tmux), fall back to `CODER_WORKSPACE_NAME`, and finally to the system hostname (`DEV_CONTEXT_KIND=host`).
+- Starship replaced the older devspace segment with a context-aware block that shows the icon and `DEV_CONTEXT`. Coder contexts default to ``, tmux planetary contexts get their astronomical glyphs (`☿♀♁♂♃`), and non-planetary sessions display as `● <label>`.
+- Tmux titles now use `#{env:DEV_CONTEXT}` so Kitty tabs, native terminal windows, and the macOS tab bar all render the same label.
+- The Codex `ntfy` notifier includes the context string (and icon when present), so phone alerts point to the exact session that completed.
 
-#### Connection Commands (from Mac)
-```bash
-earth                          # Connect to devspace (auto-restores if needed)
-mars                          # Each devspace has its own command
-venus status                  # Show current project and session state
-jupiter worktree create feat   # Create a feature branch worktree
-```
+### Why contexts?
+- Consistent naming flows through tmux, prompts, tab titles, and notification hooks.
+- No reliance on tmux-only variables; any tool can opt-in by exporting `DEV_CONTEXT` and friends.
+- Icons become optional metadata that travels with the session, enabling richer UI hints without heuristics.
 
-#### Setup and Management
-```bash
-# Linking projects
-earth /path/to/project         # Link devspace to a project
-earth setup ~/Work/project     # Explicit setup command (same as above)
-earth .                        # Link to current directory
-
-# Status and info
-earth status                   # Show linked project and session state
-devspace-status               # Show all devspaces status (alias: ds)
-
-# Git worktrees
-earth worktree create feature  # Create a worktree for feature work
-earth worktree list           # List all worktrees for this devspace
-earth worktree clean          # Remove merged worktrees
-```
-
-#### AWS Credential Sync (from Mac)
-```bash
-devspace-sync-aws             # Sync AWS creds to server (alias: dsa)
-devspace-sync-aws earth       # Sync to specific devspace directory
-```
-
-### Server-Side Usage
-
-#### Within Tmux Sessions
-```bash
-# Window navigation
-Ctrl-b 1          # Claude window
-Ctrl-b 2          # Neovim window
-Ctrl-b 3          # Terminal window
-Ctrl-b 4          # Logs window
-
-# Quick key shortcuts (when in devspace mode)
-Ctrl-b c          # Jump to Claude
-Ctrl-b n          # Jump to Neovim
-Ctrl-b t          # Jump to Terminal
-Ctrl-b l          # Jump to Logs
-
-# Session switching (with Meta/Alt key)
-Meta-E            # Switch to Earth session
-Meta-M            # Switch to Mars session
-Meta-J            # Switch to Jupiter session
-# ... etc (uses first letter of devspace name)
-```
-
-#### Direct Commands on Server
-```bash
-# If you SSH directly without using devspace commands
-earth             # Attach to Earth session (auto-restores if needed)
-mars status      # Check Mars configuration
-
-# Manual session management (rarely needed)
-devspace-restore  # Manually restore all sessions from saved state
-save_session_state # Manually save current session state
-```
-
-### How It Works
-
-1. **Initial State**: On system boot, `devspace-restore` service creates minimal placeholder sessions
-2. **First Connection**: Shows welcome screen with setup instructions
-3. **Project Linking**: When you link a project, session expands to full 4-window environment
-4. **State Persistence**: State saved automatically when:
-   - Projects are linked/changed
-   - Windows are created/destroyed
-   - Clients detach from sessions
-   - Every 30 minutes via systemd timer
-   - Before system shutdown/rebuild
-
-5. **Restoration**: After reboot/rebuild:
-   - Service reads saved state from `~/.local/state/tmux-devspaces/`
-   - Recreates sessions with their initialization state
-   - Restores project links if directories still exist
-   - Falls back to minimal sessions if restoration fails
-
-### Git Worktree Management
-
-When multiple devspaces need the same repository:
-```bash
-# First devspace gets direct link
-earth ~/Work/main-repo       # Links directly
-
-# Second devspace automatically creates worktree
-mars ~/Work/main-repo        # Creates worktree at ~/devspaces/mars/worktrees/devspace-mars-TIMESTAMP
-```
-
-Worktrees are automatically cleaned up when:
-- Branches are merged into main
-- You switch to a different project
-- You run `earth worktree clean`
-
-### Customization
-
-The devspace theme is defined in `pkgs/devspaces/theme.nix`. To add or modify devspaces:
-
-1. Edit the theme file to add/remove spaces
-2. Rebuild your systems
-3. New devspaces automatically get:
-   - tmux session management
-   - Connection shortcuts
-   - Color theming
-   - State persistence
-
-### Troubleshooting
-
-```bash
-# Check systemd service status
-systemctl status devspace-restore
-
-# View service logs
-journalctl -u devspace-restore -f
-
-# Manually restore sessions
-devspace-restore
-
-# Check saved state
-cat ~/.local/state/tmux-devspaces/sessions.txt
-
-# Force recreation of a devspace
-tmux kill-session -t devspace-earth
-earth  # Will auto-restore
-```
+Compatibility aliases and historical docs still reference “devspaces”, but new code and copy should prefer the “dev context” terminology.
 
 ## Remote Link Opening
 

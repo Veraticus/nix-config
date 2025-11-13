@@ -3,15 +3,14 @@
 {
   # Devspace host configuration - for running ON ultraviolet
   programs.zsh.shellAliases = let
-    attachDevspace = name:
-      "if tmux has-session -t ${name} >/dev/null 2>&1; then tmux set-environment -t ${name} -g TMUX_DEVSPACE ${name}; else tmux new-session -d -s ${name} -e TMUX_DEVSPACE=${name}; fi; exec tmux attach-session -t ${name}";
+    contextAlias = name: icon: "t ${name} ${icon}";
   in {
-    # Local tmux session aliases - attach or create with TMUX_DEVSPACE set
-    mercury = attachDevspace "mercury";
-    venus = attachDevspace "venus";
-    earth = attachDevspace "earth";
-    mars = attachDevspace "mars";
-    jupiter = attachDevspace "jupiter";
+    # Local tmux session aliases - attach/create via t with explicit icons
+    mercury = contextAlias "mercury" "☿";
+    venus = contextAlias "venus" "♀";
+    earth = contextAlias "earth" "♁";
+    mars = contextAlias "mars" "♂";
+    jupiter = contextAlias "jupiter" "♃";
 
     # Status command to see what's running locally
     devspace-status = "tmux list-sessions 2>/dev/null || echo \"No active sessions\"";

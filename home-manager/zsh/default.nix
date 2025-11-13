@@ -24,8 +24,6 @@ in
       ls = "ls --color=auto";
       vim = "nvim";
       vimdiff = "nvim -d";
-    } // lib.optionalAttrs isCloudbank {
-      t = "tmux new -A -s local";
     };
 
     envExtra = ''
@@ -59,6 +57,43 @@ in
     };
 
     initContent = ''
+      t() {
+        if [[ $# -eq 0 ]]; then
+          tmux-devspace new
+          return
+        fi
+
+        if [[ "$1" == "--" ]]; then
+          shift
+          tmux-devspace new "$@"
+          return
+        fi
+
+        if [[ "$1" == -* ]]; then
+          tmux-devspace new "$@"
+          return
+        fi
+
+        local label="$1"
+        shift
+
+        local -a icon_args=()
+        if [[ $# -gt 0 && "$1" != "--" ]]; then
+          icon_args=( "--icon" "$1" )
+          shift
+        fi
+
+        if [[ $# -gt 0 && "$1" == "--" ]]; then
+          shift
+        fi
+
+        if [[ $# -gt 0 ]]; then
+          tmux-devspace attach "${icon_args[@]}" "$label" -- "$@"
+        else
+          tmux-devspace attach "${icon_args[@]}" "$label"
+        fi
+      }
+
       ${lib.optionalString autoAttachRemoteTmux ''
         # Auto-start tmux on remote hosts unless explicitly disabled
         if [[ $- == *i* ]] && [[ -z "''${TMUX:-}" ]] && [[ "''${NO_REMOTE_TMUX:-0}" != 1 ]]; then
@@ -79,11 +114,39 @@ in
         printf '\e[?1006l'  # Disable SGR extended mode
       fi
 
-      # Import TMUX_DEVSPACE from tmux environment if we're in tmux
+      # Import dev context metadata from tmux environment if we're in tmux
       if [ -n "$TMUX" ]; then
         TMUX_DEVSPACE=$(tmux show-environment TMUX_DEVSPACE 2>/dev/null | cut -d= -f2)
         if [ -n "$TMUX_DEVSPACE" ]; then
           export TMUX_DEVSPACE
+        fi
+
+        DEV_CONTEXT=$(tmux show-environment DEV_CONTEXT 2>/dev/null | cut -d= -f2)
+        if [ -n "$DEV_CONTEXT" ]; then
+          export DEV_CONTEXT
+        fi
+
+        DEV_CONTEXT_ICON=$(tmux show-environment DEV_CONTEXT_ICON 2>/dev/null | cut -d= -f2)
+        if [ -n "$DEV_CONTEXT_ICON" ]; then
+          export DEV_CONTEXT_ICON
+        fi
+      fi
+
+      # Derive a unified dev context for prompts and titles
+      if [ -n "${CODER_WORKSPACE_NAME:-}" ]; then
+        export DEV_CONTEXT="$CODER_WORKSPACE_NAME"
+        : "${DEV_CONTEXT_KIND:=coder}"
+        export DEV_CONTEXT_KIND
+      elif [ -n "${TMUX_DEVSPACE:-}" ]; then
+        export DEV_CONTEXT="$TMUX_DEVSPACE"
+        : "${DEV_CONTEXT_KIND:=tmux}"
+        export DEV_CONTEXT_KIND
+      else
+        if [ -z "${DEV_CONTEXT:-}" ]; then
+          DEV_CONTEXT="$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo host)"
+          export DEV_CONTEXT
+          : "${DEV_CONTEXT_KIND:=host}"
+          export DEV_CONTEXT_KIND
         fi
       fi
 
@@ -102,6 +165,21 @@ in
       autoload -Uz add-zsh-hook
       add-zsh-hook precmd set-title-precmd
       add-zsh-hook preexec set-title-preexec
+
+      function _tmux_devspace_autoname_precmd() {
+        if [ -n "$TMUX" ] && [ "''${TMUX_AUTO_NAME:-0}" = "1" ] && command -v tmux-devspace >/dev/null 2>&1; then
+          tmux-devspace rename >/dev/null 2>&1 || true
+        fi
+      }
+
+      function _tmux_devspace_autoname_preexec() {
+        if [ -n "$TMUX" ] && [ "''${TMUX_AUTO_NAME:-0}" = "1" ] && command -v tmux-devspace >/dev/null 2>&1; then
+          tmux-devspace rename "$1" >/dev/null 2>&1 || true
+        fi
+      }
+
+      add-zsh-hook precmd _tmux_devspace_autoname_precmd
+      add-zsh-hook preexec _tmux_devspace_autoname_preexec
 
       # Ensure emacs mode (not vi mode)
       bindkey -e

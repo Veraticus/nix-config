@@ -12,4 +12,5 @@
   golangciLintBin = pkgs.callPackage ./golangci-lint-bin { };
   coder = pkgs.callPackage ./coder-cli { unzip = pkgs.unzip; };
   slidev = pkgs.callPackage ./slidev { };
+  aerospace = pkgs.callPackage ./aerospace { };
 }

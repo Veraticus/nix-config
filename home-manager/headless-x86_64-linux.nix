@@ -18,7 +18,7 @@
     ];
   };
 
-  programs.zsh.initExtra = ''
+  programs.zsh.initContent = lib.mkAfter ''
     # Smart update function that handles remote building for bluedesert
     update() {
       if [ "$(hostname)" = "bluedesert" ]; then

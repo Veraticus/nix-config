@@ -123,10 +123,10 @@ in
         set -g status-position bottom
         setw -g automatic-rename on
         setw -g allow-rename on
-        set -g automatic-rename-format '#{pane_title}'
+        set -g automatic-rename-format '#{pane_current_command}'
         
-        # Terminal title: devspace (or hostname) + command + cwd
-        set -g set-titles-string '#{?env:TMUX_DEVSPACE,#{env:TMUX_DEVSPACE},#H}·#{b:pane_current_path}·#{pane_current_command}'
+        # Terminal title: DEV_CONTEXT (fallback to hostname) + command + cwd
+        set -g set-titles-string '#{?env:DEV_CONTEXT,#{env:DEV_CONTEXT},#H} · #{pane_current_command} · #{b:pane_current_path}'
         
         # Status line configuration
         set -g status-right-length 100

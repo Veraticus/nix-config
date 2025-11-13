@@ -15,18 +15,6 @@
   networking.hostName = "egoengine";
   system.stateVersion = "25.05";
 
-  # Apply overlays for custom packages
-  nixpkgs = {
-    overlays = [
-      inputs.neovim-nightly.overlays.default
-      outputs.overlays.default
-      outputs.overlays.additions
-      outputs.overlays.modifications
-      outputs.overlays.unstable-packages
-    ];
-    config.allowUnfree = true;
-  };
-
   # Enable experimental features for nix commands
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 

@@ -5,27 +5,14 @@ in
 { inputs, outputs, lib, config, pkgs, ... }: {
   # You can import other NixOS modules here
   imports = [
-    ./homebrew.nix
+    ../../modules/nix/defaults.nix
+    ../../modules/darwin/applications.nix
+    ../../modules/darwin/defaults.nix
+    ../../modules/darwin/software.nix
   ];
 
   # Set primary user for nix-darwin
   system.primaryUser = "joshsymonds";
-
-  nixpkgs = {
-    # You can add overlays here
-    overlays = [
-      inputs.neovim-nightly.overlays.default
-      outputs.overlays.default
-      outputs.overlays.additions
-      outputs.overlays.modifications
-      outputs.overlays.unstable-packages
-    ];
-    # Configure your nixpkgs instance
-    config = {
-      # Disable if you don't want unfree packages
-      allowUnfree = true;
-    };
-  };
 
   nix = {
     package = pkgs.nix;
@@ -46,21 +33,7 @@ in
       "nixpkgs=${inputs.nixpkgs}"
     ];
 
-    optimise.automatic = true;
-
-    settings = {
-      # Enable flakes and new 'nix' command
-      experimental-features = "nix-command flakes";
-      # Deduplicate and optimize nix store
-
-      # Caches
-      substituters = [
-        "https://cache.nixos.org"
-      ];
-      trusted-public-keys = [
-        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-      ];
-    };
+    settings.trusted-users = [ "root" user ];
   };
 
 
@@ -77,28 +50,19 @@ in
 
 
   # Security
-  security.pam.services.sudo_local.touchIdAuth = true;
+  security.pam.services.sudo_local = {
+    enable = true;
+    text = ''
+      auth       optional       ${pkgs.pam-reattach}/lib/pam/pam_reattach.so
+      auth       sufficient     pam_tid.so
+    '';
+  };
 
   # Services
   programs.zsh.enable = true; # This is necessary to set zsh paths properly
 
   # System setup
   system = {
-    defaults = {
-      dock = {
-        wvous-tl-corner = 1;
-        wvous-tr-corner = 1;
-        wvous-bl-corner = 1;
-        wvous-br-corner = 1;
-      };
-      finder = {
-        AppleShowAllExtensions = true;
-        CreateDesktop = false;
-        ShowPathbar = true;
-        ShowStatusBar = true;
-        _FXShowPosixPathInTitle = true;
-      };
-    };
     keyboard = {
       enableKeyMapping = true;
       remapCapsLockToEscape = true;
@@ -116,12 +80,6 @@ in
     variables = {
       EDITOR = "nvim";
     };
-    
-    # System packages
-    systemPackages = with pkgs; [
-      eternal-terminal 
-      slidev
-    ];
   };
 
   # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion

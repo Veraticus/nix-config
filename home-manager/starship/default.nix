@@ -16,7 +16,7 @@
 
       format = "[](fg:lavender)$directory$character";
 
-      right_format = "[](fg:mauve)\${custom.devspace}[](fg:rosewater bg:mauve)\${custom.workspaceHost}[](fg:sky bg:rosewater)$git_branch$git_status[](fg:peach bg:sky)$aws[](bg:peach fg:teal)$kubernetes[](fg:teal)";
+      right_format = "[](fg:mauve)\${custom.context}[](fg:rosewater bg:mauve)\${custom.workspaceHost}[](fg:sky bg:rosewater)$git_branch$git_status[](fg:peach bg:sky)$aws[](bg:peach fg:teal)$kubernetes[](fg:teal)";
 
       add_newline = false;
 
@@ -71,20 +71,18 @@
       };
 
       custom = {
-        devspace = {
-          when = ''test -n "$CODER_WORKSPACE_NAME" || test -n "$TMUX_DEVSPACE"'';
+        context = {
+          when = ''test -n "$CODER_WORKSPACE_NAME" || test -n "$DEV_CONTEXT"'';
           command = ''
             if [ -n "$CODER_WORKSPACE_NAME" ]; then
-              echo "  $CODER_WORKSPACE_NAME"
-            else
-              case "$TMUX_DEVSPACE" in
-                mercury) echo " ☿ mercury" ;;
-                venus)   echo " ♀ venus" ;;
-                earth)   echo " ♁ earth" ;;
-                mars)    echo " ♂ mars" ;;
-                jupiter) echo " ♃ jupiter" ;;
-                *)       echo " ● $TMUX_DEVSPACE" ;;
-              esac
+              icon="${DEV_CONTEXT_ICON:-}"
+              printf " %s %s" "$icon" "$CODER_WORKSPACE_NAME"
+            elif [ -n "$DEV_CONTEXT" ]; then
+              if [ -n "$DEV_CONTEXT_ICON" ]; then
+                printf " %s %s" "$DEV_CONTEXT_ICON" "$DEV_CONTEXT"
+              else
+                printf " ● %s" "$DEV_CONTEXT"
+              fi
             fi
           '';
           format = "[ $output ]($style)";

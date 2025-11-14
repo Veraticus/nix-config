@@ -92,15 +92,36 @@ in {
     };
     script = ''
       set -euo pipefail
+      trap 'rm -f /run/bootstrap-git-askpass' EXIT
+
       repoDir=${lib.escapeShellArg repoDir}
       mkdir -p /persist
+
+       tokenFile=/persist/github-token
+       if [ -f "$tokenFile" ]; then
+         chmod 600 "$tokenFile"
+         cat > /run/bootstrap-git-askpass <<'EOF'
+#!/usr/bin/env bash
+TOKEN="$(cat /persist/github-token)"
+case "$1" in
+  *Username*) echo "oauth2" ;;
+  *Password*) echo "$TOKEN" ;;
+  *) echo "" ;;
+esac
+EOF
+         chmod 700 /run/bootstrap-git-askpass
+         export GIT_ASKPASS=/run/bootstrap-git-askpass
+         export GIT_TERMINAL_PROMPT=0
+       fi
+
+      repoUrl="https://github.com/Veraticus/nix-config"
       if [ -d "$repoDir/.git" ]; then
         cd "$repoDir"
         ${pkgs.git}/bin/git fetch origin
         ${pkgs.git}/bin/git reset --hard origin/main
       else
         rm -rf "$repoDir"
-        ${pkgs.git}/bin/git clone https://github.com/joshsymonds/nix-config "$repoDir"
+        ${pkgs.git}/bin/git clone "$repoUrl" "$repoDir"
       fi
       ${pkgs.nixos-rebuild}/bin/nixos-rebuild switch --flake "$repoDir#stygianlibrary"
     '';

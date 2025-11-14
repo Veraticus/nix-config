@@ -91,12 +91,6 @@ in
           PasswordAuthentication = false;
         };
       };
-      tailscale = {
-        enable = true;
-        package = pkgs.tailscale;
-        useRoutingFeatures = "client";
-        openFirewall = true;
-      };
       ollama = {
         enable = true;
         acceleration = "cuda";
@@ -128,6 +122,8 @@ in
     i18n.defaultLocale = "en_US.UTF-8";
 
     users.defaultUserShell = pkgs.zsh;
+    programs.nm-applet.enable = true;
+
     users.users.${user} = {
       shell = pkgs.zsh;
       home = "/home/${user}";
@@ -138,7 +134,6 @@ in
         config.users.groups.keys.name
         "video"
         "render"
-        "docker"
       ];
     };
 

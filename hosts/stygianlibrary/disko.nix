@@ -25,7 +25,7 @@ _: {
                 format = "vfat";
                 mountpoint = "/boot";
                 mountOptions = ["defaults"];
-                extraArgs = ["-n" "STYGIAN-BOOT"];
+                extraArgs = ["-n" "STYGIAN-EFI"];
               };
             };
 

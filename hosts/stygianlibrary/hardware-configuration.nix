@@ -20,7 +20,7 @@
     };
 
     "/boot" = {
-      device = "/dev/disk/by-label/STYGIAN-BOOT";
+      device = "/dev/disk/by-label/STYGIAN-EFI";
       fsType = "vfat";
     };
 

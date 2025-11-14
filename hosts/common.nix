@@ -50,16 +50,15 @@
     };
   };
 
-  # Enable Eternal Terminal for low-latency persistent connections
   services.eternal-terminal = {
     enable = true;
     port = 2022;
   };
 
+  services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
+
   # Open firewall for ET
   networking.firewall.allowedTCPPorts = [2022];
-
-  services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
 
   users.users.joshsymonds = {
     hashedPassword = lib.mkDefault "";

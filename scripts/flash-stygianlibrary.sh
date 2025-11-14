@@ -14,6 +14,8 @@ Environment overrides:
   BOOT_SIZE    Size of the EFI partition (default: 1G)
   SYSTEM_SIZE  Size of the root partition (default: 64G)
   PERSIST_SIZE Size of the /persist partition (default: 32G)
+  SYSTEM_PATH  Prebuilt system path (from `nix build ... --print-out-paths`).
+               When unset the script builds the stygianlibrary system for you.
 EOF
 }
 
@@ -46,7 +48,7 @@ if [[ ! -b "$DEVICE" ]]; then
   error "${DEVICE} is not a block device"
 fi
 
-for cmd in sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install lsblk mountpoint; do
+for cmd in nix sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install lsblk mountpoint; do
   require_cmd "$cmd"
 done
 
@@ -73,6 +75,25 @@ BOOT_PART="${part_prefix}1"
 SYSTEM_PART="${part_prefix}2"
 PERSIST_PART="${part_prefix}3"
 MODELS_PART="${part_prefix}4"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+SYSTEM_PATH="${SYSTEM_PATH:-}"
+if [[ -n "$SYSTEM_PATH" ]]; then
+  if [[ ! -e "$SYSTEM_PATH" ]]; then
+    error "SYSTEM_PATH '$SYSTEM_PATH' does not exist"
+  fi
+  printf 'Using prebuilt system at %s\n' "$SYSTEM_PATH"
+else
+  printf 'Building stygianlibrary system (this may take a while)...\n'
+  SYSTEM_PATH=$(
+    nix build \
+      "$REPO_ROOT#nixosConfigurations.stygianlibrary.config.system.build.toplevel" \
+      --no-link \
+      --print-out-paths
+  )
+fi
 
 printf 'Partitioning %s...\n' "$DEVICE"
 sgdisk --zap-all "$DEVICE"
@@ -123,13 +144,16 @@ install -d -m 0755 -o root -g root "$TARGET_MOUNT/persist/ollama"
 chown joshsymonds:users "$TARGET_MOUNT/persist/ollama"
 chown joshsymonds:users "$TARGET_MOUNT/models"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+printf 'Copying system closure to target store...\n'
+mkdir -p "$TARGET_MOUNT/nix/store"
+STORE_URI="file://$TARGET_MOUNT/nix/store?compression=zstd&parallel-compression=true"
+nix copy --to "$STORE_URI" "$SYSTEM_PATH"
 
 printf 'Running nixos-install for stygianlibrary...\n'
 nixos-install \
-  --flake "$REPO_ROOT#stygianlibrary" \
+  --system "$SYSTEM_PATH" \
   --root "$TARGET_MOUNT" \
+  --no-channel-copy \
   --no-root-passwd \
   "${INSTALL_ARGS[@]}"
 

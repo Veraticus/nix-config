@@ -402,16 +402,25 @@ in
       mode = "0400";
     };
 
-    services.cloudflareTunnel = {
-      enable = true;
-      tokenFile = config.age.secrets."cloudflared-token".path;
-    };
+    services = {
+      tailscale = {
+        enable = true;
+        package = pkgs.tailscale;
+        useRoutingFeatures = "server";
+        openFirewall = true;
+      };
 
-    services.egoengine.coder = {
-      enable = true;
-      accessUrl = "https://coder.husbuddies.gay";
-      internalUrl = "https://coder.husbuddies.gay";
-      autoRegisterTemplates = false;
+      cloudflareTunnel = {
+        enable = true;
+        tokenFile = config.age.secrets."cloudflared-token".path;
+      };
+
+      egoengine.coder = {
+        enable = true;
+        accessUrl = "https://coder.husbuddies.gay";
+        internalUrl = "https://coder.husbuddies.gay";
+        autoRegisterTemplates = false;
+      };
     };
 
     systemd.timers.cleanup-old-clusters = {

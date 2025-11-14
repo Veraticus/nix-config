@@ -2,6 +2,7 @@
   inputs,
   lib,
   pkgs,
+  config,
   ...
 }: {
   imports = [
@@ -35,7 +36,7 @@
     ssh-to-age
   ];
 
-  fileSystems = {
+  fileSystems = lib.mkIf (config.networking.hostName != "stygianlibrary") {
     "/mnt/video" = {
       device = "172.31.0.100:/volume1/video";
       fsType = "nfs";

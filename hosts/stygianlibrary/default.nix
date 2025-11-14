@@ -95,10 +95,9 @@ in
         enable = true;
         acceleration = "cuda";
         package = pkgs.ollama;
-        environmentVariables = {
-          OLLAMA_HOST = "0.0.0.0";
-          OLLAMA_MODELS = "/persist/ollama";
-        };
+        host = "0.0.0.0";
+        user = "ollama";
+        group = "ollama";
       };
       open-webui = {
         enable = true;
@@ -106,6 +105,7 @@ in
         port = 8080;
         environment = {
           OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
+          DATA_DIR = "/run/open-webui";
         };
       };
       thermald.enable = true;
@@ -114,9 +114,18 @@ in
 
     systemd.tmpfiles.rules = [
       "d /persist 0755 root root -"
-      "d /persist/ollama 0755 ${user} users -"
-      "L /var/lib/ollama - - - - /persist/ollama"
+      "d /persist/ollama 0755 ollama ollama -"
+      "d /run/open-webui 0750 open-webui open-webui -"
     ];
+
+    fileSystems."/var/lib/ollama" = {
+      device = "/persist/ollama";
+      fsType = "none";
+      options = ["bind"];
+      neededForBoot = true;
+    };
+
+    systemd.services.ollama.serviceConfig.StateDirectory = lib.mkForce [];
 
     time.timeZone = "America/Los_Angeles";
     i18n.defaultLocale = "en_US.UTF-8";

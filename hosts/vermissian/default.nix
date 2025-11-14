@@ -403,6 +403,16 @@ in
     };
 
     services = {
+      openssh = {
+        enable = true;
+        settings = {
+          PermitRootLogin = "no";
+          PasswordAuthentication = false;
+          X11Forwarding = true;
+          StreamLocalBindUnlink = true;
+        };
+      };
+
       tailscale = {
         enable = true;
         package = pkgs.tailscale;

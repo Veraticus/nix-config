@@ -20,6 +20,12 @@ in {
     golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin {};
     coder = final.callPackage ../pkgs/coder-cli {inherit (final) unzip;};
     slidev = final.callPackage ../pkgs/slidev {};
+    redlib-veraticus = final.callPackage ../pkgs/redlib-veraticus {
+      inherit (inputs) crane;
+      redlibSrc = inputs.redlib-fork.sourceInfo.outPath;
+      redlibRev = inputs.redlib-fork.sourceInfo.rev;
+      rustOverlay = inputs.rust-overlay;
+    };
 
     # Codex packages from local checkout
     codex-tui = codexTui;

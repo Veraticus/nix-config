@@ -47,6 +47,19 @@
 
     # Codex checkout (Rust implementation) - track GitHub fork
     codex-src.url = "github:Veraticus/codex";
+
+    # Redlib fork for customizations
+    redlib-fork = {
+      url = "github:Veraticus/redlib";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    crane.url = "github:ipetkov/crane";
+
+    rust-overlay = {
+      url = "github:oxalica/rust-overlay";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   nixConfig = {

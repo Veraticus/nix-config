@@ -36,6 +36,7 @@ in
       ./services/jellyseerr.nix
       ./services/bazarr.nix
       ./services/piped.nix
+      ./services/redlib.nix
       ./services/download-proxies.nix
       ./services/flaresolverr.nix
 
@@ -320,18 +321,27 @@ in
       };
     };
 
-    age.secrets."cloudflare-api-token" = {
-      file = ../../secrets/hosts/ultraviolet/cloudflare-api-token.age;
-      owner = "caddy";
-      group = "caddy";
-      mode = "0400";
-    };
+    age.secrets = {
+      "cloudflare-api-token" = {
+        file = ../../secrets/hosts/ultraviolet/cloudflare-api-token.age;
+        owner = "caddy";
+        group = "caddy";
+        mode = "0400";
+      };
 
-    age.secrets."cloudflared-token" = {
-      file = ../../secrets/hosts/ultraviolet/cloudflared-token.age;
-      owner = "cloudflared";
-      group = "cloudflared";
-      mode = "0400";
+      "cloudflared-token" = {
+        file = ../../secrets/hosts/ultraviolet/cloudflared-token.age;
+        owner = "cloudflared";
+        group = "cloudflared";
+        mode = "0400";
+      };
+
+      "redlib-collections" = {
+        file = ../../secrets/hosts/ultraviolet/redlib-collections.age;
+        owner = "root";
+        group = "root";
+        mode = "0400";
+      };
     };
 
     # Podman for media containers

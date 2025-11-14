@@ -1,9 +1,10 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }: let
-  inherit (lib) mkForce;
+  inherit (lib) mkForce optionalString getExe;
 in {
   assertions = [
     {
@@ -16,32 +17,40 @@ in {
   # in spotlight, and when launched through the dock they come with a terminal window. This is a workaround.
   # Upstream issue: https://github.com/LnL7/nix-darwin/issues/214
   system.activationScripts.applications.text = mkForce ''
-    echo "setting up ~/Applications..." >&2
-    applications="$HOME/Applications"
-    nix_apps="$applications/Nix Apps"
+    echo "setting up /Applications/Nix Apps..." >&2
 
-    # Needs to be writable by the user so that home-manager can symlink into it
-    if ! test -d "$applications"; then
-        mkdir -p "$applications"
-        chown ${config.system.primaryUser}: "$applications"
-        chmod u+w "$applications"
+    ourLink () {
+      local link
+      link=$(readlink "$1")
+      [ -L "$1" ] && [ "''${link#*-}" = 'system-applications/Applications' ]
+    }
+
+    ${optionalString (config.system.primaryUser != null) ''
+      if ourLink ~${config.system.primaryUser}/Applications; then
+        rm ~${config.system.primaryUser}/Applications
+      elif ourLink ~${config.system.primaryUser}/Applications/'Nix Apps'; then
+        rm ~${config.system.primaryUser}/Applications/'Nix Apps'
+      fi
+    ''}
+
+    targetFolder='/Applications/Nix Apps'
+
+    if [ -e "$targetFolder" ] && ourLink "$targetFolder"; then
+      rm "$targetFolder"
     fi
 
-    # Delete the directory to remove old links
-    rm -rf "$nix_apps"
-    mkdir -p "$nix_apps"
+    mkdir -p "$targetFolder"
 
-    find ${config.system.build.applications}/Applications -maxdepth 1 -type l -exec readlink '{}' + |
-        while read src; do
-            /usr/bin/osascript -e "
-                set fileToAlias to POSIX file \"$src\"
-                set applicationsFolder to POSIX file \"$nix_apps\"
+    rsyncFlags=(
+      --checksum
+      --copy-unsafe-links
+      --archive
+      --delete
+      --chmod=-w
+      --no-group
+      --no-owner
+    )
 
-                tell application \"Finder\"
-                    make alias file to fileToAlias at applicationsFolder
-                    set name of result to \"$(rev <<< "$src" | cut -d'/' -f1 | rev)\"
-                end tell
-            " 1>/dev/null
-        done
+    ${getExe pkgs.rsync} "''${rsyncFlags[@]}" ${config.system.build.applications}/Applications/ "$targetFolder"
   '';
 }

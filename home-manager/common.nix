@@ -46,6 +46,7 @@ in {
         fzf
         gh
         git
+        gptfdisk
         inputs.agenix.packages.${pkgs.system}.agenix
         inputs.cc-tools.packages.${pkgs.system}.default
         istioctl
@@ -63,6 +64,7 @@ in {
         moar
         ncdu
         parallel
+        parted
         ranger
         ripgrep
         shellcheck

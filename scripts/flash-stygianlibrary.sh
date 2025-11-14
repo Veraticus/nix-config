@@ -76,7 +76,7 @@ MODELS_PART="${part_prefix}4"
 
 printf 'Partitioning %s...\n' "$DEVICE"
 sgdisk --zap-all "$DEVICE"
-sgdisk -n1:1MiB:+"${BOOT_SIZE}" -t1:ef00 -c1:STYGIAN-BOOT "$DEVICE"
+sgdisk -n1:1MiB:+"${BOOT_SIZE}" -t1:ef00 -c1:STYGIAN-EFI "$DEVICE"
 sgdisk -n2:0:+"${SYSTEM_SIZE}" -t2:8300 -c2:STYGIAN-SYSTEM "$DEVICE"
 sgdisk -n3:0:+"${PERSIST_SIZE}" -t3:8300 -c3:STYGIAN-PERSIST "$DEVICE"
 sgdisk -n4:0:0 -t4:8300 -c4:STYGIAN-MODELS "$DEVICE"
@@ -84,7 +84,7 @@ partprobe "$DEVICE"
 sleep 2
 
 printf 'Formatting partitions...\n'
-mkfs.vfat -F 32 -n STYGIAN-BOOT "$BOOT_PART"
+mkfs.vfat -F 32 -n STYGIAN-EFI "$BOOT_PART"
 mkfs.ext4 -F -L STYGIAN-SYSTEM "$SYSTEM_PART"
 mkfs.ext4 -F -L STYGIAN-PERSIST "$PERSIST_PART"
 mkfs.ext4 -F -L STYGIAN-MODELS "$MODELS_PART"

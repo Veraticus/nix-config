@@ -43,6 +43,8 @@ with lib; let
 
     echo "Sent link to client terminal: $URL"
   '';
+  tmuxDevspaceHelper =
+    pkgs.writeShellScriptBin "tmux-devspace" (builtins.readFile ./scripts/tmux-devspace.sh);
 in {
   config = {
     programs.tmux = {
@@ -125,8 +127,8 @@ in {
         setw -g allow-rename on
         set -g automatic-rename-format '#{pane_current_command}'
 
-        # Terminal title: DEV_CONTEXT (fallback to hostname) + command + cwd
-        set -g set-titles-string '#{?env:DEV_CONTEXT,#{env:DEV_CONTEXT},#H} · #{pane_current_command} · #{b:pane_current_path}'
+        # Terminal title: DEV_CONTEXT option (fallback to hostname) + command + compressed path
+        set -g set-titles-string '#{?@dev_context,#{@dev_context},#H}*#{pane_current_command}*#(${tmuxDevspaceHelper}/bin/tmux-devspace title-path #{q:pane_current_path})'
 
         # Status line configuration
         set -g status-right-length 100

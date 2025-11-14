@@ -25,14 +25,6 @@ in {
       [ -L "$1" ] && [ "''${link#*-}" = 'system-applications/Applications' ]
     }
 
-    ${optionalString (config.system.primaryUser != null) ''
-      if ourLink ~${config.system.primaryUser}/Applications; then
-        rm ~${config.system.primaryUser}/Applications
-      elif ourLink ~${config.system.primaryUser}/Applications/'Nix Apps'; then
-        rm ~${config.system.primaryUser}/Applications/'Nix Apps'
-      fi
-    ''}
-
     targetFolder='/Applications/Nix Apps'
 
     if [ -e "$targetFolder" ] && ourLink "$targetFolder"; then
@@ -52,5 +44,39 @@ in {
     )
 
     ${getExe pkgs.rsync} "''${rsyncFlags[@]}" ${config.system.build.applications}/Applications/ "$targetFolder"
+
+    firefoxApp="$targetFolder/Firefox.app"
+    firefoxWrapper="$firefoxApp/Contents/MacOS/firefox"
+    if [ -f "$firefoxWrapper" ]; then
+      FIREFOX_WRAPPER="$firefoxWrapper" /usr/bin/python3 <<'PY'
+import os
+import pathlib
+import re
+
+path = pathlib.Path(os.environ["FIREFOX_WRAPPER"])
+text = path.read_text()
+pattern = r'exec "/nix/store/[^"]+/Applications/Firefox\.app/Contents/MacOS/.firefox-old"  "\$@"'
+replacement = 'firefox_dir="$(cd "$(dirname "$0")" && pwd)"\nexec "$firefox_dir/.firefox-old"  "$@"'
+new_text, subs = re.subn(pattern, replacement, text)
+if subs:
+    path.write_text(new_text)
+PY
+      chmod +x "$firefoxWrapper"
+      /usr/bin/codesign --force --deep --sign - "$firefoxApp" 2>/dev/null || true
+    fi
+
+    ${optionalString (config.system.primaryUser != null) ''
+      userHome=~${config.system.primaryUser}
+      userApplications="$userHome/Applications"
+      userLink="$userApplications/Nix Apps"
+
+      if [ -d "$userHome" ]; then
+        mkdir -p "$userApplications"
+        chown ${config.system.primaryUser}: "$userApplications"
+        rm -rf "$userLink"
+        ln -sfn "$targetFolder" "$userLink"
+        chown -h ${config.system.primaryUser}: "$userLink"
+      fi
+    ''}
   '';
 }

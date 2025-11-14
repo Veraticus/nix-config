@@ -57,8 +57,13 @@ host_segment() {
 }
 
 strip_path() {
+  local input="${1:-}"
   local path home prefix
-  path=${PWD:-$(pwd)}
+  if [ -n "$input" ]; then
+    path="$input"
+  else
+    path=${PWD:-$(pwd)}
+  fi
   home=${HOME:-}
   prefix=""
 
@@ -174,8 +179,12 @@ set_session_context() {
   tmux set-environment -t "$session" -g DEV_CONTEXT "$env_label" >/dev/null 2>&1 || true
   tmux set-environment -t "$session" -g DEV_CONTEXT_KIND "tmux" >/dev/null 2>&1 || true
 
+  tmux set-option -t "$session" @dev_context "$env_label" >/dev/null 2>&1 || true
+  tmux set-option -t "$session" @dev_context_kind "tmux" >/dev/null 2>&1 || true
+
   if [ -n "$context_icon" ]; then
     tmux set-environment -t "$session" -g DEV_CONTEXT_ICON "$context_icon" >/dev/null 2>&1 || true
+    tmux set-option -t "$session" @dev_context_icon "$context_icon" >/dev/null 2>&1 || true
   fi
 }
 
@@ -407,6 +416,16 @@ cmd_rename() {
   tmux rename-session -t "$session" "$new_name"
 }
 
+cmd_title_path() {
+  local target="${1:-}"
+  if [ -n "$target" ]; then
+    strip_path "$target"
+  else
+    strip_path
+  fi
+  printf '\n'
+}
+
 command="${1:-}"
 if [ -z "$command" ]; then
   usage
@@ -426,6 +445,9 @@ case "$command" in
     ;;
   rename)
     cmd_rename "$@"
+    ;;
+  title-path)
+    cmd_title_path "$@"
     ;;
   *)
     usage

@@ -132,7 +132,7 @@ dsl                        # Detailed tmux session listing
 ### Shell and prompt integration
 - During shell init we import tmux-provided context variables (when inside tmux), fall back to `CODER_WORKSPACE_NAME`, and finally to the system hostname (`DEV_CONTEXT_KIND=host`).
 - Starship replaced the older devspace segment with a context-aware block that shows the icon and `DEV_CONTEXT`. Coder contexts default to ``, tmux planetary contexts get their astronomical glyphs (`☿♀♁♂♃`), and non-planetary sessions display as `● <label>`.
-- Tmux titles now use `#{env:DEV_CONTEXT}` so Kitty tabs, native terminal windows, and the macOS tab bar all render the same label.
+- Tmux titles now use the per-session option `@dev_context` so Kitty tabs, native terminal windows, and the macOS tab bar all render the same label.
 - The Codex `ntfy` notifier includes the context string (and icon when present), so phone alerts point to the exact session that completed.
 
 ### Why contexts?

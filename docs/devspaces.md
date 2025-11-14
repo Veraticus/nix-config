@@ -24,7 +24,7 @@ This document describes the new dev context abstraction that replaced the older 
    - Otherwise derives `DEV_CONTEXT` from `CODER_WORKSPACE_NAME` or falls back to the hostname (`DEV_CONTEXT_KIND=host`)
 5. **Prompt + titles** (`home-manager/starship/default.nix`, `home-manager/tmux/default.nix`)
    - Starship adds a right-side context segment with optional icons
-   - Tmux titles use `#{env:DEV_CONTEXT}` so Kitty tabs and other terminals stay in sync
+   - Tmux titles use the per-session option `@dev_context` so Kitty tabs and other terminals stay in sync
 6. **Notifications** (`home-manager/codex/hooks/ntfy-notifier.sh`)
    - Reads the derived context metadata and embeds it in mobile alerts
 

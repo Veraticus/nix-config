@@ -176,6 +176,23 @@
         ];
         homeModule = ./home-manager/hosts/stygianlibrary.nix;
       };
+
+      stygianlibrary-bootstrap = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/stygianlibrary/bootstrap.nix
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+          inputs.disko.nixosModules.disko
+        ];
+      };
+
+      stygianlibrary-installer = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/stygianlibrary/installer.nix
+        ];
+      };
     };
   in {
     packages = let
@@ -198,6 +215,7 @@
           base.x86_64-linux
           // {
             egoengine = self.nixosConfigurations.egoengine.config.system.build.egoengineDockerImage;
+            stygianlibraryInstallerIso = self.nixosConfigurations.stygianlibrary-installer.config.system.build.isoImage;
           };
       };
 

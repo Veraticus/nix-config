@@ -20,23 +20,22 @@ in {
 
     if [ ! -f ${hostKey} ]; then
       echo "WARNING: ${hostKey} not found; skipping age identity generation"
-      exit 0
+    else
+      SSH_TO_AGE=${pkgs.ssh-to-age}/bin/ssh-to-age
+
+      if [ ! -f ${hostAgeKey} ]; then
+        echo "Generating age identity from ${hostKey}"
+        $SSH_TO_AGE --private-key < ${hostKey} > ${hostAgeKey}.tmp
+        mv ${hostAgeKey}.tmp ${hostAgeKey}
+        chmod 600 ${hostAgeKey}
+      fi
+
+      cat ${hostAgeKey} > ${keysFile}
+      chmod 600 ${keysFile}
+
+      $SSH_TO_AGE < ${hostKey}.pub > ${recipientsFile}.tmp
+      mv ${recipientsFile}.tmp ${recipientsFile}
+      chmod 644 ${recipientsFile}
     fi
-
-    SSH_TO_AGE=${pkgs.ssh-to-age}/bin/ssh-to-age
-
-    if [ ! -f ${hostAgeKey} ]; then
-      echo "Generating age identity from ${hostKey}"
-      $SSH_TO_AGE --private-key < ${hostKey} > ${hostAgeKey}.tmp
-      mv ${hostAgeKey}.tmp ${hostAgeKey}
-      chmod 600 ${hostAgeKey}
-    fi
-
-    cat ${hostAgeKey} > ${keysFile}
-    chmod 600 ${keysFile}
-
-    $SSH_TO_AGE < ${hostKey}.pub > ${recipientsFile}.tmp
-    mv ${recipientsFile}.tmp ${recipientsFile}
-    chmod 644 ${recipientsFile}
   '';
 }

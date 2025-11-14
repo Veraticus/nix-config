@@ -38,7 +38,7 @@ in
         enable = true;
         checkReversePath = "loose";
         trustedInterfaces = ["tailscale0"];
-        allowedTCPPorts = [22 11434];
+        allowedTCPPorts = [22 2022 8080 11434];
         allowedUDPPorts = [config.services.tailscale.port];
       };
     };
@@ -104,6 +104,14 @@ in
         environmentVariables = {
           OLLAMA_HOST = "0.0.0.0";
           OLLAMA_MODELS = "/persist/ollama";
+        };
+      };
+      open-webui = {
+        enable = true;
+        host = "0.0.0.0";
+        port = 8080;
+        environment = {
+          OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
         };
       };
       thermald.enable = true;

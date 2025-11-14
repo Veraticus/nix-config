@@ -46,6 +46,19 @@ nix flake update
 nix build .#myCaddy  # Custom Caddy web server
 ```
 
+### Create a stygianlibrary USB stick
+
+```bash
+sudo ./scripts/flash-stygianlibrary.sh /dev/sdX  # replace with your USB device
+```
+
+The script partitions the stick, installs the `stygianlibrary-bootstrap`
+closure directly onto it, and leaves the filesystems mounted at
+`/mnt/stygianlibrary`. After booting from the stick, log in as `joshsymonds`
+with the temporary password `bootstrap`. The bootstrap profile then clones
+this repo into `/persist` and rebuilds the full `stygianlibrary`
+configuration on the USB itself.
+
 ### Build the egoengine Base Image
 
 ```bash

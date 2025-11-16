@@ -1,4 +1,4 @@
-{lib, python3Packages, ...}:
+{lib, python3Packages, fetchFromGitHub, ...}:
 let
   torch =
     if python3Packages ? pytorchWithCuda
@@ -9,7 +9,12 @@ python3Packages.buildPythonApplication rec {
   pname = "heretic";
   version = "1.0.1";
 
-  src = ../../reference/heretic;
+  src = fetchFromGitHub {
+    owner = "p-e-w";
+    repo = "heretic";
+    rev = "v${version}";
+    hash = "sha256-04reIiD1MbNLv8IqSqVHXQorlXjLSowy8zcJ1hFBHPg=";
+  };
 
   pyproject = true;
 

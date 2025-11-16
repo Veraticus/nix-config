@@ -74,7 +74,7 @@ in
         ];
       };
       nvidia = {
-        open = false;
+        open = true;
         nvidiaSettings = true;
         powerManagement.enable = lib.mkDefault true;
         package = config.boot.kernelPackages.nvidiaPackages.production;
@@ -105,7 +105,6 @@ in
         port = 8080;
         environment = {
           OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
-          DATA_DIR = "/run/open-webui";
         };
       };
       thermald.enable = true;
@@ -115,7 +114,8 @@ in
     systemd.tmpfiles.rules = [
       "d /persist 0755 root root -"
       "d /persist/ollama 0755 ollama ollama -"
-      "d /run/open-webui 0750 open-webui open-webui -"
+      "d /persist/open-webui 0750 open-webui open-webui -"
+      "d /var/lib/private 0755 root root -"
     ];
 
     fileSystems."/var/lib/ollama" = {
@@ -124,6 +124,21 @@ in
       options = ["bind"];
       neededForBoot = true;
     };
+
+    fileSystems."/var/lib/private/open-webui" = {
+      device = "/persist/open-webui";
+      fsType = "none";
+      options = ["bind"];
+    };
+
+    systemd.services.open-webui.serviceConfig = {
+      DynamicUser = lib.mkForce false;
+      User = "open-webui";
+      Group = "open-webui";
+      StateDirectory = lib.mkForce [];
+      RuntimeDirectory = lib.mkForce [];
+    };
+
 
     systemd.services.ollama.serviceConfig.StateDirectory = lib.mkForce [];
 
@@ -145,6 +160,14 @@ in
         "render"
       ];
     };
+
+    users.users.open-webui = {
+      isSystemUser = true;
+      group = "open-webui";
+      home = "/var/lib/open-webui";
+    };
+
+    users.groups.open-webui = {};
 
     security = {
       rtkit.enable = true;
@@ -172,6 +195,7 @@ in
       systemPackages = with pkgs; [
         cachix
         git
+        heretic
         hwdata
         nvtopPackages.full
         ollama

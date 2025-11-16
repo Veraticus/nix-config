@@ -18,6 +18,7 @@ in {
     claudeCodeCli = final.callPackage ../pkgs/claude-code-cli {};
     deadcode = final.callPackage ../pkgs/deadcode {};
     golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin {};
+    heretic = final.callPackage ../pkgs/heretic {};
     coder = final.callPackage ../pkgs/coder-cli {inherit (final) unzip;};
     slidev = final.callPackage ../pkgs/slidev {};
     redlib-veraticus = final.callPackage ../pkgs/redlib-veraticus {

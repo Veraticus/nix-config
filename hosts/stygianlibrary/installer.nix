@@ -7,8 +7,8 @@
   outputs,
   ...
 }: let
-  targetSystem = outputs.nixosConfigurations.stygianlibrary-bootstrap.config.system.build.toplevel;
-  inherit (pkgs) util-linux jq gptfdisk e2fsprogs dosfstools;
+  targetSystem = outputs.nixosConfigurations.stygianlibrary.config.system.build.toplevel;
+  inherit (pkgs) util-linux jq gptfdisk e2fsprogs dosfstools cryptsetup;
 in {
   imports = [
     "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
@@ -19,7 +19,7 @@ in {
 
   services.openssh.enable = true;
 
-  environment.systemPackages = [ util-linux jq gptfdisk e2fsprogs dosfstools ];
+  environment.systemPackages = [ util-linux jq gptfdisk e2fsprogs dosfstools cryptsetup ];
 
   services.getty.helpLine = ''
     ███████╗████████╗██╗   ██╗ ██████╗ ██╗ █████╗ ███╗   ██╗██╗      ██╗██╗   ██╗
@@ -34,10 +34,10 @@ in {
   '';
 
   systemd.services.stygian-auto-install = {
-    description = "Partition disk and install stygianlibrary bootstrap";
+    description = "Partition disk, enable LUKS, and install stygianlibrary";
     wantedBy = ["multi-user.target"];
     after = ["multi-user.target"];
-    path = [ util-linux jq gptfdisk e2fsprogs dosfstools pkgs.coreutils pkgs.mount pkgs.systemd ];
+    path = [ util-linux jq gptfdisk e2fsprogs dosfstools cryptsetup pkgs.coreutils pkgs.mount pkgs.systemd ];
     serviceConfig = {
       Type = "oneshot";
       StandardOutput = "journal+console";
@@ -75,32 +75,38 @@ in {
 
       ${gptfdisk}/bin/sgdisk --zap-all "$disk"
       ${gptfdisk}/bin/sgdisk -n1:1MiB:+1G -t1:ef00 -c1:STYGIAN-EFI "$disk"
-      ${gptfdisk}/bin/sgdisk -n2:0:+64G -t2:8300 -c2:STYGIAN-SYSTEM "$disk"
-      ${gptfdisk}/bin/sgdisk -n3:0:+32G -t3:8300 -c3:STYGIAN-PERSIST "$disk"
-      ${gptfdisk}/bin/sgdisk -n4:0:0 -t4:8300 -c4:STYGIAN-MODELS "$disk"
+      ${gptfdisk}/bin/sgdisk -n2:0:0 -t2:8300 -c2:STYGIAN-LUKS "$disk"
       ${util-linux}/bin/partprobe "$disk"
       sleep 2
 
       wait_for [ -b /dev/disk/by-partlabel/STYGIAN-EFI ]
-      wait_for [ -b /dev/disk/by-partlabel/STYGIAN-SYSTEM ]
-      wait_for [ -b /dev/disk/by-partlabel/STYGIAN-PERSIST ]
-      wait_for [ -b /dev/disk/by-partlabel/STYGIAN-MODELS ]
+      wait_for [ -b /dev/disk/by-partlabel/STYGIAN-LUKS ]
 
       echo "Formatting partitions..."
       ${dosfstools}/bin/mkfs.vfat -F32 -n STYGIAN-EFI /dev/disk/by-partlabel/STYGIAN-EFI
-      ${e2fsprogs}/bin/mkfs.ext4 -F -L STYGIAN-SYSTEM /dev/disk/by-partlabel/STYGIAN-SYSTEM
-      ${e2fsprogs}/bin/mkfs.ext4 -F -L STYGIAN-PERSIST /dev/disk/by-partlabel/STYGIAN-PERSIST
-      ${e2fsprogs}/bin/mkfs.ext4 -F -L STYGIAN-MODELS /dev/disk/by-partlabel/STYGIAN-MODELS
+      passphrase=$(${pkgs.systemd}/bin/systemd-ask-password "Enter LUKS passphrase for stygianlibrary install")
+      if [[ -z "$passphrase" ]]; then
+        echo "Empty passphrase not allowed" >&2
+        exit 1
+      fi
+      mapperName="stygiancrypt"
+      if [[ -e "/dev/mapper/$mapperName" ]]; then
+        echo "/dev/mapper/$mapperName already exists; close it before installing" >&2
+        exit 1
+      fi
+      printf '%s' "$passphrase" | ${cryptsetup}/bin/cryptsetup luksFormat --type luks2 --batch-mode /dev/disk/by-partlabel/STYGIAN-LUKS -
+      printf '%s' "$passphrase" | ${cryptsetup}/bin/cryptsetup open /dev/disk/by-partlabel/STYGIAN-LUKS "$mapperName" --key-file - --allow-discards
+      unset passphrase
+      ${e2fsprogs}/bin/mkfs.ext4 -F -L STYGIAN-SYSTEM "/dev/mapper/$mapperName"
 
       echo "Mounting target..."
-      mount /dev/disk/by-partlabel/STYGIAN-SYSTEM /mnt
+      mount "/dev/mapper/$mapperName" /mnt
       mkdir -p /mnt/boot /mnt/persist /mnt/models
       mount /dev/disk/by-partlabel/STYGIAN-EFI /mnt/boot
-      mount /dev/disk/by-partlabel/STYGIAN-PERSIST /mnt/persist
-      mount /dev/disk/by-partlabel/STYGIAN-MODELS /mnt/models
 
       chmod 755 /mnt/persist
       install -d -m 0755 -o root -g root /mnt/persist/ollama
+      chmod 755 /mnt/models
 
       echo "Running nixos-install with prebuilt system..."
       ${config.system.build.nixos-install}/bin/nixos-install \
@@ -113,6 +119,7 @@ in {
       echo "Syncing and powering off..."
       sync
       umount -R /mnt || true
+      ${cryptsetup}/bin/cryptsetup close "$mapperName"
       ${pkgs.systemd}/bin/systemctl poweroff
     '';
   };

@@ -190,16 +190,6 @@
         homeModule = ./home-manager/hosts/stygianlibrary.nix;
       };
 
-      stygianlibrary-bootstrap = {
-        system = "x86_64-linux";
-        modules = [
-          ./hosts/stygianlibrary/bootstrap.nix
-          ./hosts/common.nix
-          inputs.agenix.nixosModules.default
-          inputs.disko.nixosModules.disko
-        ];
-      };
-
       stygianlibrary-installer = {
         system = "x86_64-linux";
         modules = [

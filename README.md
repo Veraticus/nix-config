@@ -52,12 +52,15 @@ nix build .#myCaddy  # Custom Caddy web server
 sudo ./scripts/flash-stygianlibrary.sh /dev/sdX  # replace with your USB device
 ```
 
-The script partitions the stick, installs the `stygianlibrary-bootstrap`
+The script partitions the stick, installs the full `stygianlibrary`
 closure directly onto it, and leaves the filesystems mounted at
-`/mnt/stygianlibrary`. After booting from the stick, log in as `joshsymonds`
-with the temporary password `bootstrap`. The bootstrap profile then clones
-this repo into `/persist` and rebuilds the full `stygianlibrary`
-configuration on the USB itself.
+`/mnt/stygianlibrary`. It creates a small unencrypted EFI partition plus a
+LUKS2-encrypted volume that holds everything else, so you'll be prompted to set
+the passphrase during flashing and again when the machine boots. It also clones
+this repo via HTTPS into `/mnt/stygianlibrary/persist/nix-config` so the system
+starts with the source on disk. After booting from the stick, you're already
+running the production configuration; use your usual credentials or SSH keys the
+same way you would on the deployed machine.
 
 ### Build the egoengine Base Image
 

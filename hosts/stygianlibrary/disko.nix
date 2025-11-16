@@ -29,39 +29,22 @@ _: {
               };
             };
 
-            system = {
-              label = "system";
-              size = "32G";
-              content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/";
-                mountOptions = ["noatime" "nodiratime"];
-                extraArgs = ["-F" "-L" "STYGIAN-SYSTEM"];
-              };
-            };
-
-            persist = {
-              label = "persist";
-              size = "16G";
-              content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/persist";
-                mountOptions = ["noatime" "nodev" "nosuid"];
-                extraArgs = ["-F" "-L" "STYGIAN-PERSIST"];
-              };
-            };
-
-            models = {
-              label = "models";
+            luks = {
+              label = "STYGIAN-LUKS";
               size = "100%";
               content = {
-                type = "filesystem";
-                format = "ext4";
-                mountpoint = "/models";
-                mountOptions = ["noatime" "nodev" "nosuid"];
-                extraArgs = ["-F" "-L" "STYGIAN-MODELS"];
+                type = "luks";
+                name = "stygiancrypt";
+                settings = {
+                  allowDiscards = true;
+                };
+                content = {
+                  type = "filesystem";
+                  format = "ext4";
+                  mountpoint = "/";
+                  mountOptions = ["noatime" "nodiratime"];
+                  extraArgs = ["-F" "-L" "STYGIAN-SYSTEM"];
+                };
               };
             };
           };

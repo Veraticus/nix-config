@@ -22,6 +22,7 @@ in {
   systemd.services.redlib = {
     path = [pkgs.coreutils pkgs.gnused];
     serviceConfig.EnvironmentFile = ["-${collectionsEnvFile}"];
+    restartTriggers = [collectionsSecret];
     preStart = ''
       mkdir -p /run/redlib
       if [ -s ${collectionsSecret} ]; then

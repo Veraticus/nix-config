@@ -43,15 +43,19 @@ in
       };
     };
 
-    boot = {
-      supportedFilesystems = ["ntfs" "vfat"];
-      kernelModules = ["coretemp" "kvm-intel"];
-      kernelParams = ["kernel.unprivileged_userns_clone=1"];
-      loader = {
-        systemd-boot = {
-          enable = true;
-          configurationLimit = 8;
-        };
+  boot = {
+    supportedFilesystems = ["ntfs" "vfat"];
+    kernelModules = ["coretemp" "kvm-intel"];
+    kernelParams = ["kernel.unprivileged_userns_clone=1"];
+    initrd.luks.devices.stygianlibrary = {
+      device = "/dev/disk/by-partlabel/STYGIAN-LUKS";
+      allowDiscards = true;
+    };
+    loader = {
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 8;
+      };
         efi = {
           canTouchEfiVariables = true;
           efiSysMountPoint = "/boot";
@@ -111,11 +115,13 @@ in
       fstrim.enable = true;
     };
 
+<<<<<<< HEAD
     systemd.tmpfiles.rules = [
       "d /persist 0755 root root -"
       "d /persist/ollama 0755 ollama ollama -"
       "d /persist/open-webui 0750 open-webui open-webui -"
       "d /var/lib/private 0755 root root -"
+      "d /models 0755 root root -"
     ];
 
     fileSystems."/var/lib/ollama" = {

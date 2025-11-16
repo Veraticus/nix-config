@@ -5,17 +5,18 @@ usage() {
   cat <<'EOU'
 Usage: flash-stygianlibrary.sh /dev/<usb device>
 
-Re-images the USB stick with the stygianlibrary bootstrap system. It partitions
-and formats the device, installs the bootstrap closure onto the stick, and
-leaves the filesystems mounted at /mnt/stygianlibrary for inspection.
+Re-images the USB stick with the full stygianlibrary system. It partitions and
+formats the device, installs the full closure onto the stick, and leaves the
+filesystems mounted at /mnt/stygianlibrary for inspection.
 
 Environment overrides:
   BOOT_SIZE     Size of the EFI partition (default: 1G)
-  SYSTEM_SIZE   Size of the root partition (default: 64G)
-  PERSIST_SIZE  Size of the /persist partition (default: 32G)
   SYSTEM_SPEC   Flake reference to build when SYSTEM_PATH is unset
-                (default: .#nixosConfigurations.stygianlibrary-bootstrap.config.system.build.toplevel)
-  SYSTEM_PATH   Prebuilt bootstrap closure; skips building SYSTEM_SPEC
+                (default: .#nixosConfigurations.stygianlibrary.config.system.build.toplevel)
+  SYSTEM_PATH   Prebuilt system closure; skips building SYSTEM_SPEC
+  REPO_URL      Git URL to clone into /persist/nix-config
+                (default: https://github.com/Veraticus/nix-config)
+  CRYPT_NAME    Mapper name for the unlocked LUKS device (default: stygiancrypt)
 EOU
 }
 
@@ -43,6 +44,26 @@ unmount_device_mounts() {
   done
 }
 
+prompt_luks_passphrase() {
+  local pass1 pass2
+  while true; do
+    read -rsp "Enter LUKS passphrase: " pass1
+    printf '\n'
+    read -rsp "Confirm LUKS passphrase: " pass2
+    printf '\n'
+    if [[ -z "$pass1" ]]; then
+      printf 'Passphrase cannot be empty.\n' >&2
+      continue
+    fi
+    if [[ "$pass1" != "$pass2" ]]; then
+      printf 'Passphrases do not match; try again.\n' >&2
+      continue
+    fi
+    LUKS_PASSPHRASE="$pass1"
+    break
+  done
+}
+
 if [[ $# -ne 1 ]]; then
   usage >&2
   exit 1
@@ -54,7 +75,7 @@ if [[ $(id -u) -ne 0 ]]; then
   error "run this script as root"
 fi
 
-for cmd in nix nix-store nix-env sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install \
+for cmd in cryptsetup git nix nix-store nix-env sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install \
   nixos-enter bootctl lsblk mountpoint awk sync; do
   require_cmd "$cmd"
 done
@@ -73,8 +94,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 BOOT_SIZE="${BOOT_SIZE:-1G}"
-SYSTEM_SIZE="${SYSTEM_SIZE:-64G}"
-PERSIST_SIZE="${PERSIST_SIZE:-32G}"
+CRYPT_NAME="${CRYPT_NAME:-stygiancrypt}"
 
 case "$DEVICE" in
   *[0-9]) part_prefix="${DEVICE}p" ;;
@@ -82,9 +102,8 @@ case "$DEVICE" in
     esac
 
 BOOT_PART="${part_prefix}1"
-SYSTEM_PART="${part_prefix}2"
-PERSIST_PART="${part_prefix}3"
-MODELS_PART="${part_prefix}4"
+LUKS_PART="${part_prefix}2"
+MAPPER_PATH="/dev/mapper/$CRYPT_NAME"
 
 if lsblk -pnro MOUNTPOINT "$DEVICE" | grep -qvE '^\s*$'; then
   printf '%s or its partitions appear mounted; attempting to unmount...\n' "$DEVICE"
@@ -97,7 +116,7 @@ if mountpoint -q "$TARGET_MOUNT"; then
 fi
 mkdir -p "$TARGET_MOUNT"
 
-DEFAULT_SYSTEM_SPEC="${REPO_ROOT}#nixosConfigurations.stygianlibrary-bootstrap.config.system.build.toplevel"
+DEFAULT_SYSTEM_SPEC="${REPO_ROOT}#nixosConfigurations.stygianlibrary.config.system.build.toplevel"
 SYSTEM_SPEC="${SYSTEM_SPEC:-$DEFAULT_SYSTEM_SPEC}"
 
 if [[ -n "${SYSTEM_PATH:-}" ]]; then
@@ -108,7 +127,7 @@ else
   if [[ -e "$SYSTEM_SPEC" ]]; then
     SYSTEM_PATH="$SYSTEM_SPEC"
   else
-    printf 'Building bootstrap system (%s)...\n' "$SYSTEM_SPEC"
+    printf 'Building stygianlibrary system (%s)...\n' "$SYSTEM_SPEC"
     SYSTEM_PATH=$(nix build "$SYSTEM_SPEC" --no-link --print-out-paths | tail -n1)
   fi
 fi
@@ -118,28 +137,42 @@ printf 'Using system closure %s\n' "$SYSTEM_PATH"
 printf 'Partitioning %s...\n' "$DEVICE"
 sgdisk --zap-all "$DEVICE" || true
 sgdisk -n1:1MiB:+"${BOOT_SIZE}" -t1:ef00 -c1:STYGIAN-EFI "$DEVICE"
-sgdisk -n2:0:+"${SYSTEM_SIZE}" -t2:8300 -c2:STYGIAN-SYSTEM "$DEVICE"
-sgdisk -n3:0:+"${PERSIST_SIZE}" -t3:8300 -c3:STYGIAN-PERSIST "$DEVICE"
-sgdisk -n4:0:0 -t4:8300 -c4:STYGIAN-MODELS "$DEVICE"
+sgdisk -n2:0:0 -t2:8300 -c2:STYGIAN-LUKS "$DEVICE"
 partprobe "$DEVICE"
 sleep 2
 
-printf 'Formatting partitions...\n'
+prompt_luks_passphrase
+
+printf 'Formatting partitions and creating LUKS container...\n'
 mkfs.vfat -F 32 -n STYGIAN-EFI "$BOOT_PART"
-mkfs.ext4 -F -L STYGIAN-SYSTEM "$SYSTEM_PART"
-mkfs.ext4 -F -L STYGIAN-PERSIST "$PERSIST_PART"
-mkfs.ext4 -F -L STYGIAN-MODELS "$MODELS_PART"
+if [[ -e "$MAPPER_PATH" ]]; then
+  error "$MAPPER_PATH already exists; close it before continuing"
+fi
+printf '%s' "$LUKS_PASSPHRASE" | cryptsetup luksFormat --type luks2 --batch-mode "$LUKS_PART" -
+printf '%s' "$LUKS_PASSPHRASE" | cryptsetup open "$LUKS_PART" "$CRYPT_NAME" --key-file - --allow-discards
+unset LUKS_PASSPHRASE
+mkfs.ext4 -F -L STYGIAN-SYSTEM "$MAPPER_PATH"
 
 printf 'Mounting filesystems at %s...\n' "$TARGET_MOUNT"
-mount "$SYSTEM_PART" "$TARGET_MOUNT"
+mount "$MAPPER_PATH" "$TARGET_MOUNT"
 mkdir -p "$TARGET_MOUNT"/boot "$TARGET_MOUNT"/persist "$TARGET_MOUNT"/models
 mount "$BOOT_PART" "$TARGET_MOUNT/boot"
-mount "$PERSIST_PART" "$TARGET_MOUNT/persist"
-mount "$MODELS_PART" "$TARGET_MOUNT/models"
 
 chown root:root "$TARGET_MOUNT/persist"
 chmod 755 "$TARGET_MOUNT/persist"
+chmod 755 "$TARGET_MOUNT/models"
 install -d -m 0755 -o root -g root "$TARGET_MOUNT/persist/ollama"
+
+REPO_URL="${REPO_URL:-https://github.com/Veraticus/nix-config}"
+TARGET_REPO_PATH="$TARGET_MOUNT/persist/nix-config"
+printf 'Syncing nix-config repo into %s...\n' "$TARGET_REPO_PATH"
+if [[ -d "$TARGET_REPO_PATH/.git" ]]; then
+  git -C "$TARGET_REPO_PATH" fetch origin
+  git -C "$TARGET_REPO_PATH" reset --hard origin/main
+else
+  rm -rf "$TARGET_REPO_PATH"
+  git clone "$REPO_URL" "$TARGET_REPO_PATH"
+fi
 
 printf 'Initializing target store...\n'
 mkdir -p "$TARGET_MOUNT/nix/store"
@@ -196,4 +229,6 @@ bootctl --path "$TARGET_MOUNT/boot" status
 sync
 
 printf '\nUSB install complete. The filesystems remain mounted at %s.\n' "$TARGET_MOUNT"
-printf 'When finished inspecting, run: sudo umount -R %s\n' "$TARGET_MOUNT"
+printf 'When finished inspecting, run:\n'
+printf '  sudo umount -R %s\n' "$TARGET_MOUNT"
+printf '  sudo cryptsetup close %s\n' "$CRYPT_NAME"

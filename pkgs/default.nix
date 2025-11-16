@@ -16,7 +16,7 @@ in
     claudeCodeCli = pkgs.callPackage ./claude-code-cli {};
     deadcode = pkgs.callPackage ./deadcode {};
     golangciLintBin = pkgs.callPackage ./golangci-lint-bin {};
-    heretic = pkgs.callPackage ./heretic {};
+    heretic = pkgs.callPackage ./heretic {python3Packages = pkgs.python312Packages;};
     coder = pkgs.callPackage ./coder-cli {inherit (pkgs) unzip;};
     slidev = pkgs.callPackage ./slidev {};
   }

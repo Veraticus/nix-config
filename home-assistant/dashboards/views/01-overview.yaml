@@ -1,0 +1,29 @@
+title: Overview
+path: overview
+icon: mdi:home
+theme: default
+panel: true
+cards:
+- type: vertical-stack
+  cards:
+  # Room cards
+  - !include ./overview-cards/front-deck.yaml
+  - !include ./overview-cards/living-room.yaml
+  - !include ./overview-cards/main-bedroom.yaml
+  - !include ./overview-cards/dining-room.yaml
+  - !include ./overview-cards/kitchen.yaml
+  - !include ./overview-cards/laundry-room.yaml
+  - !include ./overview-cards/office.yaml
+  - !include ./overview-cards/server-closet.yaml
+  - !include ./overview-cards/back-deck.yaml
+  # Garage Door - Single toggle button (reliable, no JS/animation)
+  - !include ./sections/garage-door.yaml
+  # ADU
+  - !include ./sections/adu-header.yaml
+  - !include ./sections/adu-shed.yaml
+  - !include ./sections/gallery-door.yaml
+  # Water Sensors header
+  - !include ./sections/water-sensors-header.yaml
+  # Leak Controls card (acknowledge / snooze)
+  - !include ./sections/leak-monitor.yaml
+  # Popups are preloaded at top via hidden conditional wrapper

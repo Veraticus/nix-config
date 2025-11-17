@@ -15,6 +15,12 @@
       offline_attribute: offline
       front_deck_threshold: 80
       near_threshold: 50
+      front_deck_hysteresis: 5
+      near_hysteresis: 5
+      front_deck_duration:
+        seconds: 5
+      near_duration:
+        seconds: 5
       cooldown_seconds: 15
       home_device_tracker_ids: |
         e8ed9f876ea7985f4b70625111ed0e2f
@@ -37,10 +43,21 @@
       garage_source_label: Garage
       driveway_source_label: Driveway
       front_deck_source_label: Front Deck
+      guard_automations:
+        - automation.honda_crv_arrival_home
+        - automation.honda_crv_departing_home
       garage_state_name: garage
       offline_attribute: offline
       garage_depart_threshold: 25
       far_threshold: 50
+      garage_depart_hysteresis: 5
+      far_hysteresis: 5
+      garage_depart_duration:
+        seconds: 10
+      driveway_far_duration:
+        seconds: 10
+      front_deck_far_duration:
+        seconds: 10
       cooldown_seconds: 15
       away_device_tracker_ids: |
         e8ed9f876ea7985f4b70625111ed0e2f

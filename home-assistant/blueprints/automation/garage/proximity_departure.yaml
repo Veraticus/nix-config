@@ -1,0 +1,440 @@
+blueprint:
+  name: Garage Door Departure (Distance + Location)
+  description: >
+    Close the garage door when a tracked vehicle leaves based on distance sensor
+    readings and location handoffs.
+  domain: automation
+  input:
+    distance_sensor:
+      name: Distance sensor
+      selector:
+        entity:
+          domain: sensor
+    location_sensor:
+      name: Location sensor
+      description: Sensor that exposes `last_source`, `offline`, and distance metadata.
+      selector:
+        entity:
+          domain: sensor
+    control_boolean:
+      name: Trigger guard boolean
+      description: Helper that indicates the garage should close once the vehicle departs.
+      selector:
+        entity:
+          domain: input_boolean
+    garage_cover:
+      name: Garage door
+      selector:
+        entity:
+          domain: cover
+    paired_arrival_automation:
+      name: Paired arrival automation
+      description: Automation to consult for cooldown/current checks.
+      selector:
+        entity:
+          domain: automation
+    log_label:
+      name: Log label
+      default: Vehicle
+      selector:
+        text:
+          multiline: false
+    garage_source_label:
+      name: Garage source label
+      default: Garage
+      selector:
+        text:
+          multiline: false
+    driveway_source_label:
+      name: Driveway source label
+      default: Driveway
+      selector:
+        text:
+          multiline: false
+    front_deck_source_label:
+      name: Front deck source label
+      default: Front Deck
+      selector:
+        text:
+          multiline: false
+    guard_automations:
+      name: Guard automations
+      description: Automations that must be idle before closing the door.
+      default: []
+      selector:
+        entity:
+          domain: automation
+          multiple: true
+    garage_state_name:
+      name: Garage state name
+      description: Expected state reported by the location sensor while inside the garage.
+      default: garage
+      selector:
+        text:
+          multiline: false
+    offline_attribute:
+      name: Offline attribute name
+      default: offline
+      selector:
+        text:
+          multiline: false
+    garage_depart_threshold:
+      name: Garage departure distance threshold (ft)
+      default: 25
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          unit_of_measurement: ft
+    garage_depart_hysteresis:
+      name: Garage departure hysteresis (ft)
+      description: Minimum distance the previous reading must be below the garage departure threshold by to count as leaving.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+    garage_depart_duration:
+      name: Garage departure duration
+      description: Minimum time the distance must stay above the garage departure threshold.
+      default:
+        seconds: 10
+      selector:
+        duration: {}
+    garage_depart_fast_duration:
+      name: Garage departure fast duration
+      description: Time the distance must stay above the garage threshold for fast detection.
+      default:
+        seconds: 1
+      selector:
+        duration: {}
+    far_threshold:
+      name: Far distance threshold (ft)
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 200
+          step: 1
+          unit_of_measurement: ft
+    far_hysteresis:
+      name: Far hysteresis (ft)
+      description: Minimum distance the previous reading must be below the far threshold by to count as leaving.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+    driveway_far_duration:
+      name: Driveway far duration
+      description: Minimum time the distance must stay above the far threshold when in the driveway.
+      default:
+        seconds: 10
+      selector:
+        duration: {}
+    driveway_far_fast_duration:
+      name: Driveway far fast duration
+      description: Time the distance must stay above the far threshold in the driveway for fast detection.
+      default:
+        seconds: 1
+      selector:
+        duration: {}
+    front_deck_far_duration:
+      name: Front deck far duration
+      description: Minimum time the distance must stay above the far threshold when on the front deck.
+      default:
+        seconds: 10
+      selector:
+        duration: {}
+    front_deck_far_fast_duration:
+      name: Front deck far fast duration
+      description: Time the distance must stay above the far threshold on the front deck for fast detection.
+      default:
+        seconds: 1
+      selector:
+        duration: {}
+    cooldown_seconds:
+      name: Cooldown after arrival (seconds)
+      default: 15
+      selector:
+        number:
+          min: 0
+          max: 600
+          step: 1
+          unit_of_measurement: s
+    away_device_tracker_ids:
+      name: Device tracker IDs to mark away
+      description: >
+        Optional list of `dev_id` values (one per line) that should be set to
+        `not_home` when the garage closes.
+      default: ""
+      selector:
+        text:
+          multiline: true
+    away_device_tracker_location_name:
+      name: Device tracker departure location name
+      default: not_home
+      selector:
+        text:
+          multiline: false
+    depart_fast_velocity:
+      name: Fast departure velocity (ft/s)
+      description: Minimum magnitude of increasing distance required for fast triggers.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.1
+mode: single
+max_exceeded: silent
+variables:
+  distance_sensor: !input distance_sensor
+  location_sensor: !input location_sensor
+  control_boolean: !input control_boolean
+  garage_cover: !input garage_cover
+  paired_arrival: !input paired_arrival_automation
+  log_label: !input log_label
+  garage_source_label: !input garage_source_label
+  driveway_source_label: !input driveway_source_label
+  front_deck_source_label: !input front_deck_source_label
+  guard_automations: !input guard_automations
+  garage_state_name: !input garage_state_name
+  offline_attribute: !input offline_attribute
+  garage_depart_threshold: !input garage_depart_threshold
+  garage_depart_hysteresis: !input garage_depart_hysteresis
+  garage_depart_duration: !input garage_depart_duration
+  garage_depart_fast_duration: !input garage_depart_fast_duration
+  far_threshold: !input far_threshold
+  far_hysteresis: !input far_hysteresis
+  driveway_far_duration: !input driveway_far_duration
+  driveway_far_fast_duration: !input driveway_far_fast_duration
+  front_deck_far_duration: !input front_deck_far_duration
+  front_deck_far_fast_duration: !input front_deck_far_fast_duration
+  cooldown_seconds: !input cooldown_seconds
+  away_tracker_ids: !input away_device_tracker_ids
+  depart_fast_velocity: !input depart_fast_velocity
+trigger:
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input garage_depart_threshold
+    for: !input garage_depart_duration
+    id: garage_distance
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input garage_depart_threshold
+    for: !input garage_depart_fast_duration
+    id: garage_distance_fast
+  - platform: state
+    entity_id: !input location_sensor
+    to: !input driveway_source_label
+    id: garage_to_driveway
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input far_threshold
+    for: !input driveway_far_duration
+    id: driveway_far
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input far_threshold
+    for: !input driveway_far_fast_duration
+    id: driveway_far_fast
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input far_threshold
+    for: !input front_deck_far_duration
+    id: front_deck_far
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    above: !input far_threshold
+    for: !input front_deck_far_fast_duration
+    id: front_deck_far_fast
+condition:
+  - condition: template
+    value_template: >
+      {% set paired = paired_arrival %}
+      {% if paired in ('', none) %}
+        true
+      {% else %}
+        {% set last_trigger = state_attr(paired, 'last_triggered') %}
+        {{ last_trigger is none or (as_timestamp(now()) - as_timestamp(last_trigger or 0)) > cooldown_seconds }}
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% set paired = paired_arrival %}
+      {% if paired in ('', none) %}
+        true
+      {% else %}
+        {% set current = state_attr(paired, 'current') %}
+        {{ current is none or current == 0 }}
+      {% endif %}
+  - condition: state
+    entity_id: !input garage_cover
+    state: "open"
+  - condition: template
+    value_template: >
+      {% set distance = states(distance_sensor) | float(0) %}
+      {% set last_source = state_attr(location_sensor, 'last_source') or '' %}
+      {% if trigger.id in ('garage_distance', 'garage_distance_fast') %}
+        {{ garage_source_label in last_source }}
+      {% elif trigger.id == 'garage_to_driveway' %}
+        {% set from_state = trigger.from_state.state if trigger.from_state is not none else '' %}
+        {% set last_distance = trigger.to_state.attributes.last_distance | default(distance, true) if trigger.to_state is not none else distance %}
+        {{ from_state == garage_state_name and (last_distance | float(0)) <= garage_depart_threshold }}
+      {% elif trigger.id in ('driveway_far', 'driveway_far_fast') %}
+        {{ driveway_source_label in last_source and distance > far_threshold }}
+      {% elif trigger.id in ('front_deck_far', 'front_deck_far_fast') %}
+        {{ front_deck_source_label in last_source and distance > far_threshold }}
+      {% else %}
+        false
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% set offline = state_attr(location_sensor, offline_attribute) %}
+      {{ offline is not sameas true }}
+  - condition: template
+    value_template: >
+      {% if trigger.id in ('garage_distance_fast', 'driveway_far_fast', 'front_deck_far_fast') %}
+        {% set threshold = depart_fast_velocity | float(0) %}
+        {% if threshold <= 0 %}
+          true
+        {% else %}
+          {% set to_state = trigger.to_state %}
+          {% set from_state = trigger.from_state %}
+          {% if to_state is none or from_state is none %}
+            false
+          {% else %}
+            {% set dt = (as_timestamp(to_state.last_changed) - as_timestamp(from_state.last_changed)) %}
+            {% if dt <= 0 %}
+              false
+            {% else %}
+              {% set to_val = to_state.state | float(0) %}
+              {% set from_val = from_state.state | float(0) %}
+              {% set velocity = (to_val - from_val) / dt %}
+              {{ velocity >= threshold }}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% else %}
+        true
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% set prev = trigger.from_state.state | default(none) if trigger.from_state is not none else none %}
+      {% if trigger.id in ('garage_distance', 'garage_distance_fast') %}
+        {% if prev in (none, 'unknown', 'unavailable') %}
+          true
+        {% else %}
+          {% set prev_val = prev | float(0) %}
+          {% set threshold = garage_depart_threshold | float(0) %}
+          {{ prev_val <= (threshold - (garage_depart_hysteresis | float(0))) }}
+        {% endif %}
+      {% elif trigger.id in ('driveway_far', 'driveway_far_fast', 'front_deck_far', 'front_deck_far_fast') %}
+        {% if prev in (none, 'unknown', 'unavailable') %}
+          true
+        {% else %}
+          {% set prev_val = prev | float(0) %}
+          {% set threshold = far_threshold | float(0) %}
+          {{ prev_val <= (threshold - (far_hysteresis | float(0))) }}
+        {% endif %}
+      {% else %}
+        true
+      {% endif %}
+action:
+  - variables:
+      tracker_ids: >
+        {% set raw = away_tracker_ids | default('', true) %}
+        {% if raw %}
+          {{ raw.split() }}
+        {% else %}
+          []
+        {% endif %}
+  - service: logbook.log
+    data:
+      name: "{{ log_label }}"
+      entity_id: !input location_sensor
+      message: >
+        {% set distance = (states(distance_sensor) | float(0)) | round(1) %}
+        {% set source = state_attr(location_sensor, 'last_source') | default('unknown') %}
+        {% if trigger.id == 'garage_to_driveway' %}
+          departure via driveway handoff at {{ distance }} ft (source: {{ source }})
+        {% elif trigger.id in ('garage_distance', 'garage_distance_fast') %}
+          departure via garage at {{ distance }} ft (source: {{ source }})
+        {% elif trigger.id in ('driveway_far', 'driveway_far_fast') %}
+          departure via driveway range at {{ distance }} ft (source: {{ source }})
+        {% else %}
+          departure via front deck at {{ distance }} ft (source: {{ source }})
+        {% endif %}
+  - service: input_boolean.turn_off
+    target:
+      entity_id: !input control_boolean
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ tracker_ids | length > 0 }}"
+        sequence:
+          - repeat:
+              for_each: "{{ tracker_ids }}"
+              sequence:
+                - service: device_tracker.see
+                  data:
+                    dev_id: "{{ repeat.item }}"
+                    location_name: !input away_device_tracker_location_name
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: >
+              {% set guards = guard_automations | default([], true) %}
+              {% if guards in ('', none) %}
+                true
+              {% else %}
+                {% if guards is string %}
+                  {% set guard_list = [guards] %}
+                {% else %}
+                  {% set guard_list = guards %}
+                {% endif %}
+                {% set active = [] %}
+                {% for guard in guard_list %}
+                  {% set current = state_attr(guard, 'current') | default(0) | int(0) %}
+                  {% if current > 0 %}
+                    {% set active = active + [guard] %}
+                  {% endif %}
+                {% endfor %}
+                {{ active | length == 0 }}
+              {% endif %}
+        sequence:
+          - service: cover.close_cover
+            target:
+              entity_id: !input garage_cover
+    default:
+      - service: logbook.log
+        data:
+          name: "{{ log_label }}"
+          entity_id: !input location_sensor
+          message: >
+            {% set guards = guard_automations | default([], true) %}
+            {% if guards in ('', none) %}
+              Guard prevented closing but no guard automations configured.
+            {% else %}
+              {% if guards is string %}
+                {% set guard_list = [guards] %}
+              {% else %}
+                {% set guard_list = guards %}
+              {% endif %}
+              {% set active = [] %}
+              {% for guard in guard_list %}
+                {% set current = state_attr(guard, 'current') | default(0) | int(0) %}
+                {% if current > 0 %}
+                  {% set active = active + [guard] %}
+                {% endif %}
+              {% endfor %}
+              {% if active | length > 0 %}
+                {% set names = active | join(', ') %}
+                Skipping close; guard automation(s) running: {{ names }}
+              {% else %}
+                Guard prevented closing but no active guard automations detected.
+              {% endif %}
+            {% endif %}

@@ -1,0 +1,514 @@
+type: vertical-stack
+cards:
+  - type: custom:bubble-card
+    card_type: separator
+    name: Leak Sensors
+    icon: mdi:water-alert
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      # Crawl Space
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_crawl_space
+        name: "🏠 Crawl Space"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_crawl_space']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_crawl_space']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_crawl_space']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_crawl_space']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_crawl_space
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_crawl_space
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_crawl_space','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_crawl_space','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Main Bathroom Sink
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_main_bathroom
+        name: "🚿 Main Bathroom"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_main_bathroom']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_main_bathroom']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_main_bathroom']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_main_bathroom']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_main_bathroom
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_main_bathroom
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_main_bathroom','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_main_bathroom','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Kitchen Sink
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_kitchen_sink
+        name: "🍽️ Kitchen Sink"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_kitchen_sink']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_kitchen_sink']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_kitchen_sink']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_kitchen_sink']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_kitchen_sink
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_kitchen_sink
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_kitchen_sink','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_kitchen_sink','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Side Bathroom
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_side_bathroom
+        name: "🚽 Side Bathroom"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_side_bathroom']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_side_bathroom']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_side_bathroom']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_side_bathroom']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_side_bathroom
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_side_bathroom
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_side_bathroom','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_side_bathroom','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Refrigerator
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_refrigerator
+        name: "🥶 Refrigerator"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_refrigerator']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_refrigerator']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_refrigerator']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_refrigerator']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_refrigerator
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_refrigerator
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_refrigerator','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_refrigerator','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Attic
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_attic
+        name: "⬆️ Attic"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_attic']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_attic']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_attic']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_attic']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_attic
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_attic
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_attic','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_attic','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Laundry Room
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_laundry_room
+        name: "🧺 Laundry Room"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_laundry_room']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_laundry_room']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_laundry_room']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_laundry_room']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_laundry
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_laundry
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_laundry','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_laundry','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }
+      # Shed
+      - type: custom:bubble-card
+        card_type: button
+        button_type: state
+        entity: binary_sensor.leak_shed
+        name: "🏚️ Shed"
+        icon: mdi:water
+        show_state: true
+        show_last_changed: false
+        styles: |
+          .bubble-button-card-container {
+            background: ${hass.states['binary_sensor.leak_shed']?.state === 'on'
+              ? 'rgba(244, 67, 54, 0.9)'
+              : 'rgba(76, 175, 80, 0.2)'} !important;
+            ${hass.states['binary_sensor.leak_shed']?.state === 'on'
+              ? 'animation: pulse-leak 2s infinite;'
+              : ''}
+          }
+          .bubble-icon-container {
+            background: ${hass.states['binary_sensor.leak_shed']?.state === 'on'
+              ? 'rgba(211, 47, 47, 1.0)'
+              : 'rgba(76, 175, 80, 0.5)'} !important;
+          }
+          .bubble-icon {
+            color: white !important;
+          }
+          .bubble-name {
+            color: ${hass.states['binary_sensor.leak_shed']?.state === 'on'
+              ? '#d32f2f'
+              : '#2e7d32'} !important;
+            font-weight: 600;
+          }
+          @keyframes pulse-leak {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+          }
+        sub_button:
+          - entity: input_boolean.leak_ack_shed
+            icon: mdi:check-circle
+            name: Ack
+            show_background: true
+            tap_action:
+              action: call-service
+              service: input_boolean.turn_on
+              service_data:
+                entity_id: input_boolean.leak_ack_shed
+            styles: |
+              .bubble-sub-button {
+                {% if is_state('input_boolean.leak_ack_shed','on') %}
+                  background-color: rgba(76, 175, 80, 0.25) !important;
+                {% else %}
+                  background-color: rgba(120, 144, 156, 0.20) !important;
+                {% endif %}
+                border-radius: 16px;
+              }
+              .bubble-sub-button-icon {
+                {% if is_state('input_boolean.leak_ack_shed','on') %}
+                  color: #2e7d32 !important;
+                {% else %}
+                  color: #546E7A !important;
+                {% endif %}
+                --mdc-icon-size: 22px;
+              }

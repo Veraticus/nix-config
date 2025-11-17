@@ -1,0 +1,75 @@
+type: custom:bubble-card
+card_type: button
+button_type: state
+entity: cover.garage_door
+name: Garage
+icon: mdi:garage-variant
+show_state: true
+show_last_changed: true
+styles: |-
+  {% set gd = states('cover.garage_door') %}
+  ha-card {
+    {% if gd in ['open','opening'] %}
+      --bubble-button-background-color: rgba(41, 182, 246, 0.22) !important;
+      --bubble-button-icon-background-color: rgba(25, 118, 210, 0.65) !important;
+    {% else %}
+      --bubble-button-background-color: rgba(120, 144, 156, 0.20) !important;
+      --bubble-button-icon-background-color: rgba(55, 71, 79, 0.55) !important;
+    {% endif %}
+  }
+  .bubble-icon {
+    {% if gd in ['open','opening'] %}
+      color: #BBDEFB !important;
+    {% else %}
+      color: #ECEFF1 !important;
+    {% endif %}
+  }
+  .bubble-name,
+  .bubble-state {
+    {% if gd in ['open','opening'] %}
+      color: #0D47A1 !important;
+    {% else %}
+      color: #37474F !important;
+    {% endif %}
+  }
+sub_button:
+  - entity: cover.garage_door
+    icon: mdi:garage-open
+    show_background: true
+    tap_action:
+      action: call-service
+      service: cover.toggle
+      target:
+        entity_id: cover.garage_door
+    hold_action:
+      action: call-service
+      service: cover.stop_cover
+      target:
+        entity_id: cover.garage_door
+    styles: |-
+      ${(() => {
+        const st = hass.states['cover.garage_door']?.state || 'unknown';
+        let icon = 'mdi:help-circle';
+        if (st === 'open') icon = 'mdi:arrow-down-bold-circle';
+        else if (st === 'closed') icon = 'mdi:arrow-up-bold-circle';
+        else if (st === 'opening') icon = 'mdi:progress-upload';
+        else if (st === 'closing') icon = 'mdi:progress-download';
+
+        if (subButtonIcon && subButtonIcon[0]) {
+          subButtonIcon[0].setAttribute('icon', icon);
+        }
+
+        const isOpen = ['open', 'opening'].includes(st);
+        const bg = isOpen ? 'rgba(25, 118, 210, 0.22)' : 'rgba(120, 144, 156, 0.20)';
+        const color = isOpen ? '#1565C0' : '#455A64';
+
+        return `
+          .bubble-sub-button { background-color: ${bg} !important; border-radius: 16px; }
+          .bubble-sub-button-icon { color: ${color} !important; --mdc-icon-size: 26px; }
+        `;
+      })()}
+button_action:
+  tap_action:
+    action: more-info
+  hold_action:
+    action: none

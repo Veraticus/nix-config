@@ -1,0 +1,135 @@
+type: custom:bubble-card
+card_type: button
+entity: sensor.leak_alert_summary
+name: Leak Monitor
+icon: mdi:water-alert
+show_state: true
+show_last_changed: false
+show_attribute: false
+show_icon: true
+card_layout: normal
+styles: |-
+  ${(() => {
+    const summary = hass.states['sensor.leak_alert_summary'];
+    const attrs = summary?.attributes || {};
+    const color = attrs.status_color || '#1E88E5';
+    const icon = attrs.status_icon || 'mdi:water-alert';
+    if (bubbleIcon && bubbleIcon[0]) {
+      bubbleIcon[0].setAttribute('icon', icon);
+    }
+    return `
+      .bubble-icon {
+        color: ${color} !important;
+      }
+    `;
+  })()}
+button_action:
+  tap_action:
+    action: fire-dom-event
+    browser_mod:
+      service: browser_mod.popup
+      data:
+        title: Leak Sensors
+        size: wide
+        content: !include ../../popup-content/leaks.yaml
+  hold_action:
+    action: more-info
+sub_button:
+  - entity: input_boolean.leak_alert_acknowledged
+    icon: mdi:check-all
+    name: Acknowledge
+    show_name: true
+    show_background: true
+    tap_action:
+      action: call-service
+      service: input_boolean.turn_on
+      service_data:
+        entity_id: input_boolean.leak_alert_acknowledged
+    hold_action:
+      action: call-service
+      service: input_boolean.turn_off
+      service_data:
+        entity_id: input_boolean.leak_alert_acknowledged
+    styles: |-
+      ${(() => {
+        const summary = hass.states['sensor.leak_alert_summary'];
+        const attrs = summary?.attributes || {};
+        const truthy = (v) => v === true || v === 'true' || v === 'True' || v === '1' || v === 1;
+        const actionable = truthy(attrs.actionable_ack);
+        const bg = attrs.ack_background || 'rgba(120, 144, 156, 0.20)';
+        const color = attrs.ack_color || '#546E7A';
+        const pointer = actionable ? 'auto' : 'none';
+        if (subButtonIcon && subButtonIcon[0]) {
+          subButtonIcon[0].setAttribute('icon', attrs.ack_icon || 'mdi:check-all');
+        }
+        if (subButtonName && subButtonName[0]) {
+          subButtonName[0].textContent = attrs.ack_label || 'Acknowledge';
+        }
+        return `
+          .bubble-sub-button {
+            background-color: ${bg} !important;
+            border-radius: 16px !important;
+            pointer-events: ${pointer} !important;
+            min-width: 140px !important;
+          }
+          .bubble-sub-button-icon {
+            color: ${color} !important;
+            --mdc-icon-size: 22px;
+          }
+          .bubble-sub-button-name {
+            color: ${color} !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+          }
+        `;
+      })()}
+  - entity: timer.leak_alert_snooze
+    icon: mdi:alarm-snooze
+    name: Snooze 15 m
+    show_name: true
+    show_background: true
+    tap_action:
+      action: call-service
+      service: timer.start
+      service_data:
+        entity_id: timer.leak_alert_snooze
+        duration: '00:15:00'
+    hold_action:
+      action: call-service
+      service: timer.start
+      service_data:
+        entity_id: timer.leak_alert_snooze
+        duration: '01:00:00'
+    styles: |-
+      ${(() => {
+        const summary = hass.states['sensor.leak_alert_summary'];
+        const attrs = summary?.attributes || {};
+        const truthy = (v) => v === true || v === 'true' || v === 'True' || v === '1' || v === 1;
+        const actionable = truthy(attrs.actionable_snooze) || truthy(attrs.snoozed);
+        const bg = attrs.snooze_background || 'rgba(120, 144, 156, 0.20)';
+        const color = attrs.snooze_color || '#546E7A';
+        const pointer = actionable ? 'auto' : 'none';
+        if (subButtonIcon && subButtonIcon[1]) {
+          subButtonIcon[1].setAttribute('icon', attrs.snooze_icon || 'mdi:alarm-snooze');
+        }
+        if (subButtonName && subButtonName[1]) {
+          subButtonName[1].textContent = attrs.snooze_label || 'Snooze 15 m';
+        }
+        return `
+          .bubble-sub-button {
+            background-color: ${bg} !important;
+            border-radius: 16px !important;
+            pointer-events: ${pointer} !important;
+            min-width: 160px !important;
+          }
+          .bubble-sub-button-icon {
+            color: ${color} !important;
+            --mdc-icon-size: 22px;
+          }
+          .bubble-sub-button-name {
+            color: ${color} !important;
+            font-weight: 600 !important;
+            font-size: 13px !important;
+          }
+        `;
+      })()}

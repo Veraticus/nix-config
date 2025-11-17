@@ -335,6 +335,234 @@
       }
     ];
   };
+  leakSummaryLogic = ''
+    {% set leak_entities = [
+      'binary_sensor.leak_crawl_space',
+      'binary_sensor.leak_main_bathroom',
+      'binary_sensor.leak_kitchen_sink',
+      'binary_sensor.leak_side_bathroom',
+      'binary_sensor.leak_refrigerator',
+      'binary_sensor.leak_attic',
+      'binary_sensor.leak_shed',
+      'binary_sensor.leak_laundry_room',
+    ] %}
+    {% set ack_map = {
+      'binary_sensor.leak_crawl_space': 'input_boolean.leak_ack_crawl_space',
+      'binary_sensor.leak_main_bathroom': 'input_boolean.leak_ack_main_bathroom',
+      'binary_sensor.leak_kitchen_sink': 'input_boolean.leak_ack_kitchen_sink',
+      'binary_sensor.leak_side_bathroom': 'input_boolean.leak_ack_side_bathroom',
+      'binary_sensor.leak_refrigerator': 'input_boolean.leak_ack_refrigerator',
+      'binary_sensor.leak_attic': 'input_boolean.leak_ack_attic',
+      'binary_sensor.leak_shed': 'input_boolean.leak_ack_shed',
+      'binary_sensor.leak_laundry_room': 'input_boolean.leak_ack_laundry',
+    } %}
+    {% set ns = namespace(active=0, unacked=0) %}
+    {% for leak in leak_entities %}
+      {% if is_state(leak, 'on') %}
+        {% set ns.active = ns.active + 1 %}
+        {% set ack = ack_map[leak] %}
+        {% if ack is none or not is_state(ack, 'on') %}
+          {% set ns.unacked = ns.unacked + 1 %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+    {% set global_ack = is_state('input_boolean.leak_alert_acknowledged','on') %}
+    {% set snoozed = is_state('timer.leak_alert_snooze','active') %}
+  '';
+  leaksPackage = {
+    template = [
+      {
+        sensor = [
+          {
+            name = "Leak Alert Summary";
+            unique_id = "sensor_leak_alert_summary";
+            icon = "mdi:water-alert";
+            state =
+              leakSummaryLogic
+              + ''
+                {% if ns.active == 0 %}
+                  No leaks
+                {% elif snoozed %}
+                  Snoozed
+                {% elif global_ack or ns.unacked == 0 %}
+                  Acknowledged
+                {% else %}
+                  Leak detected
+                {% endif %}
+              '';
+            attributes = {
+              status_key =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    idle
+                  {% elif snoozed %}
+                    snoozed
+                  {% elif global_ack or ns.unacked == 0 %}
+                    acknowledged
+                  {% else %}
+                    active
+                  {% endif %}
+                '';
+              active_count =
+                leakSummaryLogic
+                + ''
+                  {{ ns.active }}
+                '';
+              unacked_count =
+                leakSummaryLogic
+                + ''
+                  {{ ns.unacked }}
+                '';
+              actionable_ack =
+                leakSummaryLogic
+                + ''
+                  {{ ns.unacked > 0 and not global_ack }}
+                '';
+              actionable_snooze =
+                leakSummaryLogic
+                + ''
+                  {{ ns.active > 0 and not global_ack and not snoozed }}
+                '';
+              snoozed =
+                leakSummaryLogic
+                + ''
+                  {{ snoozed }}
+                '';
+              global_ack =
+                leakSummaryLogic
+                + ''
+                  {{ global_ack }}
+                '';
+              status_icon =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    mdi:water-check
+                  {% elif snoozed %}
+                    mdi:alarm-check
+                  {% elif global_ack or ns.unacked == 0 %}
+                    mdi:check-circle
+                  {% else %}
+                    mdi:water-alert
+                  {% endif %}
+                '';
+              status_color =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    #1E88E5
+                  {% elif snoozed %}
+                    #1565C0
+                  {% elif global_ack or ns.unacked == 0 %}
+                    #2E7D32
+                  {% else %}
+                    #C62828
+                  {% endif %}
+                '';
+              ack_label =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    No leaks
+                  {% elif ns.unacked > 0 and not global_ack %}
+                    Acknowledge ({{ ns.unacked }})
+                  {% else %}
+                    ✓ Acknowledged
+                  {% endif %}
+                '';
+              ack_icon =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    mdi:check-circle-outline
+                  {% elif ns.unacked > 0 and not global_ack %}
+                    mdi:check-all
+                  {% else %}
+                    mdi:check-circle
+                  {% endif %}
+                '';
+              ack_background =
+                leakSummaryLogic
+                + ''
+                  {% if ns.unacked > 0 and not global_ack %}
+                    rgba(229, 115, 115, 0.35)
+                  {% elif ns.active == 0 %}
+                    rgba(120, 144, 156, 0.20)
+                  {% else %}
+                    rgba(76, 175, 80, 0.30)
+                  {% endif %}
+                '';
+              ack_color =
+                leakSummaryLogic
+                + ''
+                  {% if ns.unacked > 0 and not global_ack %}
+                    #C62828
+                  {% elif ns.active == 0 %}
+                    #546E7A
+                  {% else %}
+                    #2E7D32
+                  {% endif %}
+                '';
+              snooze_label =
+                leakSummaryLogic
+                + ''
+                  {% if ns.active == 0 %}
+                    No leaks
+                  {% elif snoozed %}
+                    {% set remaining = state_attr('timer.leak_alert_snooze','remaining') %}
+                    Snoozed {{ remaining if remaining else "" }}
+                  {% else %}
+                    Snooze 15 m (hold 60 m)
+                  {% endif %}
+                '';
+              snooze_icon =
+                leakSummaryLogic
+                + ''
+                  {% if snoozed %}
+                    mdi:alarm-check
+                  {% else %}
+                    mdi:alarm-snooze
+                  {% endif %}
+                '';
+              snooze_background =
+                leakSummaryLogic
+                + ''
+                  {% if snoozed %}
+                    rgba(129, 199, 245, 0.35)
+                  {% elif ns.active > 0 and not global_ack %}
+                    rgba(144, 202, 249, 0.25)
+                  {% else %}
+                    rgba(120, 144, 156, 0.20)
+                  {% endif %}
+                '';
+              snooze_color =
+                leakSummaryLogic
+                + ''
+                  {% if snoozed %}
+                    #1565C0
+                  {% elif ns.active > 0 and not global_ack %}
+                    #0D47A1
+                  {% else %}
+                    #546E7A
+                  {% endif %}
+                '';
+              snooze_remaining =
+                leakSummaryLogic
+                + ''
+                  {{ state_attr('timer.leak_alert_snooze','remaining') or "" }}
+                '';
+              snooze_finishes_at =
+                leakSummaryLogic
+                + ''
+                  {{ state_attr('timer.leak_alert_snooze','finishes_at') or "" }}
+                '';
+            };
+          }
+        ];
+      }
+    ];
+  };
   blePassthrough = pkgs.fetchFromGitHub {
     owner = "iHost-Open-Source-Project";
     repo = "ble_passthrough";
@@ -459,6 +687,7 @@ in {
           keychain_button = keychainPackage;
           bike = bikePackage;
           car = carPackage;
+          leaks = leaksPackage;
         };
 
         # Multi-factor authentication configuration
@@ -845,7 +1074,7 @@ in {
               # Deploy dashboard structure from the Nix config on every start
               rm -rf /var/lib/hass/dashboards
               mkdir -p /var/lib/hass/dashboards
-              cp -r ${../../dashboards}/* /var/lib/hass/dashboards/
+              cp -r ${../../home-assistant/dashboards}/* /var/lib/hass/dashboards/
               find /var/lib/hass/dashboards -type f -exec chmod 644 {} \;
               find /var/lib/hass/dashboards -type d -exec chmod 755 {} \;
               # Files already have correct ownership since service runs as hass user
@@ -855,13 +1084,25 @@ in {
               # Sync Git-managed automations directory (merged list include)
               rm -rf /var/lib/hass/automations
               mkdir -p /var/lib/hass/automations
-          ${lib.optionalString (builtins.pathExists ../../automations) ''
-            cp -r ${../../automations}/* /var/lib/hass/automations/
+          ${lib.optionalString (builtins.pathExists ../../home-assistant/automations) ''
+            cp -r ${../../home-assistant/automations}/* /var/lib/hass/automations/
             find /var/lib/hass/automations -type f -exec chmod 644 {} \;
             find /var/lib/hass/automations -type d -exec chmod 755 {} \;
           ''}
-          ${lib.optionalString (!(builtins.pathExists ../../automations)) ''
+          ${lib.optionalString (!(builtins.pathExists ../../home-assistant/automations)) ''
             echo "No automations directory found in Nix repo; skipping copy"
+          ''}
+
+              # Sync Git-managed blueprints directory
+              rm -rf /var/lib/hass/blueprints
+              mkdir -p /var/lib/hass/blueprints
+          ${lib.optionalString (builtins.pathExists ../../home-assistant/blueprints) ''
+            cp -r ${../../home-assistant/blueprints}/* /var/lib/hass/blueprints/
+            find /var/lib/hass/blueprints -type f -exec chmod 644 {} \;
+            find /var/lib/hass/blueprints -type d -exec chmod 755 {} \;
+          ''}
+          ${lib.optionalString (!(builtins.pathExists ../../home-assistant/blueprints)) ''
+            echo "No blueprints directory found in Nix repo; skipping copy"
           ''}
 
               # Deploy BLE passthrough custom component from Nix store each start
@@ -875,8 +1116,9 @@ in {
         # Ensure Home Assistant restarts when dashboard sources change,
         # so the preStart sync copies new/updated YAML (e.g., new popups)
         restartTriggers = [
-          ../../dashboards
-          ../../automations
+          ../../home-assistant/dashboards
+          ../../home-assistant/automations
+          ../../home-assistant/blueprints
         ];
       };
 

@@ -64,6 +64,29 @@ blueprint:
           max: 200
           step: 1
           unit_of_measurement: ft
+    front_deck_hysteresis:
+      name: Front deck hysteresis (ft)
+      description: Minimum distance the previous reading must exceed the front deck threshold by to count as approaching.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+    front_deck_duration:
+      name: Front deck duration
+      description: Minimum time the distance must stay below the front deck threshold.
+      default:
+        seconds: 5
+      selector:
+        duration: {}
+    front_deck_fast_duration:
+      name: Front deck fast duration
+      description: Time the distance must stay below the front deck threshold for fast detection.
+      default:
+        seconds: 1
+      selector:
+        duration: {}
     near_threshold:
       name: Near distance threshold (ft)
       default: 50
@@ -73,6 +96,29 @@ blueprint:
           max: 200
           step: 1
           unit_of_measurement: ft
+    near_hysteresis:
+      name: Near hysteresis (ft)
+      description: Minimum distance the previous reading must exceed the near threshold by to count as approaching.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 1
+    near_duration:
+      name: Near duration
+      description: Minimum time the distance must stay below the near threshold.
+      default:
+        seconds: 5
+      selector:
+        duration: {}
+    near_fast_duration:
+      name: Near fast duration
+      description: Time the distance must stay below the near threshold for fast detection.
+      default:
+        seconds: 1
+      selector:
+        duration: {}
     cooldown_seconds:
       name: Cooldown after departure (seconds)
       default: 15
@@ -97,6 +143,15 @@ blueprint:
       selector:
         text:
           multiline: false
+    approach_fast_velocity:
+      name: Fast approach velocity (ft/s)
+      description: Minimum magnitude of decreasing distance required for fast triggers.
+      default: 5
+      selector:
+        number:
+          min: 0
+          max: 50
+          step: 0.1
 mode: single
 max_exceeded: silent
 variables:
@@ -110,19 +165,32 @@ variables:
   offline_attribute: !input offline_attribute
   cooldown_seconds: !input cooldown_seconds
   home_tracker_ids: !input home_device_tracker_ids
+  front_deck_hysteresis: !input front_deck_hysteresis
+  near_hysteresis: !input near_hysteresis
+  front_deck_fast_duration: !input front_deck_fast_duration
+  near_fast_duration: !input near_fast_duration
+  approach_fast_velocity: !input approach_fast_velocity
 trigger:
   - platform: numeric_state
     entity_id: !input distance_sensor
     below: !input front_deck_threshold
-    for:
-      seconds: 2
+    for: !input front_deck_duration
     id: front_deck
   - platform: numeric_state
     entity_id: !input distance_sensor
+    below: !input front_deck_threshold
+    for: !input front_deck_fast_duration
+    id: front_deck_fast
+  - platform: numeric_state
+    entity_id: !input distance_sensor
     below: !input near_threshold
-    for:
-      seconds: 2
+    for: !input near_duration
     id: near_any
+  - platform: numeric_state
+    entity_id: !input distance_sensor
+    below: !input near_threshold
+    for: !input near_fast_duration
+    id: near_fast
 condition:
   - condition: state
     entity_id: !input control_boolean
@@ -153,9 +221,57 @@ condition:
       {{ offline is not sameas true }}
   - condition: template
     value_template: >
-      {% if trigger.id == 'front_deck' %}
+      {% if trigger.id in ('front_deck', 'front_deck_fast') %}
         {% set last_source = state_attr(location_sensor, 'last_source') or '' %}
         {{ front_deck_source_label in last_source }}
+      {% else %}
+        true
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% if trigger.id in ('front_deck_fast', 'near_fast') %}
+        {% set threshold = approach_fast_velocity | float(0) %}
+        {% if threshold <= 0 %}
+          true
+        {% else %}
+          {% set to_state = trigger.to_state %}
+          {% set from_state = trigger.from_state %}
+          {% if to_state is none or from_state is none %}
+            false
+          {% else %}
+            {% set dt = (as_timestamp(to_state.last_changed) - as_timestamp(from_state.last_changed)) %}
+            {% if dt <= 0 %}
+              false
+            {% else %}
+              {% set to_val = to_state.state | float(0) %}
+              {% set from_val = from_state.state | float(0) %}
+              {% set velocity = (to_val - from_val) / dt %}
+              {{ velocity <= (0 - threshold) }}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+      {% else %}
+        true
+      {% endif %}
+  - condition: template
+    value_template: >
+      {% set prev = trigger.from_state.state | default(none) if trigger.from_state is not none else none %}
+      {% if trigger.id in ('front_deck', 'front_deck_fast') %}
+        {% if prev in (none, 'unknown', 'unavailable') %}
+          true
+        {% else %}
+          {% set prev_val = prev | float(0) %}
+          {% set threshold = front_deck_threshold | float(0) %}
+          {{ prev_val >= (threshold + (front_deck_hysteresis | float(0))) }}
+        {% endif %}
+      {% elif trigger.id in ('near_any', 'near_fast') %}
+        {% if prev in (none, 'unknown', 'unavailable') %}
+          true
+        {% else %}
+          {% set prev_val = prev | float(0) %}
+          {% set threshold = near_threshold | float(0) %}
+          {{ prev_val >= (threshold + (near_hysteresis | float(0))) }}
+        {% endif %}
       {% else %}
         true
       {% endif %}
@@ -175,7 +291,7 @@ action:
       message: >
         {% set distance = (states(distance_sensor) | float(0)) | round(1) %}
         {% set source = state_attr(location_sensor, 'last_source') | default('unknown') %}
-        {% if trigger.id == 'front_deck' %}
+        {% if trigger.id in ('front_deck', 'front_deck_fast') %}
           arrival via front deck at {{ distance }} ft (source: {{ source }})
         {% else %}
           arrival via close-range reading at {{ distance }} ft (source: {{ source }})

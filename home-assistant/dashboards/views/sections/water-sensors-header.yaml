@@ -1,0 +1,4 @@
+type: custom:bubble-card
+card_type: separator
+name: Water Sensors
+icon: mdi:water

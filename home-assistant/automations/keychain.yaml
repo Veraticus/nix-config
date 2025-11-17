@@ -1,0 +1,193 @@
+- id: josh_keychain_button_flag
+  alias: "Josh keychain → set flag"
+  description: Raise a short-lived flag when Josh's keychain button beacon reports.
+  mode: queued
+  trigger:
+    - platform: event
+      event_type: ble_passthrough.adv_received
+      event_data:
+        address: "DD:88:00:00:0D:13"
+  action:
+    - variables:
+        guard_seconds: 1
+        bytes: "{{ trigger.event.data.data or [] }}"
+        minor: >
+          {% if bytes | length >= 26 %}
+            {{ (bytes[24:26] | join('')).lower() }}
+          {% else %}
+            none
+          {% endif %}
+        expected_minor: "0029"
+        last_trigger: "{{ state_attr('automation.josh_keychain_button_flag', 'last_triggered') }}"
+        elapsed: >
+          {% if last_trigger %}
+            {{ (as_timestamp(now()) - as_timestamp(last_trigger)) | float(0) }}
+          {% else %}
+            none
+          {% endif %}
+        rssi: "{{ trigger.event.data.rssi | default('unknown') }}"
+        gateway: "{{ trigger.event.data.gateway | default('unknown') }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ minor != expected_minor }}"
+          sequence:
+            - service: logbook.log
+              data:
+                name: "Josh keychain"
+                entity_id: automation.josh_keychain_button_flag
+                message: >
+                  Ignored beacon because minor {{ minor | default('none') }} != {{ expected_minor }};
+                  bytes_len={{ bytes | length }}, rssi={{ rssi }}, gateway={{ gateway }}
+            - stop: >
+                Minor value {{ minor | default('none') }} does not match expected {{ expected_minor }}
+        - conditions:
+            - condition: template
+              value_template: "{{ elapsed is not none and elapsed <= guard_seconds }}"
+          sequence:
+            - service: logbook.log
+              data:
+                name: "Josh keychain"
+                entity_id: automation.josh_keychain_button_flag
+                message: >
+                  Ignored beacon because last trigger {{ elapsed | round(2) }} s ago (guard {{ guard_seconds }} s);
+                  rssi={{ rssi }}, gateway={{ gateway }}
+            - stop: >
+                Guard window prevents retrigger within {{ guard_seconds }} seconds
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.josh_keychain_button_pressed
+    - service: logbook.log
+      data:
+        name: "Josh keychain"
+        entity_id: input_boolean.josh_keychain_button_pressed
+        message: >
+          Beacon accepted (minor {{ minor }}); rssi={{ rssi }}, gateway={{ gateway }}, bytes_len={{ bytes | length }}
+    - wait_for_trigger:
+        - platform: state
+          entity_id: input_boolean.josh_keychain_button_pressed
+          to: "on"
+      timeout:
+        seconds: 1
+      continue_on_timeout: true
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.josh_keychain_button_pressed
+
+- id: justin_keychain_button_flag
+  alias: "Justin keychain → set flag"
+  description: Raise a short-lived flag when Justin's keychain button beacon reports.
+  mode: queued
+  trigger:
+    - platform: event
+      event_type: ble_passthrough.adv_received
+      event_data:
+        address: "DD:88:00:00:08:48"
+  action:
+    - variables:
+        guard_seconds: 1
+        bytes: "{{ trigger.event.data.data or [] }}"
+        minor: >
+          {% if bytes | length >= 26 %}
+            {{ (bytes[24:26] | join('')).lower() }}
+          {% else %}
+            none
+          {% endif %}
+        expected_minor: "002c"
+        last_trigger: "{{ state_attr('automation.justin_keychain_button_flag', 'last_triggered') }}"
+        elapsed: >
+          {% if last_trigger %}
+            {{ (as_timestamp(now()) - as_timestamp(last_trigger)) | float(0) }}
+          {% else %}
+            none
+          {% endif %}
+        rssi: "{{ trigger.event.data.rssi | default('unknown') }}"
+        gateway: "{{ trigger.event.data.gateway | default('unknown') }}"
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ minor != expected_minor }}"
+          sequence:
+            - service: logbook.log
+              data:
+                name: "Justin keychain"
+                entity_id: automation.justin_keychain_button_flag
+                message: >
+                  Ignored beacon because minor {{ minor | default('none') }} != {{ expected_minor }};
+                  bytes_len={{ bytes | length }}, rssi={{ rssi }}, gateway={{ gateway }}
+            - stop: >
+                Minor value {{ minor | default('none') }} does not match expected {{ expected_minor }}
+        - conditions:
+            - condition: template
+              value_template: "{{ elapsed is not none and elapsed <= guard_seconds }}"
+          sequence:
+            - service: logbook.log
+              data:
+                name: "Justin keychain"
+                entity_id: automation.justin_keychain_button_flag
+                message: >
+                  Ignored beacon because last trigger {{ elapsed | round(2) }} s ago (guard {{ guard_seconds }} s);
+                  rssi={{ rssi }}, gateway={{ gateway }}
+            - stop: >
+                Guard window prevents retrigger within {{ guard_seconds }} seconds
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.justin_keychain_button_pressed
+    - service: logbook.log
+      data:
+        name: "Justin keychain"
+        entity_id: input_boolean.justin_keychain_button_pressed
+        message: >
+          Beacon accepted (minor {{ minor }}); rssi={{ rssi }}, gateway={{ gateway }}, bytes_len={{ bytes | length }}
+    - wait_for_trigger:
+        - platform: state
+          entity_id: input_boolean.justin_keychain_button_pressed
+          to: "on"
+      timeout:
+        seconds: 1
+      continue_on_timeout: true
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.justin_keychain_button_pressed
+
+- id: keychain_button_toggle_garage
+  alias: "Keychain buttons → toggle garage"
+  description: Toggle the garage door when Josh or Justin double-click their keychain button.
+  mode: single
+  trigger:
+    - platform: state
+      entity_id: input_boolean.josh_keychain_button_pressed
+      to: "on"
+    - platform: state
+      entity_id: input_boolean.justin_keychain_button_pressed
+      to: "on"
+  action:
+    - service: cover.toggle
+      target:
+        entity_id: cover.garage_door
+
+- id: garage_door_push_notify
+  alias: "Garage door → push notify"
+  description: Push a phone/watch notification whenever the garage door opens or closes.
+  mode: parallel
+  trigger:
+    - platform: state
+      entity_id: cover.garage_door
+      to:
+        - open
+        - closed
+  action:
+    - variables:
+        new_state: "{{ trigger.to_state.state | default('unknown') }}"
+        is_open: "{{ new_state == 'open' }}"
+        emoji: "{{ '🚪' if is_open else '🔒' }}"
+        message: "{{ emoji ~ ' Garage Door ' ~ ( 'Open triggered' if is_open else 'Closed triggered' ) }}"
+    - service: notify.mobile_app_spire
+      data:
+        title: "Garage Door"
+        message: "{{ message }}"
+        data:
+          push:
+            interruption-level: active
+            sound: default
+          tag: garage-door-state

@@ -41,10 +41,10 @@ For direct API calls when needed:
 
 ### Home Assistant Dashboard Workflow
 When modifying Home Assistant dashboards and cards:
-1. **Edit the YAML directly** - Dashboards are in `dashboards/ui-lovelace.yaml`
+1. **Edit the YAML directly** - Dashboards live under `home-assistant/dashboards/ui-lovelace.yaml`
 2. **Use specialized agent** - Invoke @agent-home-assistant-configurator for complex dashboard changes
 3. **Apply changes** - Run `update` to deploy the YAML changes to the running system
-4. **Validate YAML** - Use `yamllint dashboards/ui-lovelace.yaml` to check for syntax errors
+4. **Validate YAML** - Use `yamllint home-assistant/dashboards/ui-lovelace.yaml` to check for syntax errors
 
 Note: We use YAML mode (storage: false) for dashboards, so all changes must go through the Nix configuration and rebuild process.
 

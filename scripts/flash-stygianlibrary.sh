@@ -3,20 +3,24 @@ set -euo pipefail
 
 usage() {
   cat <<'EOU'
-Usage: flash-stygianlibrary.sh /dev/<usb device>
+Usage: flash-stygianlibrary.sh /dev/<disk>
 
-Re-images the USB stick with the full stygianlibrary system. It partitions and
-formats the device, installs the full closure onto the stick, and leaves the
-filesystems mounted at /mnt/stygianlibrary for inspection.
+Fully reprovisions a disk with the `stygianlibrary` system. It creates a small
+unencrypted EFI partition plus a single LUKS2 container for the encrypted root,
+installs the current closure, and clones this repo into
+`/mnt/stygianlibrary/persist/nix-config` so the flashed system already has the
+source on disk.
 
 Environment overrides:
-  BOOT_SIZE     Size of the EFI partition (default: 1G)
-  SYSTEM_SPEC   Flake reference to build when SYSTEM_PATH is unset
-                (default: .#nixosConfigurations.stygianlibrary.config.system.build.toplevel)
-  SYSTEM_PATH   Prebuilt system closure; skips building SYSTEM_SPEC
-  REPO_URL      Git URL to clone into /persist/nix-config
-                (default: https://github.com/Veraticus/nix-config)
-  CRYPT_NAME    Mapper name for the unlocked LUKS device (default: stygiancrypt)
+  BOOT_SIZE        Size of the EFI partition (default: 1G)
+  CRYPT_NAME       Name for the mapper device (default: stygiancrypt)
+  LUKS_LABEL       Label written to the LUKS partition (default: STYGIAN-LUKS)
+  ROOT_LABEL       Label for the decrypted ext4 filesystem (default: STYGIAN-SYSTEM)
+  REPO_CLONE_PATH  Extra destination inside the target (default: /opt/nix-config)
+  REPO_REMOTE      Git URL to clone (default: https://github.com/Veraticus/nix-config)
+  SYSTEM_SPEC      Flake reference to build when SYSTEM_PATH is unset
+                   (default: .#nixosConfigurations.stygianlibrary.config.system.build.toplevel)
+  SYSTEM_PATH      Prebuilt closure; skips building SYSTEM_SPEC
 EOU
 }
 
@@ -75,8 +79,8 @@ if [[ $(id -u) -ne 0 ]]; then
   error "run this script as root"
 fi
 
-for cmd in cryptsetup git nix nix-store nix-env sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install \
-  nixos-enter bootctl lsblk mountpoint awk sync; do
+for cmd in nix nix-store nix-env sgdisk partprobe mkfs.vfat mkfs.ext4 nixos-install \
+  nixos-enter bootctl lsblk mountpoint awk sync cryptsetup git; do
   require_cmd "$cmd"
 done
 
@@ -93,13 +97,23 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+if [[ -z "${NIX_CONFIG:-}" ]]; then
+  export NIX_CONFIG="experimental-features = nix-command flakes"
+else
+  export NIX_CONFIG=$'experimental-features = nix-command flakes\n'"$NIX_CONFIG"
+fi
+
 BOOT_SIZE="${BOOT_SIZE:-1G}"
 CRYPT_NAME="${CRYPT_NAME:-stygiancrypt}"
+LUKS_LABEL="${LUKS_LABEL:-STYGIAN-LUKS}"
+ROOT_LABEL="${ROOT_LABEL:-STYGIAN-SYSTEM}"
+REPO_CLONE_PATH="${REPO_CLONE_PATH:-/opt/nix-config}"
+REPO_REMOTE="${REPO_REMOTE:-https://github.com/Veraticus/nix-config}"
 
 case "$DEVICE" in
   *[0-9]) part_prefix="${DEVICE}p" ;;
   *) part_prefix="$DEVICE" ;;
-    esac
+esac
 
 BOOT_PART="${part_prefix}1"
 LUKS_PART="${part_prefix}2"
@@ -108,6 +122,11 @@ MAPPER_PATH="/dev/mapper/$CRYPT_NAME"
 if lsblk -pnro MOUNTPOINT "$DEVICE" | grep -qvE '^\s*$'; then
   printf '%s or its partitions appear mounted; attempting to unmount...\n' "$DEVICE"
   unmount_device_mounts "$DEVICE"
+fi
+
+if [[ -e "$MAPPER_PATH" ]]; then
+  printf 'Mapper %s exists; closing...\n' "$CRYPT_NAME"
+  cryptsetup close "$CRYPT_NAME"
 fi
 
 TARGET_MOUNT="/mnt/stygianlibrary"
@@ -127,7 +146,7 @@ else
   if [[ -e "$SYSTEM_SPEC" ]]; then
     SYSTEM_PATH="$SYSTEM_SPEC"
   else
-    printf 'Building stygianlibrary system (%s)...\n' "$SYSTEM_SPEC"
+    printf 'Building system (%s)...\n' "$SYSTEM_SPEC"
     SYSTEM_PATH=$(nix build "$SYSTEM_SPEC" --no-link --print-out-paths | tail -n1)
   fi
 fi
@@ -137,25 +156,30 @@ printf 'Using system closure %s\n' "$SYSTEM_PATH"
 printf 'Partitioning %s...\n' "$DEVICE"
 sgdisk --zap-all "$DEVICE" || true
 sgdisk -n1:1MiB:+"${BOOT_SIZE}" -t1:ef00 -c1:STYGIAN-EFI "$DEVICE"
-sgdisk -n2:0:0 -t2:8300 -c2:STYGIAN-LUKS "$DEVICE"
+sgdisk -n2:0:0 -t2:8300 -c2:${LUKS_LABEL} "$DEVICE"
 partprobe "$DEVICE"
 sleep 2
 
 prompt_luks_passphrase
 
-printf 'Formatting partitions and creating LUKS container...\n'
+printf 'Formatting EFI partition...\n'
 mkfs.vfat -F 32 -n STYGIAN-EFI "$BOOT_PART"
+
 if [[ -e "$MAPPER_PATH" ]]; then
   error "$MAPPER_PATH already exists; close it before continuing"
 fi
-printf '%s' "$LUKS_PASSPHRASE" | cryptsetup luksFormat --type luks2 --batch-mode "$LUKS_PART" -
-printf '%s' "$LUKS_PASSPHRASE" | cryptsetup open "$LUKS_PART" "$CRYPT_NAME" --key-file - --allow-discards
+
+printf 'Creating LUKS container on %s...\n' "$LUKS_PART"
+printf '%s' "$LUKS_PASSPHRASE" | cryptsetup luksFormat --type luks2 --pbkdf argon2id "$LUKS_PART" --label "$LUKS_LABEL" -
+printf '%s' "$LUKS_PASSPHRASE" | cryptsetup open --allow-discards "$LUKS_PART" "$CRYPT_NAME" --key-file -
 unset LUKS_PASSPHRASE
-mkfs.ext4 -F -L STYGIAN-SYSTEM "$MAPPER_PATH"
+
+printf 'Formatting encrypted root...\n'
+mkfs.ext4 -F -L "$ROOT_LABEL" "$MAPPER_PATH"
 
 printf 'Mounting filesystems at %s...\n' "$TARGET_MOUNT"
 mount "$MAPPER_PATH" "$TARGET_MOUNT"
-mkdir -p "$TARGET_MOUNT"/boot "$TARGET_MOUNT"/persist "$TARGET_MOUNT"/models
+mkdir -p "$TARGET_MOUNT/boot" "$TARGET_MOUNT/persist" "$TARGET_MOUNT/models"
 mount "$BOOT_PART" "$TARGET_MOUNT/boot"
 
 chown root:root "$TARGET_MOUNT/persist"
@@ -163,22 +187,21 @@ chmod 755 "$TARGET_MOUNT/persist"
 chmod 755 "$TARGET_MOUNT/models"
 install -d -m 0755 -o root -g root "$TARGET_MOUNT/persist/ollama"
 
-REPO_URL="${REPO_URL:-https://github.com/Veraticus/nix-config}"
-TARGET_REPO_PATH="$TARGET_MOUNT/persist/nix-config"
-printf 'Syncing nix-config repo into %s...\n' "$TARGET_REPO_PATH"
-if [[ -d "$TARGET_REPO_PATH/.git" ]]; then
-  git -C "$TARGET_REPO_PATH" fetch origin
-  git -C "$TARGET_REPO_PATH" reset --hard origin/main
+PERSIST_REPO_PATH="$TARGET_MOUNT/persist/nix-config"
+printf 'Syncing nix-config repo into %s...\n' "$PERSIST_REPO_PATH"
+if [[ -d "$PERSIST_REPO_PATH/.git" ]]; then
+  git -C "$PERSIST_REPO_PATH" fetch origin
+  git -C "$PERSIST_REPO_PATH" reset --hard origin/main
 else
-  rm -rf "$TARGET_REPO_PATH"
-  git clone "$REPO_URL" "$TARGET_REPO_PATH"
+  rm -rf "$PERSIST_REPO_PATH"
+  git clone "$REPO_REMOTE" "$PERSIST_REPO_PATH"
 fi
 
 printf 'Initializing target store...\n'
 mkdir -p "$TARGET_MOUNT/nix/store"
 nix-store --store "$TARGET_MOUNT" --init
 
-printf 'Copying system closure to USB...\n'
+printf 'Copying system closure to disk...\n'
 STORE_URI="local?root=$TARGET_MOUNT"
 nix copy --log-format bar-with-logs --no-check-sigs --to "$STORE_URI" "$SYSTEM_PATH"
 
@@ -226,9 +249,17 @@ NIXOS_INSTALL_BOOTLOADER=1 nixos-enter --root "$TARGET_MOUNT" --command "set -eu
 printf 'Verifying boot loader...\n'
 bootctl --path "$TARGET_MOUNT/boot" status
 
+if [[ -n "$REPO_CLONE_PATH" ]]; then
+  printf 'Cloning nix-config into %s...\n' "$REPO_CLONE_PATH"
+  TARGET_REPO_DIR="$TARGET_MOUNT$REPO_CLONE_PATH"
+  rm -rf "$TARGET_REPO_DIR"
+  mkdir -p "$(dirname "$TARGET_REPO_DIR")"
+  git clone "$REPO_REMOTE" "$TARGET_REPO_DIR"
+fi
+
 sync
 
-printf '\nUSB install complete. The filesystems remain mounted at %s.\n' "$TARGET_MOUNT"
+printf '\nInstall complete. The filesystems remain mounted at %s.\n' "$TARGET_MOUNT"
 printf 'When finished inspecting, run:\n'
 printf '  sudo umount -R %s\n' "$TARGET_MOUNT"
 printf '  sudo cryptsetup close %s\n' "$CRYPT_NAME"

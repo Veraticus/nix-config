@@ -10,7 +10,6 @@ in
   }: {
     imports = [
       ../common.nix
-      ./disko.nix
       inputs.hardware.nixosModules.common-pc
       ./hardware-configuration.nix
     ];
@@ -63,6 +62,17 @@ in
       };
     };
 
+    boot.initrd = {
+      kernelModules = ["thunderbolt"];
+      postDeviceCommands = ''
+        for dev in /sys/bus/thunderbolt/devices/*; do
+          if [ -w "$dev/authorized" ]; then
+            echo 1 >"$dev/authorized"
+          fi
+        done
+      '';
+    };
+
     hardware = {
       cpu = {
         intel.updateMicrocode = lib.mkDefault true;
@@ -113,40 +123,23 @@ in
       };
       thermald.enable = true;
       fstrim.enable = true;
+      hardware.bolt.enable = true;
     };
 
-<<<<<<< HEAD
+    services.udev.extraRules = ''
+      ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
+    '';
+
     systemd.tmpfiles.rules = [
-      "d /persist 0755 root root -"
-      "d /persist/ollama 0755 ollama ollama -"
-      "d /persist/open-webui 0750 open-webui open-webui -"
       "d /var/lib/private 0755 root root -"
       "d /models 0755 root root -"
     ];
-
-    fileSystems."/var/lib/ollama" = {
-      device = "/persist/ollama";
-      fsType = "none";
-      options = ["bind"];
-      neededForBoot = true;
-    };
-
-    fileSystems."/var/lib/private/open-webui" = {
-      device = "/persist/open-webui";
-      fsType = "none";
-      options = ["bind"];
-    };
 
     systemd.services.open-webui.serviceConfig = {
       DynamicUser = lib.mkForce false;
       User = "open-webui";
       Group = "open-webui";
-      StateDirectory = lib.mkForce [];
-      RuntimeDirectory = lib.mkForce [];
     };
-
-
-    systemd.services.ollama.serviceConfig.StateDirectory = lib.mkForce [];
 
     time.timeZone = "America/Los_Angeles";
     i18n.defaultLocale = "en_US.UTF-8";

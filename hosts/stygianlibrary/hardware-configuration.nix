@@ -7,6 +7,10 @@
     initrd = {
       availableKernelModules = ["xhci_pci" "nvme" "usb_storage" "sd_mod"];
       kernelModules = [];
+      luks.devices.stygian = {
+        device = "/dev/disk/by-partlabel/STYGIAN-LUKS";
+        allowDiscards = true;
+      };
     };
     kernelModules = ["coretemp" "kvm-intel"];
     extraModulePackages = [];
@@ -14,7 +18,7 @@
 
   fileSystems = {
     "/" = {
-      device = "/dev/disk/by-label/STYGIAN-SYSTEM";
+      device = "/dev/disk/by-label/STYGIAN-ROOT";
       fsType = "ext4";
       options = ["noatime" "nodiratime"];
     };

@@ -17,9 +17,29 @@ in {
   nixpkgs.config.allowUnfree = true;
   hardware.enableAllFirmware = true;
 
-  services.openssh.enable = true;
+  boot.initrd = {
+    kernelModules = ["thunderbolt"];
+    postDeviceCommands = ''
+      for dev in /sys/bus/thunderbolt/devices/*; do
+        if [ -w "$dev/authorized" ]; then
+          echo 1 >"$dev/authorized"
+        fi
+      done
+    '';
+  };
 
-  environment.systemPackages = [ util-linux jq gptfdisk e2fsprogs dosfstools cryptsetup ];
+  services.openssh.enable = true;
+  services.hardware.bolt.enable = true;
+
+  environment.systemPackages = [
+    util-linux
+    jq
+    gptfdisk
+    e2fsprogs
+    dosfstools
+    cryptsetup
+    pkgs.bolt
+  ];
 
   services.getty.helpLine = ''
     ███████╗████████╗██╗   ██╗ ██████╗ ██╗ █████╗ ███╗   ██╗██╗      ██╗██╗   ██╗
@@ -29,15 +49,25 @@ in {
     ███████║   ██║   ╚██████╔╝╚██████╔╝██║██║  ██║██║ ╚████║  ╚██╔╝  ██║ ╚██████╔╝
     ╚══════╝   ╚═╝    ╚═════╝  ╚═════╝ ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═════╝
 
-    Stygianlibrary auto installer running. All data on the target disk will be erased.
-    Progress logs appear here; system powers off when complete.
+    Stygianlibrary field kit. Use flash-stygianlibrary.sh to image Thunderbolt media.
   '';
 
   systemd.services.stygian-auto-install = {
     description = "Partition disk, enable LUKS, and install stygianlibrary";
     wantedBy = ["multi-user.target"];
     after = ["multi-user.target"];
-    path = [ util-linux jq gptfdisk e2fsprogs dosfstools cryptsetup pkgs.coreutils pkgs.mount pkgs.systemd ];
+    path = [
+      util-linux
+      jq
+      gptfdisk
+      e2fsprogs
+      dosfstools
+      cryptsetup
+      pkgs.coreutils
+      pkgs.mount
+      pkgs.systemd
+      pkgs.gitMinimal
+    ];
     serviceConfig = {
       Type = "oneshot";
       StandardOutput = "journal+console";
@@ -105,8 +135,17 @@ in {
       mount /dev/disk/by-partlabel/STYGIAN-EFI /mnt/boot
 
       chmod 755 /mnt/persist
-      install -d -m 0755 -o root -g root /mnt/persist/ollama
       chmod 755 /mnt/models
+      install -d -m 0755 -o root -g root /mnt/persist/ollama
+      repoRemote="''${REPO_REMOTE:-https://github.com/Veraticus/nix-config}"
+      targetRepo=/mnt/persist/nix-config
+      if [[ -d "$targetRepo/.git" ]]; then
+        git -C "$targetRepo" fetch origin
+        git -C "$targetRepo" reset --hard origin/main
+      else
+        rm -rf "$targetRepo"
+        git clone "$repoRemote" "$targetRepo"
+      fi
 
       echo "Running nixos-install with prebuilt system..."
       ${config.system.build.nixos-install}/bin/nixos-install \

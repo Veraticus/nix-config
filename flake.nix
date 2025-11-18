@@ -185,7 +185,6 @@
           ./hosts/stygianlibrary
           ./hosts/common.nix
           inputs.agenix.nixosModules.default
-          inputs.disko.nixosModules.disko
         ];
         homeModule = ./home-manager/hosts/stygianlibrary.nix;
       };

@@ -46,9 +46,19 @@ in
     supportedFilesystems = ["ntfs" "vfat"];
     kernelModules = ["coretemp" "kvm-intel"];
     kernelParams = ["kernel.unprivileged_userns_clone=1"];
-    initrd.luks.devices.stygianlibrary = {
-      device = "/dev/disk/by-partlabel/STYGIAN-LUKS";
-      allowDiscards = true;
+    initrd = {
+      luks.devices.stygianlibrary = {
+        device = "/dev/disk/by-partlabel/STYGIAN-LUKS";
+        allowDiscards = true;
+      };
+      kernelModules = ["thunderbolt" "vmd"];
+      preDeviceCommands = ''
+        for dev in /sys/bus/thunderbolt/devices/*; do
+          if [ -w "$dev/authorized" ]; then
+            echo 1 >"$dev/authorized"
+          fi
+        done
+      '';
     };
     loader = {
       systemd-boot = {
@@ -62,16 +72,7 @@ in
       };
     };
 
-    boot.initrd = {
-      kernelModules = ["thunderbolt"];
-      preDeviceCommands = ''
-        for dev in /sys/bus/thunderbolt/devices/*; do
-          if [ -w "$dev/authorized" ]; then
-            echo 1 >"$dev/authorized"
-          fi
-        done
-      '';
-    };
+
 
     hardware = {
       cpu = {

@@ -64,7 +64,7 @@ in
 
     boot.initrd = {
       kernelModules = ["thunderbolt"];
-      postDeviceCommands = ''
+      preDeviceCommands = ''
         for dev in /sys/bus/thunderbolt/devices/*; do
           if [ -w "$dev/authorized" ]; then
             echo 1 >"$dev/authorized"

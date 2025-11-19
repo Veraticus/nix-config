@@ -55,34 +55,32 @@ in
       preDeviceCommands = ''
         echo "Activating Thunderbolt..."
         
-        # Wait for bus
-        for i in $(seq 1 20); do
-          [ -d /sys/bus/thunderbolt/devices ] && break
-          sleep 0.5
-        done
-
-        # Try to authorize devices. Retry on failure.
-        for dev in /sys/bus/thunderbolt/devices/*; do
-          if [ -f "$dev/authorized" ]; then
-            for attempt in $(seq 1 10); do
-              current=$(cat "$dev/authorized" 2>/dev/null)
-              if [ "$current" = "1" ]; then
-                echo "$dev already authorized"
-                break
+        # Poll for devices for up to 15 seconds
+        for i in $(seq 1 15); do
+          echo "Thunderbolt scan attempt $i..."
+          
+          # Check for the bus
+          if [ -d /sys/bus/thunderbolt/devices ]; then
+            # Authorize everything we see
+            for dev in /sys/bus/thunderbolt/devices/*; do
+              if [ -f "$dev/authorized" ]; then
+                current=$(cat "$dev/authorized" 2>/dev/null)
+                if [ "$current" != "1" ]; then
+                  echo "Authorizing $dev..."
+                  echo 1 > "$dev/authorized" 2>/dev/null || echo "Failed to authorize $dev"
+                fi
               fi
-              
-              # Try to authorize
-              if echo 1 > "$dev/authorized" 2>/dev/null; then
-                echo "Successfully authorized $dev"
-                break
-              fi
-              
-              echo "Authorization failed for $dev (attempt $attempt)... retrying"
-              sleep 1
             done
           fi
+          
+          # Force udev to process events (critical for the next device in chain to appear)
+          udevadm trigger --subsystem-match=thunderbolt
+          udevadm settle --timeout=1
+          
+          sleep 1
         done
         
+        # Final broad trigger
         udevadm trigger
         udevadm settle
       '';
@@ -158,9 +156,7 @@ in
       ACTION=="add", SUBSYSTEM=="thunderbolt", ATTR{authorized}=="0", ATTR{authorized}="1"
     '';
 
-    systemd.tmpfiles.rules = [
-      "d /var/lib/private 0755 root root -"
-    ];
+
 
     systemd.services.open-webui.serviceConfig = {
       DynamicUser = lib.mkForce false;

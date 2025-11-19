@@ -13,6 +13,7 @@ in {
   imports = [
     ./atuin
     ./claude-code
+    ./gemini-cli
     ./mcp
     ./codex
     ./egoengine

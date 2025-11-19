@@ -106,8 +106,8 @@ fi
 BOOT_SIZE="${BOOT_SIZE:-1G}"
 CRYPT_NAME="${CRYPT_NAME:-stygiancrypt}"
 LUKS_LABEL="${LUKS_LABEL:-STYGIAN-LUKS}"
-ROOT_LABEL="${ROOT_LABEL:-STYGIAN-SYSTEM}"
-REPO_CLONE_PATH="${REPO_CLONE_PATH:-/opt/nix-config}"
+ROOT_LABEL="${ROOT_LABEL:-STYGIAN-ROOT}"
+REPO_CLONE_PATH="${REPO_CLONE_PATH:-/home/joshsymonds/nix-config}"
 REPO_REMOTE="${REPO_REMOTE:-https://github.com/Veraticus/nix-config}"
 
 case "$DEVICE" in
@@ -179,15 +179,10 @@ mkfs.ext4 -F -L "$ROOT_LABEL" "$MAPPER_PATH"
 
 printf 'Mounting filesystems at %s...\n' "$TARGET_MOUNT"
 mount "$MAPPER_PATH" "$TARGET_MOUNT"
-mkdir -p "$TARGET_MOUNT/boot" "$TARGET_MOUNT/persist" "$TARGET_MOUNT/models"
+mkdir -p "$TARGET_MOUNT/boot"
 mount "$BOOT_PART" "$TARGET_MOUNT/boot"
 
-chown root:root "$TARGET_MOUNT/persist"
-chmod 755 "$TARGET_MOUNT/persist"
-chmod 755 "$TARGET_MOUNT/models"
-install -d -m 0755 -o root -g root "$TARGET_MOUNT/persist/ollama"
-
-PERSIST_REPO_PATH="$TARGET_MOUNT/persist/nix-config"
+PERSIST_REPO_PATH="$TARGET_MOUNT$REPO_CLONE_PATH"
 printf 'Syncing nix-config repo into %s...\n' "$PERSIST_REPO_PATH"
 if [[ -d "$PERSIST_REPO_PATH/.git" ]]; then
   git -C "$PERSIST_REPO_PATH" fetch origin

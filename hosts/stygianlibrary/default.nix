@@ -51,13 +51,40 @@ in
         device = "/dev/disk/by-partlabel/STYGIAN-LUKS";
         allowDiscards = true;
       };
-      kernelModules = ["thunderbolt" "vmd"];
+      kernelModules = ["thunderbolt" "vmd" "xhci_pci"];
       preDeviceCommands = ''
+        echo "Activating Thunderbolt..."
+        
+        # Wait for bus
+        for i in $(seq 1 20); do
+          [ -d /sys/bus/thunderbolt/devices ] && break
+          sleep 0.5
+        done
+
+        # Try to authorize devices. Retry on failure.
         for dev in /sys/bus/thunderbolt/devices/*; do
-          if [ -w "$dev/authorized" ]; then
-            echo 1 >"$dev/authorized"
+          if [ -f "$dev/authorized" ]; then
+            for attempt in $(seq 1 10); do
+              current=$(cat "$dev/authorized" 2>/dev/null)
+              if [ "$current" = "1" ]; then
+                echo "$dev already authorized"
+                break
+              fi
+              
+              # Try to authorize
+              if echo 1 > "$dev/authorized" 2>/dev/null; then
+                echo "Successfully authorized $dev"
+                break
+              fi
+              
+              echo "Authorization failed for $dev (attempt $attempt)... retrying"
+              sleep 1
+            done
           fi
         done
+        
+        udevadm trigger
+        udevadm settle
       '';
     };
     loader = {
@@ -133,7 +160,6 @@ in
 
     systemd.tmpfiles.rules = [
       "d /var/lib/private 0755 root root -"
-      "d /models 0755 root root -"
     ];
 
     systemd.services.open-webui.serviceConfig = {

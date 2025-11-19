@@ -3,7 +3,7 @@
   environment.systemPackages = with pkgs; [
     aerospace
     eternal-terminal
-    firefox-bin
+    firefox-bin-unwrapped
     kitty
     obsidian
     slack

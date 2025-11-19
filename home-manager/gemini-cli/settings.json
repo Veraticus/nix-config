@@ -1,0 +1,17 @@
+{
+  "tools": {
+    "enableHooks": true
+  },
+  "hooks": {
+    "AfterModel": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.gemini/hooks/ntfy-notifier.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

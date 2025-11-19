@@ -15,6 +15,14 @@
 
 set -euo pipefail
 
+# Enable debug logging
+echo "[$(date)] execution started with args: $*" >> /tmp/gemini-hook.log
+JSON_INPUT=""
+if [[ ! -t 0 ]]; then
+    JSON_INPUT=$(cat)
+    printf '%s\n' "$JSON_INPUT" >> /tmp/gemini-hook.log_input
+fi
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -97,7 +105,13 @@ get_terminal_title() {
             title="$window_name"
         fi
     else
-        title="tty: $(tty 2>/dev/null | xargs basename)"
+        local tty_path
+        tty_path=$(tty 2>/dev/null || echo "")
+        if [[ -n "$tty_path" && "$tty_path" != "not a tty" ]]; then
+            title="tty: $(basename "$tty_path")"
+        else
+            title="tty: unknown"
+        fi
     fi
     clean_terminal_title "$title"
 }
@@ -135,8 +149,7 @@ send_notification() {
 # MAIN LOGIC
 # ============================================================================
 
-if [[ ! -t 0 ]]; then
-    JSON_INPUT=$(cat)
+if [[ -n "$JSON_INPUT" ]]; then
     log_debug "Input: $JSON_INPUT"
     
     if ! command -v jq >/dev/null 2>&1; then
@@ -146,18 +159,40 @@ if [[ ! -t 0 ]]; then
         exit 0
     fi
     
-    # Try to parse prompt or response from JSON
-    # Assuming structure has 'prompt' and 'response' or similar
-    PROMPT=$(echo "$JSON_INPUT" | jq -r '.prompt // empty' 2>/dev/null | cut -c 1-50)
-    RESPONSE=$(echo "$JSON_INPUT" | jq -r '.response // empty' 2>/dev/null | cut -c 1-50)
-    
-    MESSAGE="Gemini finished responding"
-    if [[ -n "$PROMPT" ]]; then
-        MESSAGE="Request: $PROMPT..."
+    # Parse JSON input
+    if echo "$JSON_INPUT" | jq . >/dev/null 2>&1; then
+        # Handle different event field names (Claude vs Gemini vs Wrapper)
+        EVENT=$(echo "$JSON_INPUT" | jq -r '.hook_event_name // .event // empty' 2>/dev/null)
+        
+        log_debug "Parsed event: $EVENT"
+        
+        # Get context for all notification types
+        CONTEXT=$(get_context)
+        
+        # Process different event types
+        if [[ "$EVENT" == "AfterModel" ]]; then
+            MESSAGE="Gemini finished responding"
+            # Try to get response preview
+            RESPONSE_PREVIEW=$(echo "$JSON_INPUT" | jq -r '.llm_response.candidates[0].content.parts[0].text // empty' 2>/dev/null | cut -c 1-100)
+            if [[ -n "$RESPONSE_PREVIEW" ]]; then
+                MESSAGE="Gemini: $RESPONSE_PREVIEW..."
+            fi
+            send_notification "$CONTEXT" "$MESSAGE"
+        elif [[ "$EVENT" == "AfterAgent" ]]; then
+            MESSAGE="Gemini finished task"
+            send_notification "$CONTEXT" "$MESSAGE"
+        elif [[ "$EVENT" == "Stop" ]] || [[ "$EVENT" == "SubagentStop" ]]; then
+            # Handle Stop events (Wrapper or Claude)
+            MESSAGE="Gemini finished responding"
+            send_notification "$CONTEXT" "$MESSAGE"
+        else
+            log_debug "Ignoring event: $EVENT"
+            # Fallback for testing or unknown events if needed
+            # exit 0
+        fi
+    else
+        log_debug "Invalid JSON input"
     fi
-    
-    CONTEXT=$(get_context)
-    send_notification "$CONTEXT" "$MESSAGE"
 else
     # CLI test mode
     CONTEXT=$(get_context)

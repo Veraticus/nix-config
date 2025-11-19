@@ -59,17 +59,48 @@ buildNpmPackage rec {
     cat > $out/bin/gemini <<EOF
 #!/bin/sh
 HOOK_SCRIPT="\$HOME/.gemini/hooks/ntfy-notifier.sh"
+SHOULD_NOTIFY=0
 
-# Run the Gemini CLI
+# Detect piped/stdin usage (common for headless prompts)
+if [ ! -t 0 ]; then
+  SHOULD_NOTIFY=1
+fi
+
+# Detect explicit prompt flags (-p/--prompt) or positional prompts
+EXPECT_PROMPT_VALUE=0
+for arg in "\$@"; do
+  if [ "\$EXPECT_PROMPT_VALUE" -eq 1 ]; then
+    EXPECT_PROMPT_VALUE=0
+    SHOULD_NOTIFY=1
+    continue
+  fi
+  case "\$arg" in
+    -p|--prompt)
+      EXPECT_PROMPT_VALUE=1
+      ;;
+    --prompt=*)
+      SHOULD_NOTIFY=1
+      ;;
+    mcp|extensions)
+      # Subcommands shouldn't trigger notifications by themselves
+      break
+      ;;
+    --*)
+      ;;
+    -*)
+      ;;
+    *)
+      SHOULD_NOTIFY=1
+      break
+      ;;
+  esac
+done
+
 ${nodejs_22}/bin/node "$out/lib/node_modules/@google/gemini-cli/packages/cli/dist/index.js" "\$@"
 EXIT_CODE=\$?
 
-# Run post-execution hook if it exists and executable
-if [ -x "\$HOOK_SCRIPT" ]; then
-  # Pass a simulated JSON event to the hook
-  echo '{"event":"Stop","tool":"gemini","tool_input":{}}' | "\$HOOK_SCRIPT" >/dev/null 2>&1 &
-  # Detach background process so we don't wait for it
-  disown
+if [ "\$SHOULD_NOTIFY" -eq 1 ] && [ -x "\$HOOK_SCRIPT" ]; then
+  printf '%s\n' '{"event":"Stop","tool":"gemini","tool_input":{}}' | "\$HOOK_SCRIPT" >/dev/null 2>&1 &
 fi
 
 exit \$EXIT_CODE

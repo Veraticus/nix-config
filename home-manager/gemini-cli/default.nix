@@ -33,9 +33,20 @@
       NIX_SETTINGS='${builtins.toJSON {
         tools = {
           enableHooks = true;
+          enableMessageBusIntegration = true;
         };
         hooks = {
           AfterModel = [
+            {
+              hooks = [
+                {
+                  type = "command";
+                  command = "${config.home.homeDirectory}/.gemini/hooks/ntfy-notifier.sh";
+                }
+              ];
+            }
+          ];
+          AfterAgent = [
             {
               hooks = [
                 {

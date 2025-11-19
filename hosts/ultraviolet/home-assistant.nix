@@ -610,6 +610,7 @@ in {
 
       # Smart devices
       "hue" # Philips Hue lights
+      "lutron_caseta" # Lutron Caseta switches and dimmers
       "homekit_controller" # Connect HomeKit devices locally (including ecobee)
       "zeroconf" # Network discovery for HomeKit and other devices
       "zwave_js" # Z-Wave via Z-Wave JS UI on bluedesert

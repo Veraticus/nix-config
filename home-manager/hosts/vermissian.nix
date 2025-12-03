@@ -2,6 +2,7 @@
   imports = [
     ../common.nix
     ../devspaces-host
+    ../go
     ../linkpearl
     ../security-tools
     ../gmailctl
@@ -21,10 +22,12 @@
       websocat # WebSocket client
 
       # Development tools
+      mkcert # Local TLS certificates for development
       awscli2 # AWS CLI for AWS operations
       kind # Kubernetes in Docker for local K8s clusters
       kubectl # Kubernetes CLI
       ctlptl # Controller for Kind clusters with registry
+      tilt # Local Kubernetes development tool
       postgresql # PostgreSQL client (psql)
       mongosh # MongoDB shell
       tcpdump # Packet capture tool
@@ -40,6 +43,7 @@
     ];
   };
 
+  programs.go.enable = true;
   programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false";
 
   systemd.user.startServices = "sd-switch";

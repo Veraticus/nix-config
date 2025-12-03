@@ -513,6 +513,7 @@ in
         gnumake
         grpcurl
         nodejs
+        python3
         uv
         protobuf
         protoc-gen-go

@@ -28,15 +28,18 @@ buildNpmPackage rec {
   nodejs = nodejs_22;
 
   # Needed for native modules
-  nativeBuildInputs = [ python3 pkg-config xcbuild ];
-  
-  buildInputs = [ libsecret ];
-  
+  nativeBuildInputs = [python3 pkg-config xcbuild];
+
+  buildInputs = [libsecret];
+
   env = {
     NIX_CFLAGS_COMPILE = "-w -Wno-error";
   };
-  npmFlags = [ ];
-  
+
+  # Skip optional dependencies (node-pty, keytar) and dev dependencies (esbuild)
+  # --ignore-scripts prevents building native modules which fails on Darwin
+  npmFlags = ["--omit=dev" "--omit=optional" "--ignore-scripts"];
+
   makeCacheWritable = true;
 
   buildPhase = ''
@@ -47,68 +50,68 @@ buildNpmPackage rec {
   '';
 
   installPhase = ''
-    runHook preInstall
-    
-    mkdir -p $out/lib/node_modules/@google/gemini-cli
-    mkdir -p $out/bin
-    
-    # Copy everything (including node_modules which now has deps)
-    cp -r . $out/lib/node_modules/@google/gemini-cli/
-    
-    # Create a wrapper script that runs the CLI with the bundled Node interpreter
-    cat > $out/bin/gemini <<EOF
-#!/bin/sh
-HOOK_SCRIPT="\$HOME/.gemini/hooks/ntfy-notifier.sh"
-SHOULD_NOTIFY=0
+        runHook preInstall
 
-# Detect piped/stdin usage (common for headless prompts)
-if [ ! -t 0 ]; then
-  SHOULD_NOTIFY=1
-fi
+        mkdir -p $out/lib/node_modules/@google/gemini-cli
+        mkdir -p $out/bin
 
-# Detect explicit prompt flags (-p/--prompt) or positional prompts
-EXPECT_PROMPT_VALUE=0
-for arg in "\$@"; do
-  if [ "\$EXPECT_PROMPT_VALUE" -eq 1 ]; then
+        # Copy everything (including node_modules which now has deps)
+        cp -r . $out/lib/node_modules/@google/gemini-cli/
+
+        # Create a wrapper script that runs the CLI with the bundled Node interpreter
+        cat > $out/bin/gemini <<EOF
+    #!/bin/sh
+    HOOK_SCRIPT="\$HOME/.gemini/hooks/ntfy-notifier.sh"
+    SHOULD_NOTIFY=0
+
+    # Detect piped/stdin usage (common for headless prompts)
+    if [ ! -t 0 ]; then
+      SHOULD_NOTIFY=1
+    fi
+
+    # Detect explicit prompt flags (-p/--prompt) or positional prompts
     EXPECT_PROMPT_VALUE=0
-    SHOULD_NOTIFY=1
-    continue
-  fi
-  case "\$arg" in
-    -p|--prompt)
-      EXPECT_PROMPT_VALUE=1
-      ;;
-    --prompt=*)
-      SHOULD_NOTIFY=1
-      ;;
-    mcp|extensions)
-      # Subcommands shouldn't trigger notifications by themselves
-      break
-      ;;
-    --*)
-      ;;
-    -*)
-      ;;
-    *)
-      SHOULD_NOTIFY=1
-      break
-      ;;
-  esac
-done
+    for arg in "\$@"; do
+      if [ "\$EXPECT_PROMPT_VALUE" -eq 1 ]; then
+        EXPECT_PROMPT_VALUE=0
+        SHOULD_NOTIFY=1
+        continue
+      fi
+      case "\$arg" in
+        -p|--prompt)
+          EXPECT_PROMPT_VALUE=1
+          ;;
+        --prompt=*)
+          SHOULD_NOTIFY=1
+          ;;
+        mcp|extensions)
+          # Subcommands shouldn't trigger notifications by themselves
+          break
+          ;;
+        --*)
+          ;;
+        -*)
+          ;;
+        *)
+          SHOULD_NOTIFY=1
+          break
+          ;;
+      esac
+    done
 
-${nodejs_22}/bin/node "$out/lib/node_modules/@google/gemini-cli/packages/cli/dist/index.js" "\$@"
-EXIT_CODE=\$?
+    ${nodejs_22}/bin/node "\$out/lib/node_modules/@google/gemini-cli/packages/cli/dist/index.js" "\$@"
+    EXIT_CODE=\$?
 
-if [ "\$SHOULD_NOTIFY" -eq 1 ] && [ -x "\$HOOK_SCRIPT" ]; then
-  printf '%s\n' '{"event":"Stop","tool":"gemini","tool_input":{}}' | "\$HOOK_SCRIPT" >/dev/null 2>&1 &
-fi
+    if [ "\$SHOULD_NOTIFY" -eq 1 ] && [ -x "\$HOOK_SCRIPT" ]; then
+      printf '%s\n' '{"event":"Stop","tool":"gemini","tool_input":{}}' | "\$HOOK_SCRIPT" >/dev/null 2>&1 &
+    fi
 
-exit \$EXIT_CODE
-EOF
-    
-    chmod +x $out/bin/gemini
-      
-    runHook postInstall
+    exit \$EXIT_CODE
+    EOF
+
+        chmod +x $out/bin/gemini
+
+        runHook postInstall
   '';
 
   meta = {

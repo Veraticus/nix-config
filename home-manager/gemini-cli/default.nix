@@ -20,15 +20,15 @@
 
     activation.geminiSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
       set -euo pipefail
-      
+
       GEMINI_DIR="$HOME/.gemini"
       SETTINGS_FILE="$GEMINI_DIR/settings.json"
-      
+
       if [ ! -d "$GEMINI_DIR" ]; then
         mkdir -p "$GEMINI_DIR"
         chmod 755 "$GEMINI_DIR"
       fi
-      
+
       # Define the Nix-managed settings
       NIX_SETTINGS='${builtins.toJSON {
         tools = {
@@ -58,7 +58,7 @@
           ];
         };
       }}'
-      
+
       if [ -f "$SETTINGS_FILE" ]; then
         # If file exists, merge Nix settings into it
         # We use a temporary file to avoid issues with reading/writing the same file
@@ -72,10 +72,10 @@
         # If file doesn't exist, just write Nix settings
         echo "$NIX_SETTINGS" > "$SETTINGS_FILE"
       fi
-      
+
       # Ensure the settings file is writable
       chmod 644 "$SETTINGS_FILE"
-      
+
       if [ -d "$HOME/.gemini/hooks" ]; then
         chmod 755 "$HOME/.gemini/hooks"
       fi

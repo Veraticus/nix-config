@@ -9,8 +9,8 @@
   projectPath = "${homeDir}/nix-config";
   mcpDir = "${homeDir}/.mcp";
   codexConfig = ''
-    model = "gpt-5-codex"
-    model_reasoning_effort = "high"
+    model = "gpt-5.1-codex-max"
+    model_reasoning_effort = "medium"
 
     notify = ["${notifierPath}"]
 

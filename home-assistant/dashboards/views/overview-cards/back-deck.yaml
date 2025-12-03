@@ -1,12 +1,48 @@
 type: custom:bubble-card
 card_type: button
 button_type: name
+entity: switch.exterior_landscape_lights
 name: Back Deck
 icon: mdi:outdoor-lamp
 show_state: false
 show_last_changed: false
 show_attribute: false
 card_layout: large
+styles: |-
+  ${(() => {
+    const on = hass.states['switch.exterior_landscape_lights']?.state === 'on';
+    if (!on) return '';
+
+    const softBg = 'linear-gradient(135deg, rgba(228, 224, 219, 0.72), rgba(214, 210, 204, 0.66))';
+    const softBack = 'linear-gradient(135deg, rgba(224, 220, 214, 0.72), rgba(210, 206, 200, 0.66))';
+    const softPanel = 'linear-gradient(135deg, rgba(232, 229, 223, 0.74), rgba(218, 214, 208, 0.68))';
+
+    return `
+      ha-card {
+        --bubble-button-background-color: rgba(224, 221, 216, 0.68) !important;
+        --bubble-button-icon-background-color: rgba(214, 210, 204, 0.64) !important;
+        --bubble-button-border-color: rgba(214, 210, 204, 0.46) !important;
+        border-radius: 30px !important;
+        overflow: hidden;
+        position: relative;
+      }
+      .bubble-button-card-container {
+        border-radius: 28px !important;
+        background: ${softBg} !important;
+        transition: background 0.3s ease;
+      }
+      .bubble-container {
+        background: ${softBack} !important;
+        transition: background 0.3s ease;
+      }
+      .bubble-background {
+        background: ${softPanel} !important;
+        transition: background 0.3s ease;
+      }
+      .bubble-icon { color: #5D4037 !important; }
+      .bubble-name { color: #4E342E !important; }
+    `;
+  })()}
 sub_button:
 - entity: binary_sensor.back_deck_door
   name: Back
@@ -44,11 +80,20 @@ sub_button:
     }
 button_action:
   tap_action:
-    action: none
+    action: call-service
+    service: homeassistant.toggle
+    target:
+      entity_id: switch.exterior_landscape_lights
+      device_id:
+        - 89000e11516cd3eb5fbde4c3b318730a
   hold_action:
     action: none
 tap_action:
-  action: none
+  action: call-service
+  service: homeassistant.toggle
+  target:
+    entity_id: switch.exterior_landscape_lights
+    device_id:
+      - 89000e11516cd3eb5fbde4c3b318730a
 hold_action:
   action: none
-

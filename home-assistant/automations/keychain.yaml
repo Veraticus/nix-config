@@ -173,9 +173,12 @@
   trigger:
     - platform: state
       entity_id: cover.garage_door
-      to:
-        - open
-        - closed
+      from: closed
+      to: open
+    - platform: state
+      entity_id: cover.garage_door
+      from: open
+      to: closed
   action:
     - variables:
         new_state: "{{ trigger.to_state.state | default('unknown') }}"

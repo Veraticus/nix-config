@@ -17,3 +17,6 @@ Write commits in imperative mood (`modules/editor: enable tree-sitter`). Group e
 
 ## Security & Configuration Tips
 Never commit secrets; use example files like `hosts/ultraviolet/home-assistant-secrets.yaml.example`. For risky changes, validate with `make check`, then `make update` on the target host to ensure the deployment succeeds before merging.
+
+## Home Assistant Development
+Home Assistant on `ultraviolet` is managed entirely through this repo—dashboards, automations, and blueprints live under `home-assistant/`, while the service definition is in `hosts/ultraviolet/home-assistant.nix`. Read `docs/home-assistant-guide.md` for the full architecture overview, hass-cli usage, and the workflow for creating new Home Assistant features before editing any HA files.

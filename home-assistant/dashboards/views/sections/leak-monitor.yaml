@@ -14,12 +14,53 @@ styles: |-
     const attrs = summary?.attributes || {};
     const color = attrs.status_color || '#1E88E5';
     const icon = attrs.status_icon || 'mdi:water-alert';
+    const status = (attrs.status_key || 'idle').toLowerCase();
+    const active = status === 'active';
+    const snoozed = status === 'snoozed';
+    const acknowledged = status === 'acknowledged';
+    const bg = active
+      ? 'linear-gradient(135deg, rgba(244, 67, 54, 0.88), rgba(229, 57, 53, 0.78))'
+      : snoozed
+        ? 'rgba(129, 199, 245, 0.35)'
+        : acknowledged
+          ? 'rgba(76, 175, 80, 0.30)'
+          : 'rgba(120, 144, 156, 0.20)';
+    const iconBg = active
+      ? 'rgba(211, 47, 47, 1.0)'
+      : snoozed
+        ? 'rgba(66, 165, 245, 0.9)'
+        : acknowledged
+          ? 'rgba(76, 175, 80, 0.5)'
+          : 'rgba(120, 144, 156, 0.35)';
+    const nameColor = active
+      ? '#b71c1c'
+      : snoozed
+        ? '#1565C0'
+        : acknowledged
+          ? '#2E7D32'
+          : '#37474F';
+
     if (bubbleIcon && bubbleIcon[0]) {
       bubbleIcon[0].setAttribute('icon', icon);
     }
     return `
+      .bubble-button-card-container {
+        background: ${bg} !important;
+        ${active ? 'animation: pulse-leak 2s infinite;' : ''}
+      }
+      .bubble-icon-container {
+        background: ${iconBg} !important;
+      }
       .bubble-icon {
-        color: ${color} !important;
+        color: ${active ? 'white' : color} !important;
+      }
+      .bubble-name {
+        color: ${nameColor} !important;
+        font-weight: 600 !important;
+      }
+      @keyframes pulse-leak {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
       }
     `;
   })()}

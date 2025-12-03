@@ -3,20 +3,7 @@
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "600000"
   },
-  "mcpServers": {
-    "targetprocess": {
-      "type": "stdio",
-      "command": "~/.mcp/bin/targetprocess-mcp",
-      "args": [],
-      "env": {}
-    },
-    "jira": {
-      "type": "stdio",
-      "command": "~/.mcp/jira-mcp-wrapper.sh",
-      "args": [],
-      "env": {}
-    }
-  },
+  "mcpServers": {},
   "statusLine": {
     "type": "command",
     "command": "~/.claude/bin/cc-tools-statusline",

@@ -13,7 +13,7 @@ in {
   imports = [
     ./atuin
     ./claude-code
-    ./gemini-cli
+    # ./gemini-cli  # Disabled - overrides don't work properly
     ./mcp
     ./codex
     ./egoengine

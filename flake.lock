@@ -501,11 +501,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1763226266,
-        "narHash": "sha256-pI6Xm6EvR/n29XKWJn0Z7vqb7sFwdm9a6fG7O2L6tu4=",
+        "lastModified": 1764865863,
+        "narHash": "sha256-ZAqWTq+Xed+UF4iOK07kqbHLVLD4aLUXRTpcgpFlGDo=",
         "owner": "Veraticus",
         "repo": "redlib",
-        "rev": "c6696d68909070ca19edc40e42650e9b6f596ffa",
+        "rev": "ea88d5b7aa31547a89ba37811e08d8c006fd93eb",
         "type": "github"
       },
       "original": {

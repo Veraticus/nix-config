@@ -29,11 +29,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1756827963,
-        "narHash": "sha256-7ciRlaB1d3Zsuq9XOxI5eRh4kxV4AqY3aSeTXIIf57I=",
+        "lastModified": 1764902930,
+        "narHash": "sha256-aVwNX8rM64I2mFq9dJ3OY9ra4xFSsoVkJtLs60zHviA=",
         "owner": "Veraticus",
         "repo": "cc-tools",
-        "rev": "6765974b5385f03200b96519aa02462b27bfe97b",
+        "rev": "68f4708fe45dc10a57bd48f3cf05f66d5514b262",
         "type": "github"
       },
       "original": {

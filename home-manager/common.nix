@@ -45,6 +45,7 @@ in {
           codex
           coreutils-full
           curl
+          devenv
           docker
           eza
           eternal-terminal

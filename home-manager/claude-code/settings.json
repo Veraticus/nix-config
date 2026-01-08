@@ -10,17 +10,6 @@
     "padding": 0
   },
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/bin/cc-tools-validate"
-          }
-        ]
-      }
-    ],
     "Stop": [
       {
         "matcher": "",

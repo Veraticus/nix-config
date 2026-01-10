@@ -1,6 +1,6 @@
 ---
 name: typescript-implementer
-model: claude-opus-4-5-20251101
+model: claude-sonnet-4-5-20250929
 description: TypeScript implementation specialist. Use for implementing TypeScript code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

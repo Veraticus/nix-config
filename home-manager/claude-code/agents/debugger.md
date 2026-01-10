@@ -1,6 +1,6 @@
 ---
 name: debugger
-model: claude-opus-4-5-20251101
+model: claude-sonnet-4-5-20250929
 description: Distributed systems debugging specialist for Nix, Home Assistant, Kubernetes, and AWS. Use for troubleshooting failures and root cause analysis.
 tools: Read, Bash, Grep, Glob, WebSearch, TodoWrite
 ---

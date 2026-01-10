@@ -1,6 +1,6 @@
 ---
 name: ruby-implementer
-model: claude-opus-4-5-20251101
+model: claude-sonnet-4-5-20250929
 description: Ruby implementation specialist. Use for implementing Ruby code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

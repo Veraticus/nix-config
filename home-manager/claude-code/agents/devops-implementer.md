@@ -1,6 +1,6 @@
 ---
 name: devops-implementer
-model: claude-opus-4-5-20251101
+model: claude-sonnet-4-5-20250929
 description: DevOps implementation specialist for shell scripts, Dockerfiles, and CI/CD pipelines. Use for infrastructure and automation code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

@@ -80,6 +80,7 @@ in {
           shellspec
           socat
           talosctl
+          typst
           vivid # For LS_COLORS generation
           wget
           wireguard-tools

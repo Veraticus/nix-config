@@ -45,6 +45,9 @@
     # Target Process MCP - Target Process API integration
     targetprocess-mcp.url = "github:Veraticus/targetprocess-mcp";
 
+    # Redlib MCP - Reddit API via Redlib for Claude
+    redlib-mcp.url = "github:Veraticus/redlib-mcp";
+
     # Codex checkout (Rust implementation) - track GitHub fork
     codex-src.url = "github:Veraticus/codex";
 

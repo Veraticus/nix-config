@@ -554,11 +554,11 @@
         "nixpkgs": "nixpkgs_6"
       },
       "locked": {
-        "lastModified": 1768769103,
-        "narHash": "sha256-Tpb6T4Kh23aeYFyb2NCVDrs5YyRZHrcaVvEzqnX6tBo=",
+        "lastModified": 1768769541,
+        "narHash": "sha256-rl94o+mGDFlKcKEOlv9WECtG12nw+dJReN2BXLLNaV8=",
         "owner": "Veraticus",
         "repo": "redlib-mcp",
-        "rev": "2997270203a74e663674932f07888da2a124116b",
+        "rev": "6f50842e00236bf2c6edbddb740be232cbb15a0d",
         "type": "github"
       },
       "original": {

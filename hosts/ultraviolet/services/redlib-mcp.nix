@@ -9,7 +9,7 @@
     environment = {
       REDLIB_URL = "http://localhost:8091";
       MCP_TRANSPORT = "sse";
-      MCP_ALLOWED_HOSTS = "localhost:*,127.0.0.1:*,redlib-mcp.husbuddies.gay:*";
+      MCP_ALLOWED_HOSTS = "localhost:*,127.0.0.1:*,redlib-mcp.husbuddies.gay,redlib-mcp.husbuddies.gay:*";
     };
 
     serviceConfig = {

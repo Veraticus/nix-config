@@ -535,11 +535,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1764865863,
-        "narHash": "sha256-ZAqWTq+Xed+UF4iOK07kqbHLVLD4aLUXRTpcgpFlGDo=",
+        "lastModified": 1768860788,
+        "narHash": "sha256-2FoamrnvqmPix6ZBxbaADsk6cY7rzp3O9wVE6z4NJBs=",
         "owner": "Veraticus",
         "repo": "redlib",
-        "rev": "ea88d5b7aa31547a89ba37811e08d8c006fd93eb",
+        "rev": "f6fa80dad7bc992fdf465f8bc10d0163f1179531",
         "type": "github"
       },
       "original": {
@@ -554,11 +554,11 @@
         "nixpkgs": "nixpkgs_6"
       },
       "locked": {
-        "lastModified": 1768769541,
-        "narHash": "sha256-rl94o+mGDFlKcKEOlv9WECtG12nw+dJReN2BXLLNaV8=",
+        "lastModified": 1768857394,
+        "narHash": "sha256-Y4mJbd5UvsN4ZngCVjdd/ORekF53mrqssEWBhAJ519Q=",
         "owner": "Veraticus",
         "repo": "redlib-mcp",
-        "rev": "6f50842e00236bf2c6edbddb740be232cbb15a0d",
+        "rev": "2b33fd71243a2e79141d4e76ddf39b040c96b303",
         "type": "github"
       },
       "original": {

@@ -13,6 +13,7 @@ in {
   "secrets/hosts/ultraviolet/redlib-collections.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/access-client-id.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/access-client-secret.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/mcp-jwt-secret.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/vermissian/cloudflared-token.age".publicKeys = keys.vermissian;
   "secrets/hosts/vermissian/coder-ghcr-cache-auth.age".publicKeys = keys.vermissian;
 }

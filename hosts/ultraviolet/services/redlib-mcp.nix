@@ -14,6 +14,13 @@
     mode = "0400";
   };
 
+  age.secrets."mcp-jwt-secret" = {
+    file = ../../../secrets/hosts/ultraviolet/mcp-jwt-secret.age;
+    owner = "redlib-mcp";
+    group = "redlib-mcp";
+    mode = "0400";
+  };
+
   # Create dedicated user (needed for secret ownership)
   users.users.redlib-mcp = {
     isSystemUser = true;
@@ -47,6 +54,7 @@
       LoadCredential = [
         "access-client-id:${config.age.secrets."access-client-id".path}"
         "access-client-secret:${config.age.secrets."access-client-secret".path}"
+        "mcp-jwt-secret:${config.age.secrets."mcp-jwt-secret".path}"
       ];
 
       # State directory for OAuth token storage
@@ -63,6 +71,7 @@
     script = ''
       export ACCESS_CLIENT_ID=$(cat $CREDENTIALS_DIRECTORY/access-client-id)
       export ACCESS_CLIENT_SECRET=$(cat $CREDENTIALS_DIRECTORY/access-client-secret)
+      export MCP_JWT_SECRET=$(cat $CREDENTIALS_DIRECTORY/mcp-jwt-secret)
       export HOME=/var/lib/redlib-mcp
       exec ${pkgs.redlib-mcp}/bin/redlib-mcp-server
     '';

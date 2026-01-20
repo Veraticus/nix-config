@@ -548,25 +548,6 @@
         "type": "github"
       }
     },
-    "redlib-mcp": {
-      "inputs": {
-        "flake-utils": "flake-utils_5",
-        "nixpkgs": "nixpkgs_6"
-      },
-      "locked": {
-        "lastModified": 1768857394,
-        "narHash": "sha256-Y4mJbd5UvsN4ZngCVjdd/ORekF53mrqssEWBhAJ519Q=",
-        "owner": "Veraticus",
-        "repo": "redlib-mcp",
-        "rev": "2b33fd71243a2e79141d4e76ddf39b040c96b303",
-        "type": "github"
-      },
-      "original": {
-        "owner": "Veraticus",
-        "repo": "redlib-mcp",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "agenix": "agenix",
@@ -582,8 +563,8 @@
         "nixpkgs": "nixpkgs_5",
         "nixpkgs-stable": "nixpkgs-stable",
         "redlib-fork": "redlib-fork",
-        "redlib-mcp": "redlib-mcp",
         "rust-overlay": "rust-overlay_3",
+        "shimmer": "shimmer",
         "targetprocess-mcp": "targetprocess-mcp"
       }
     },
@@ -644,6 +625,25 @@
         "owner": "oxalica",
         "repo": "rust-overlay",
         "type": "github"
+      }
+    },
+    "shimmer": {
+      "inputs": {
+        "flake-utils": "flake-utils_5",
+        "nixpkgs": "nixpkgs_6"
+      },
+      "locked": {
+        "lastModified": 1768867138,
+        "narHash": "sha256-SwnmafBk9ZlmaA/y+Ks3E3/jaSO0pOVQe/oizpdLkVU=",
+        "ref": "refs/heads/main",
+        "rev": "1b629553415c15b77c97e1184cb837a4e780e2ff",
+        "revCount": 7,
+        "type": "git",
+        "url": "ssh://git@github.com/Veraticus/shimmer.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/Veraticus/shimmer.git"
       }
     },
     "systems": {

@@ -37,7 +37,7 @@ in
       ./services/bazarr.nix
       ./services/piped.nix
       ./services/redlib.nix
-      ./services/redlib-mcp.nix
+      ./services/shimmer.nix
       ./services/download-proxies.nix
       ./services/flaresolverr.nix
 

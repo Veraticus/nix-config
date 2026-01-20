@@ -45,8 +45,8 @@
     # Target Process MCP - Target Process API integration
     targetprocess-mcp.url = "github:Veraticus/targetprocess-mcp";
 
-    # Redlib MCP - Reddit API via Redlib for Claude
-    redlib-mcp.url = "github:Veraticus/redlib-mcp";
+    # Shimmer - Unified MCP server (Reddit, Monarch Money, GitHub)
+    shimmer.url = "git+ssh://git@github.com/Veraticus/shimmer.git";
 
     # Codex checkout (Rust implementation) - track GitHub fork
     codex-src.url = "github:Veraticus/codex";

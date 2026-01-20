@@ -10,9 +10,9 @@ in {
     codexWrapper = final.writeShellScriptBin "codex" ''
       exec ${codexCli}/bin/codex "$@"
     '';
-    redlibMcp = inputs.redlib-mcp.packages.${final.system}.default;
+    shimmerPkg = inputs.shimmer.packages.${final.system}.default;
   in {
-    redlib-mcp = redlibMcp;
+    shimmer = shimmerPkg;
     myCaddy = final.callPackage ../pkgs/caddy {};
     starlark-lsp = final.callPackage ../pkgs/starlark-lsp {};
     nuclei = final.callPackage ../pkgs/nuclei {};

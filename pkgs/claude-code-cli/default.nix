@@ -2,43 +2,63 @@
   lib,
   stdenv,
   fetchurl,
-  makeWrapper,
-  nodejs_24,
+  patchelf,
+  glibc,
 }:
-stdenv.mkDerivation rec {
-  pname = "claude-code-cli";
+let
   version = "2.1.15";
+  gcsBase = "https://storage.googleapis.com/claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/claude-code-releases/${version}";
 
-  src = fetchurl {
-    url = "https://registry.npmjs.org/@anthropic-ai/claude-code/-/claude-code-${version}.tgz";
-    hash = "sha256-6B3q0Z2AXqD8UCvuCjyx90LxYrjZDgfa7y6htBicqL4=";
+  sources = {
+    "aarch64-darwin" = fetchurl {
+      url = "${gcsBase}/darwin-arm64/claude";
+      hash = "sha256-zGJ8DvWuGSwF0ALyc+Y32GdpIJC9I+/9XvUgaQ25XnE=";
+    };
+    "x86_64-darwin" = fetchurl {
+      url = "${gcsBase}/darwin-x64/claude";
+      hash = "sha256-3fCDEsfIDRGr43mPjBtW+VRFpVDNZOEbsz7kV3uChkg=";
+    };
+    "x86_64-linux" = fetchurl {
+      url = "${gcsBase}/linux-x64/claude";
+      hash = "sha256-N/jodLjQfztgo7ZsegEDSDfR4zPrQVUtCTLXhCVehi0=";
+    };
+    "aarch64-linux" = fetchurl {
+      url = "${gcsBase}/linux-arm64/claude";
+      hash = "sha256-IKUgJWt4r/VtQnPWGMl5ZZE+BBqFD+bOq5txT1fjlVQ=";
+    };
   };
+in
+stdenv.mkDerivation {
+  pname = "claude-code-cli";
+  inherit version;
 
-  nativeBuildInputs = [makeWrapper];
+  src = sources.${stdenv.hostPlatform.system} or (throw "Unsupported platform: ${stdenv.hostPlatform.system}");
 
+  nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [patchelf];
+
+  dontUnpack = true;
   dontConfigure = true;
   dontBuild = true;
+  dontStrip = true;
+  dontPatchELF = true;
 
   installPhase = ''
     runHook preInstall
-    mkdir -p "$out/lib/node_modules/@anthropic-ai/claude-code"
     mkdir -p "$out/bin"
-
-    tar -xzf "$src"
-    cp -r package/* "$out/lib/node_modules/@anthropic-ai/claude-code/"
-
-    makeWrapper ${nodejs_24}/bin/node "$out/bin/claude" \
-      --add-flags "$out/lib/node_modules/@anthropic-ai/claude-code/cli.js"
-
+    cp "$src" "$out/bin/claude"
+    chmod +wx "$out/bin/claude"
+  '' + lib.optionalString stdenv.hostPlatform.isLinux ''
+    patchelf --set-interpreter "$(cat ${stdenv.cc}/nix-support/dynamic-linker)" "$out/bin/claude"
+  '' + ''
     runHook postInstall
   '';
 
   meta = {
-    description = "Anthropic Claude Code CLI for interacting with Claude from the terminal";
+    description = "Anthropic Claude Code CLI - native binary";
     homepage = "https://github.com/anthropics/claude-code";
-    license = lib.licenses.mit;
+    license = lib.licenses.unfree;
     maintainers = with lib.maintainers; [];
-    platforms = lib.platforms.all;
+    platforms = ["aarch64-darwin" "x86_64-darwin" "x86_64-linux" "aarch64-linux"];
     mainProgram = "claude";
   };
 }

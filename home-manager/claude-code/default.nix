@@ -79,6 +79,11 @@ in {
         mkdir -p "$HOME/.claude/debug"
         chmod 755 "$HOME/.claude/debug"
       fi
+
+      # Create ~/.local/bin/claude symlink for native binary detection
+      mkdir -p "$HOME/.local/bin"
+      rm -f "$HOME/.local/bin/claude"
+      ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
     '';
   };
 }

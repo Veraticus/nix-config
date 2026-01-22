@@ -131,6 +131,7 @@ in {
         set -g set-titles-string '#{?@dev_context,#{@dev_context},#H}*#{pane_current_command}*#(${tmuxDevspaceHelper}/bin/tmux-devspace title-path #{q:pane_current_path})'
 
         # Status line configuration
+        set -g status-interval 30
         set -g status-right-length 100
         set -g status-left-length 100
         set -g status-left ""

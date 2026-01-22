@@ -12,6 +12,9 @@
   ];
 
   nix = {
+    # Use latest Nix version available in nixpkgs
+    package = pkgs.nixVersions.latest;
+
     settings = {
       # Trigger GC when disk space is low
       min-free = "${toString (10 * 1024 * 1024 * 1024)}"; # 10GB free space minimum
@@ -56,7 +59,7 @@
     port = 2022;
   };
 
-  services.openssh.settings.AcceptEnv = lib.mkBefore "TERM COLORTERM TERM_PROGRAM TERM_PROGRAM_VERSION";
+  services.openssh.settings.AcceptEnv = lib.mkBefore [ "TERM" "COLORTERM" "TERM_PROGRAM" "TERM_PROGRAM_VERSION" ];
 
   # Open firewall for ET
   networking.firewall.allowedTCPPorts = [2022];

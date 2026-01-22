@@ -108,7 +108,7 @@ in
         enable32Bit = true;
         extraPackages = with pkgs; [
           libvdpau-va-gl
-          vaapiVdpau
+          libva-vdpau-driver
         ];
       };
       nvidia = {
@@ -131,8 +131,7 @@ in
       };
       ollama = {
         enable = true;
-        acceleration = "cuda";
-        package = pkgs.ollama;
+        package = pkgs.ollama-cuda;
         host = "0.0.0.0";
         user = "ollama";
         group = "ollama";

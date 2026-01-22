@@ -60,7 +60,7 @@ in {
       };
     };
 
-    programs.git.extraConfig."diff.go" = {
+    programs.git.settings."diff.go" = {
       xfuncname = "^[ \t]*(func|type)[ \t]+([a-zA-Z_][a-zA-Z0-9_]*)";
     };
   };

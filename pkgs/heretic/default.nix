@@ -5,16 +5,16 @@
   ...
 }: let
   torchPackage =
-    if python3Packages ? pytorchWithCuda
-    then python3Packages.pytorchWithCuda
-    else python3Packages.pytorch;
+    if python3Packages ? torchWithCuda
+    then python3Packages.torchWithCuda
+    else python3Packages.torch;
 
   pythonPackages = python3Packages.override {
     overrides = self: super: {
       torch = torchPackage;
       pytorch = torchPackage;
       pytorch-bin = torchPackage;
-      pytorchWithCuda = torchPackage;
+      torchWithCuda = torchPackage;
     };
   };
 in

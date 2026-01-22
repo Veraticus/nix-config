@@ -31,6 +31,7 @@ in
       # Configure the nix registry
       registry = {
         nixpkgs.flake = inputs.nixpkgs;
+        devenv.flake = inputs.devenv;
       };
 
       # Configure the nixPath

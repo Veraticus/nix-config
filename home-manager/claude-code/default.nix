@@ -30,6 +30,7 @@ in {
     sessionVariables = {
       NPM_CONFIG_PREFIX = "$HOME/.npm-global";
       CC_TOOLS_SOCKET = "/run/user/\${UID}/cc-tools.sock";
+      CLAUDE_CODE_ENABLE_TASKS = "true";
     };
 
     # Create and manage ~/.claude directory
@@ -84,6 +85,25 @@ in {
       mkdir -p "$HOME/.local/bin"
       rm -f "$HOME/.local/bin/claude"
       ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
+    '';
+
+    # Install declared plugins if not already installed
+    # Nix declares intent (settings.json), Claude manages state (installed_plugins.json)
+    activation.claudePluginInstall = lib.hm.dag.entryAfter ["claudeDirectoryPermissions"] ''
+      set -euo pipefail
+      INSTALLED_PLUGINS="$HOME/.claude/plugins/installed_plugins.json"
+
+      # Declared plugins: plugin@marketplace
+      DECLARED_PLUGINS=(
+        "gambit@gambit"
+      )
+
+      for plugin in "''${DECLARED_PLUGINS[@]}"; do
+        if [ ! -f "$INSTALLED_PLUGINS" ] || ! ${pkgs.jq}/bin/jq -e ".plugins[\"$plugin\"]" "$INSTALLED_PLUGINS" >/dev/null 2>&1; then
+          echo "Installing missing Claude plugin: $plugin"
+          ${pkgs.claudeCodeCli}/bin/claude plugin install "$plugin" || echo "Warning: Failed to install $plugin (may need manual install)"
+        fi
+      done
     '';
   };
 }

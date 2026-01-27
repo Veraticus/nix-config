@@ -24,6 +24,7 @@ in {
     heretic = final.callPackage ../pkgs/heretic {python3Packages = final.python312Packages;};
     coder = final.callPackage ../pkgs/coder-cli {inherit (final) unzip;};
     slidev = final.callPackage ../pkgs/slidev {};
+    invidious-companion = final.callPackage ../pkgs/invidious-companion {};
     redlib-veraticus = final.callPackage ../pkgs/redlib-veraticus {
       inherit (inputs) crane;
       redlibSrc = inputs.redlib-fork.sourceInfo.outPath;
@@ -61,11 +62,11 @@ in {
       variant = "mocha";
     };
 
-    moar = prev.moar.overrideAttrs (_: {
+    moor = prev.moor.overrideAttrs (_: {
       version = moarVersion;
       src = final.fetchFromGitHub {
         owner = "walles";
-        repo = "moar";
+        repo = "moor";
         rev = moarRev;
         hash = "sha256-c2ypM5xglQbvgvU2Eq7sgMpNHSAsKEBDwQZC/Sf4GPU=";
       };
@@ -77,19 +78,13 @@ in {
         "main.versionString=${moarVersionString}"
       ];
       postInstall = ''
-        if [ -x "$out/bin/moor" ] && [ ! -e "$out/bin/moar" ]; then
-          mv "$out/bin/moor" "$out/bin/moar"
-        fi
-        if [ -x "$out/bin/moar" ] && [ ! -e "$out/bin/moor" ]; then
-          ln -s moar "$out/bin/moor"
-        fi
+        ln -s moor "$out/bin/moar"
         if [ -f ./moor.1 ]; then
           installManPage ./moor.1
-        elif [ -f ./moar.1 ]; then
-          installManPage ./moar.1
         fi
       '';
     });
+    moar = final.moor;
 
     # XIVLauncher customizations
     xivlauncher =

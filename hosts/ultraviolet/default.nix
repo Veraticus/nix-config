@@ -35,7 +35,7 @@ in
       ./services/arr-extras.nix
       ./services/jellyseerr.nix
       ./services/bazarr.nix
-      ./services/piped.nix
+      ./services/invidious.nix
       ./services/redlib.nix
       ./services/shimmer.nix
       ./services/download-proxies.nix
@@ -62,7 +62,7 @@ in
         extraPackages = with pkgs; [
           intel-media-driver
           intel-vaapi-driver
-          vaapiVdpau
+          libva-vdpau-driver
           intel-compute-runtime # OpenCL filter support (hardware tonemapping and subtitle burn-in)
           vpl-gpu-rt # Modern Intel Media SDK replacement with QSV support
         ];
@@ -228,34 +228,14 @@ in
       nfs.server.enable = true;
       rpcbind.enable = true;
 
-      postgresql = {
-        enable = true;
-        package = pkgs.postgresql_16;
-        ensureDatabases = ["piped"];
-        ensureUsers = [
-          {
-            name = "piped";
-            ensureDBOwnership = true;
-          }
-        ];
-        settings = {
-          "listen_addresses" = lib.mkForce "*";
-        };
-        authentication = ''
-          local   all             postgres                                peer
-          local   piped           piped                                   trust
-          host    piped           piped           127.0.0.1/32            trust
-          host    piped           piped           ::1/128                 trust
-          host    piped           piped           10.88.0.0/16            trust
-          local   all             all                                     peer
-          host    all             all             127.0.0.1/32            scram-sha-256
-          host    all             all             ::1/128                 scram-sha-256
-        '';
-      };
     };
 
     programs.ssh.startAgent = true;
     programs.zsh.enable = true;
+    programs.nix-ld.enable = true;
+    programs.nix-ld.libraries = with pkgs; [
+      gcc-unwrapped.lib
+    ];
 
     # Configure Radarr with optimal quality settings after it starts
     systemd = {

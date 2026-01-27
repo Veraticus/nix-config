@@ -15,6 +15,7 @@ in {
   "secrets/hosts/ultraviolet/shimmer-access-client-secret.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/shimmer-jwt-secret.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/shimmer-env.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/invidious-companion-key.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/vermissian/cloudflared-token.age".publicKeys = keys.vermissian;
   "secrets/hosts/vermissian/coder-ghcr-cache-auth.age".publicKeys = keys.vermissian;
 }

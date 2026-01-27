@@ -1,18 +1,21 @@
 _: {
   programs.git = {
     enable = true;
-    userName = "Josh Symonds";
-    userEmail = "josh@joshsymonds.com";
 
-    aliases = {
-      co = "checkout";
-      st = "status";
-      a = "add --all";
-      pl = "pull -u";
-      pu = "push --all origin";
-    };
+    settings = {
+      user = {
+        name = "Josh Symonds";
+        email = "josh@joshsymonds.com";
+      };
 
-    extraConfig = {
+      alias = {
+        co = "checkout";
+        st = "status";
+        a = "add --all";
+        pl = "pull -u";
+        pu = "push --all origin";
+      };
+
       core = {
         editor = "hx";
         whitespace = "fix,-indent-with-non-tab,trailing-space,cr-at-eol";

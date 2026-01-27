@@ -97,11 +97,11 @@ in {
         # sure tmux still drives it with truecolor sequences.
         set -ga terminal-overrides ",screen-256color:Tc"
         set -ga terminal-overrides ",screen:Tc"
-        set -as terminal-features ",tmux-256color:RGB"
-        set -as terminal-features ",xterm-256color:RGB"
-        set -as terminal-features ",xterm-kitty:RGB"
-        set -as terminal-features ",screen-256color:RGB"
-        set -as terminal-features ",screen:RGB"
+        set -as terminal-features ",tmux-256color:RGB:sync"
+        set -as terminal-features ",xterm-256color:RGB:sync"
+        set -as terminal-features ",xterm-kitty:RGB:sync"
+        set -as terminal-features ",screen-256color:RGB:sync"
+        set -as terminal-features ",screen:RGB:sync"
 
         # Ensure proper color rendering
         set -g default-terminal "tmux-256color"
@@ -131,6 +131,7 @@ in {
         set -g set-titles-string '#{?@dev_context,#{@dev_context},#H}*#{pane_current_command}*#(${tmuxDevspaceHelper}/bin/tmux-devspace title-path #{q:pane_current_path})'
 
         # Status line configuration
+        set -g status-interval 30
         set -g status-right-length 100
         set -g status-left-length 100
         set -g status-left ""

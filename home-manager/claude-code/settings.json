@@ -1,4 +1,5 @@
 {
+  "companyAnnouncements": [],
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "600000"
@@ -23,15 +24,15 @@
     ]
   },
   "extraKnownMarketplaces": {
-    "superpowers-marketplace": {
+    "gambit": {
       "source": {
         "source": "github",
-        "repo": "obra/superpowers-marketplace"
+        "repo": "Veraticus/gambit"
       }
     }
   },
   "enabledPlugins": {
-    "superpowers@superpowers-marketplace": true,
+    "gambit@gambit": true,
     "frontend-design@claude-plugins-official": true,
     "feature-dev@claude-plugins-official": true,
     "github@claude-plugins-official": true,

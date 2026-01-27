@@ -20,5 +20,6 @@ in
     heretic = pkgs.callPackage ./heretic {python3Packages = pkgs.python312Packages;};
     coder = pkgs.callPackage ./coder-cli {inherit (pkgs) unzip;};
     slidev = pkgs.callPackage ./slidev {};
+    invidious-companion = pkgs.callPackage ./invidious-companion {};
   }
   // darwinOnly

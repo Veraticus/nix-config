@@ -16,6 +16,7 @@ in {
   programs.zsh = {
     enable = true;
     enableCompletion = true;
+    dotDir = "${config.xdg.configHome}/zsh";
 
     historySubstringSearch.enable = true;
 

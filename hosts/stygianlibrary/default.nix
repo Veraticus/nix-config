@@ -246,7 +246,6 @@ in
       systemPackages = with pkgs; [
         cachix
         git
-        # heretic  # TODO: needs uv-build >=0.8.11, nixpkgs has older
         hwdata
         nvtopPackages.full
         ollama

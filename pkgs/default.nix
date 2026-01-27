@@ -17,7 +17,6 @@ in
     geminiCli = pkgs.callPackage ./gemini-cli {};
     deadcode = pkgs.callPackage ./deadcode {};
     golangciLintBin = pkgs.callPackage ./golangci-lint-bin {};
-    heretic = pkgs.callPackage ./heretic {python3Packages = pkgs.python312Packages;};
     coder = pkgs.callPackage ./coder-cli {inherit (pkgs) unzip;};
     slidev = pkgs.callPackage ./slidev {};
     invidious-companion = pkgs.callPackage ./invidious-companion {};

@@ -13,17 +13,12 @@
     packages = with pkgs; [
       git-lfs
       jq
-      python312Packages.accelerate
-      python312Packages.bitsandbytes
-      python312Packages.huggingface-hub
-      python312Packages.tiktoken
-      python312Packages.transformers
       sqlite
     ];
   };
 
   programs.zsh.shellAliases = {
-    update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false";
+    update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false --accept-flake-config";
     infer = "OLLAMA_HOST=127.0.0.1 ollama run";
     models = "OLLAMA_HOST=127.0.0.1 ollama list";
   };

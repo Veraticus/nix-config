@@ -26,6 +26,20 @@ in
         experimental-features = "nix-command flakes";
         cores = 0;
         max-jobs = "auto";
+        substituters = [
+          "https://cache.nixos.org"
+          "https://nix-community.cachix.org"
+          "https://neovim-nightly.cachix.org"
+          "https://joshsymonds.cachix.org"
+          "https://cuda-maintainers.cachix.org"
+        ];
+        trusted-public-keys = [
+          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+          "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+          "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
+          "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
+          "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+        ];
       };
     };
 
@@ -37,7 +51,7 @@ in
         enable = true;
         checkReversePath = "loose";
         trustedInterfaces = ["tailscale0"];
-        allowedTCPPorts = [22 2022 8080 11434];
+        allowedTCPPorts = [22 2022 8080 8188 11434];
         allowedUDPPorts = [config.services.tailscale.port];
       };
     };
@@ -120,6 +134,25 @@ in
       };
     };
 
+    hardware.nvidia-container-toolkit.enable = true;
+
+    virtualisation.docker.enable = true;
+
+    virtualisation.oci-containers = {
+      backend = "docker";
+      containers.comfyui = {
+        image = "yanwk/comfyui-boot:cu128-slim";
+        ports = ["8188:8188"];
+        volumes = [
+          "/var/lib/comfyui/storage:/root"
+          "/var/lib/comfyui/output:/root/ComfyUI/output"
+        ];
+        extraOptions = [
+          "--gpus=all"
+        ];
+      };
+    };
+
     services = {
       xserver.videoDrivers = ["nvidia"];
       openssh = {
@@ -175,6 +208,7 @@ in
         config.users.groups.keys.name
         "video"
         "render"
+        "docker"
       ];
     };
 
@@ -212,17 +246,14 @@ in
       systemPackages = with pkgs; [
         cachix
         git
-        heretic
+        # heretic  # TODO: needs uv-build >=0.8.11, nixpkgs has older
         hwdata
         nvtopPackages.full
         ollama
         python312
         python312Packages.pip
-        python312Packages.huggingface-hub
-        python312Packages.transformers
         tmux
         vulkan-tools
-        cudaPackages.cudnn
       ];
     };
 

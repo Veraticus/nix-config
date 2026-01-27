@@ -3,22 +3,8 @@
   python3Packages,
   fetchFromGitHub,
   ...
-}: let
-  torchPackage =
-    if python3Packages ? torchWithCuda
-    then python3Packages.torchWithCuda
-    else python3Packages.torch;
-
-  pythonPackages = python3Packages.override {
-    overrides = self: super: {
-      torch = torchPackage;
-      pytorch = torchPackage;
-      pytorch-bin = torchPackage;
-      torchWithCuda = torchPackage;
-    };
-  };
-in
-  pythonPackages.buildPythonApplication rec {
+}:
+  python3Packages.buildPythonApplication rec {
     pname = "heretic";
     version = "1.0.1";
 
@@ -31,21 +17,20 @@ in
 
     pyproject = true;
 
-    nativeBuildInputs = [pythonPackages.uv-build];
+    nativeBuildInputs = [python3Packages.uv-build];
 
-    propagatedBuildInputs =
-      (with pythonPackages; [
-        accelerate
-        datasets
-        hf-transfer
-        huggingface-hub
-        optuna
-        pydantic-settings
-        questionary
-        rich
-        transformers
-      ])
-      ++ [torchPackage];
+    propagatedBuildInputs = with python3Packages; [
+      accelerate
+      datasets
+      hf-transfer
+      huggingface-hub
+      optuna
+      pydantic-settings
+      questionary
+      rich
+      torch
+      transformers
+    ];
 
     pythonImportsCheck = ["heretic"];
 

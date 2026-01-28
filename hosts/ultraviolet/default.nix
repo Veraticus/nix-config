@@ -1,5 +1,7 @@
 let
-  user = "joshsymonds";
+  network = import ../../lib/network.nix;
+  self = network.hosts.ultraviolet;
+  subnet = network.subnets.${self.subnet};
 in
   {
     inputs,
@@ -10,11 +12,6 @@ in
   }: {
     # You can import other NixOS modules here
     imports = [
-      ../common.nix
-
-      # You can also split up your configuration and import pieces of it here:
-      # ./users.nix
-
       # SABnzbd with Mullvad VPN (migrated from bluedesert)
       ./sabnzbd-vpn.nix
 
@@ -45,9 +42,13 @@ in
       ./hardware-configuration.nix
     ];
 
+    # Performance tuning
+    performance.profile = "server";
+    performance.cpuVendor = "intel";
+
     # Additional NFS mount for Home Assistant backups
     fileSystems."/mnt/backups" = {
-      device = "172.31.0.100:/volume1/backup";
+      device = "${network.infra.nas.ip}:${network.infra.nas.shares.backup}";
       fsType = "nfs";
       options = ["x-systemd.automount" "noauto" "x-systemd.idle-timeout=60"];
     };
@@ -70,25 +71,7 @@ in
       enableAllFirmware = true;
     };
 
-    nix = {
-      # This will add each flake input as a registry
-      # To make nix3 commands consistent with your flake
-      registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
-
-      # This will additionally add your inputs to the system's legacy channels
-      # Making legacy nix commands consistent as well, awesome!
-      nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-
-      gc = {
-        automatic = true;
-        dates = "daily";
-        options = "--delete-older-than 3d";
-      };
-      settings = {
-        # Enable flakes and new 'nix' command
-        experimental-features = "nix-command flakes";
-      };
-    };
+    # Host-specific nix settings (common.nix provides defaults)
 
     networking = {
       useDHCP = false;
@@ -115,12 +98,12 @@ in
           8123 # Home Assistant (LAN access for TTS fetch by Sonos)
         ];
       };
-      defaultGateway = "172.31.0.1";
-      nameservers = ["172.31.0.1"];
-      interfaces.enp0s31f6.ipv4.addresses = [
+      defaultGateway = subnet.gateway;
+      nameservers = subnet.nameservers;
+      interfaces.${self.interface}.ipv4.addresses = [
         {
-          address = "172.31.0.200";
-          prefixLength = 24;
+          address = self.ip;
+          prefixLength = subnet.prefixLength;
         }
       ];
       interfaces.enp0s20f0u12.useDHCP = false;
@@ -138,7 +121,7 @@ in
         "nfs4"
       ];
       kernelParams = [
-        "intel_pstate=active"
+        # intel_pstate=active is now provided by performance module
         "i915.enable_fbc=1"
         "i915.enable_psr=2"
       ];
@@ -155,65 +138,22 @@ in
       };
     };
 
-    # Time and internationalization
-    time.timeZone = "America/Los_Angeles";
-    i18n.defaultLocale = "en_US.UTF-8";
+    users.users.joshsymonds.extraGroups = ["podman"];
 
-    # Users and their homes
-    users = {
-      defaultUserShell = pkgs.zsh;
-      users.${user} = {
-        shell = pkgs.zsh;
-        home = "/home/${user}";
-        isNormalUser = true;
-        extraGroups = [
-          "wheel"
-          config.users.groups.keys.name
-          "podman"
-        ];
-      };
-    };
-
-    # Security
-    security = {
-      rtkit.enable = true;
-      sudo.extraRules = [
-        {
-          users = ["${user}"];
-          commands = [
-            {
-              command = "ALL";
-              options = [
-                "SETENV"
-                "NOPASSWD"
-              ];
-            }
-          ];
-        }
-      ];
+    # Host-specific SSH settings
+    services.openssh.settings = {
+      X11Forwarding = true;
+      StreamLocalBindUnlink = true;
     };
 
     # Services
     services = {
-      thermald.enable = true;
-
       # Wyoming Piper TTS server for Home Assistant
       wyoming.piper.servers = {
         "amy" = {
           enable = true;
           voice = "en_US-amy-medium";
           uri = "tcp://0.0.0.0:10200";
-        };
-      };
-
-      openssh = {
-        enable = true;
-        settings = {
-          PermitRootLogin = "no";
-          PasswordAuthentication = false;
-          # Enable X11 forwarding for GUI applications
-          X11Forwarding = true;
-          StreamLocalBindUnlink = true;
         };
       };
 
@@ -230,8 +170,6 @@ in
 
     };
 
-    programs.ssh.startAgent = true;
-    programs.zsh.enable = true;
     programs.nix-ld.enable = true;
     programs.nix-ld.libraries = with pkgs; [
       gcc-unwrapped.lib
@@ -345,8 +283,6 @@ in
 
     # Environment
     environment = {
-      pathsToLink = ["/share/zsh"];
-
       systemPackages = with pkgs; [
         polkit
         pciutils
@@ -360,8 +296,7 @@ in
         signal-cli
       ];
 
-      # SSH agent is now managed by systemd user service
-    };
+};
 
     # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     system.stateVersion = "25.05";

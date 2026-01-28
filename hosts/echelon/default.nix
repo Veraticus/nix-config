@@ -1,5 +1,7 @@
 let
-  user = "joshsymonds";
+  network = import ../../lib/network.nix;
+  self = network.hosts.echelon;
+  subnet = network.subnets.${self.subnet};
 in
   {
     inputs,
@@ -8,14 +10,8 @@ in
     pkgs,
     ...
   }: {
-    # You can import other NixOS modules here
     imports = [
       inputs.hardware.nixosModules.common-cpu-intel
-
-      # You can also split up your configuration and import pieces of it here:
-      # ./users.nix
-
-      # Import your generated (nixos-generate-config) hardware configuration
       ./hardware-configuration.nix
     ];
 
@@ -35,30 +31,12 @@ in
       enableAllFirmware = true;
     };
 
-    nix = {
-      # This will add each flake input as a registry
-      # To make nix3 commands consistent with your flake
-      registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
+    # More aggressive than common.nix periodic optimise
+    nix.settings.auto-optimise-store = true;
 
-      # This will additionally add your inputs to the system's legacy channels
-      # Making legacy nix commands consistent as well, awesome!
-      nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-
-      gc = {
-        automatic = true;
-        dates = "daily";
-        options = "--delete-older-than 3d";
-      };
-      optimise.automatic = true;
-      settings = {
-        # Enable flakes and new 'nix' command
-        experimental-features = "nix-command flakes";
-        # Deduplicate and optimize nix store
-        auto-optimise-store = true;
-
-        # Caches handled by shared nix defaults
-      };
-    };
+    # Performance tuning
+    performance.profile = "router";
+    performance.cpuVendor = "intel";
 
     boot.kernel.sysctl = {
       "net.ipv4.ip_forward" = 1; # Enable IPv4 forwarding
@@ -76,18 +54,20 @@ in
         allowedUDPPorts = [51820 config.services.tailscale.port];
         allowedTCPPorts = [22 80 443];
       };
-      defaultGateway = "192.168.1.1";
-      nameservers = ["8.8.8.8" "1.1.1.1"];
-      interfaces.enp2s0.ipv4.addresses = [
-        {
-          address = "192.168.1.200";
-          prefixLength = 24;
-        }
-      ];
-      interfaces.enp2s0.useDHCP = false;
+      defaultGateway = subnet.gateway;
+      nameservers = subnet.nameservers;
+      interfaces.${self.interface} = {
+        useDHCP = false;
+        ipv4.addresses = [
+          {
+            address = self.ip;
+            prefixLength = subnet.prefixLength;
+          }
+        ];
+      };
       nat = {
         enable = true;
-        internalInterfaces = ["enp2s0"];
+        internalInterfaces = [self.interface];
         externalInterface = "tailscale0";
       };
     };
@@ -108,47 +88,8 @@ in
       };
     };
 
-    # Time and internationalization
-    time.timeZone = "America/Los_Angeles";
-    i18n.defaultLocale = "en_US.UTF-8";
-
-    # Users and their homes
-    users.defaultUserShell = pkgs.zsh;
-    users.users.${user} = {
-      shell = pkgs.zsh;
-      home = "/home/${user}";
-      isNormalUser = true;
-      extraGroups = ["wheel" config.users.groups.keys.name];
-    };
-
-    # Security
-    security = {
-      rtkit.enable = true;
-      sudo.extraRules = [
-        {
-          users = ["${user}"];
-          commands = [
-            {
-              command = "ALL";
-              options = ["SETENV" "NOPASSWD"];
-            }
-          ];
-        }
-      ];
-    };
-
     # Services
     services = {
-      thermald.enable = true;
-
-      openssh = {
-        enable = true;
-        settings = {
-          PermitRootLogin = "no";
-          PasswordAuthentication = false;
-        };
-      };
-
       rpcbind.enable = true;
 
       tailscale = {
@@ -157,15 +98,9 @@ in
         useRoutingFeatures = "both";
       };
     };
-    programs = {
-      ssh.startAgent = true;
-      zsh.enable = true;
-    };
 
     # Environment
     environment = {
-      pathsToLink = ["/share/zsh"];
-
       systemPackages = with pkgs; [
         polkit
         pciutils
@@ -175,8 +110,7 @@ in
         traceroute
       ];
 
-      # SSH agent is now managed by systemd user service
-    };
+};
 
     # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     system.stateVersion = "25.05";

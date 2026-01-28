@@ -1,46 +1,29 @@
-let
-  user = "joshsymonds";
-in
-  {
-    inputs,
-    lib,
-    config,
-    pkgs,
-    ...
-  }: {
+{
+  inputs,
+  lib,
+  config,
+  pkgs,
+  ...
+}: {
     imports = [
-      ../common.nix
       inputs.hardware.nixosModules.common-pc
       ./hardware-configuration.nix
     ];
 
-    nix = {
-      registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
-      nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-      gc = {
-        automatic = true;
-        dates = "daily";
-        options = "--delete-older-than 3d";
-      };
-      settings = {
-        experimental-features = "nix-command flakes";
-        cores = 0;
-        max-jobs = "auto";
-        substituters = [
-          "https://cache.nixos.org"
-          "https://nix-community.cachix.org"
-          "https://neovim-nightly.cachix.org"
-          "https://joshsymonds.cachix.org"
-          "https://cuda-maintainers.cachix.org"
-        ];
-        trusted-public-keys = [
-          "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
-          "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-          "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
-          "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
-          "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
-        ];
-      };
+    # Performance tuning
+    performance.profile = "workstation";
+    performance.cpuVendor = "amd";
+
+    # Host-specific: use all cores and add CUDA binary cache (common.nix provides defaults)
+    nix.settings = {
+      cores = 0;
+      max-jobs = "auto";
+      extra-substituters = [
+        "https://cuda-maintainers.cachix.org"
+      ];
+      extra-trusted-public-keys = [
+        "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
+      ];
     };
 
     networking = {
@@ -155,13 +138,6 @@ in
 
     services = {
       xserver.videoDrivers = ["nvidia"];
-      openssh = {
-        enable = true;
-        settings = {
-          PermitRootLogin = "no";
-          PasswordAuthentication = false;
-        };
-      };
       ollama = {
         enable = true;
         package = pkgs.ollama-cuda;
@@ -177,8 +153,6 @@ in
           OLLAMA_API_BASE_URL = "http://127.0.0.1:11434";
         };
       };
-      thermald.enable = true;
-      fstrim.enable = true;
       hardware.bolt.enable = true;
     };
 
@@ -192,25 +166,9 @@ in
       Group = "open-webui";
     };
 
-    time.timeZone = "America/Los_Angeles";
-    i18n.defaultLocale = "en_US.UTF-8";
-
-    users.defaultUserShell = pkgs.zsh;
     programs.nm-applet.enable = true;
 
-    users.users.${user} = {
-      shell = pkgs.zsh;
-      home = "/home/${user}";
-      isNormalUser = true;
-      createHome = true;
-      extraGroups = [
-        "wheel"
-        config.users.groups.keys.name
-        "video"
-        "render"
-        "docker"
-      ];
-    };
+    users.users.joshsymonds.extraGroups = ["video" "render" "docker"];
 
     users.users.open-webui = {
       isSystemUser = true;
@@ -220,29 +178,9 @@ in
 
     users.groups.open-webui = {};
 
-    security = {
-      rtkit.enable = true;
-      sudo.extraRules = [
-        {
-          users = [user];
-          commands = [
-            {
-              command = "ALL";
-              options = ["SETENV" "NOPASSWD"];
-            }
-          ];
-        }
-      ];
-    };
-
-    programs = {
-      ssh.startAgent = true;
-      zsh.enable = true;
-      nix-ld.enable = true;
-    };
+    programs.nix-ld.enable = true;
 
     environment = {
-      pathsToLink = ["/share/zsh"];
       systemPackages = with pkgs; [
         cachix
         git

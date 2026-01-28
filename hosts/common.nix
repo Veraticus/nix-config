@@ -4,16 +4,26 @@
   pkgs,
   config,
   ...
-}: {
+}: let
+  network = import ../lib/network.nix;
+  nas = network.infra.nas;
+in {
   imports = [
     ../modules/nix/defaults.nix
     ../modules/services/age-identity.nix
     ../modules/services/cleanup-stale-processes.nix
+    ../modules/performance/profiles.nix
   ];
 
   nix = {
     # Use latest Nix version available in nixpkgs
     package = pkgs.nixVersions.latest;
+
+    # Make nix3 commands consistent with flake
+    registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
+
+    # Make legacy nix commands consistent too
+    nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
 
     settings = {
       # Trigger GC when disk space is low
@@ -24,32 +34,80 @@
     # Automatic garbage collection
     gc = {
       automatic = true;
-      dates = "daily"; # Run every night
-      options = "--delete-older-than 3d"; # Keep derivations for 3 days
+      dates = "daily";
+      options = "--delete-older-than 3d";
     };
 
     # Automatic store optimization (hard-linking identical files)
     optimise.automatic = true;
   };
 
+  # Timezone and locale
+  time.timeZone = "America/Los_Angeles";
+  i18n.defaultLocale = "en_US.UTF-8";
+
+  # Shell and user setup
+  users.defaultUserShell = pkgs.zsh;
+  users.users.joshsymonds = {
+    shell = pkgs.zsh;
+    home = "/home/joshsymonds";
+    isNormalUser = true;
+    extraGroups = ["wheel" config.users.groups.keys.name];
+  };
+
+  # Security
+  security = {
+    rtkit.enable = true;
+    sudo.extraRules = [
+      {
+        users = ["joshsymonds"];
+        commands = [
+          {
+            command = "ALL";
+            options = ["SETENV" "NOPASSWD"];
+          }
+        ];
+      }
+    ];
+  };
+
+  # Core services
+  services.openssh = {
+    enable = true;
+    settings = {
+      PermitRootLogin = "no";
+      PasswordAuthentication = false;
+    };
+  };
+
+  services.thermald.enable = lib.mkDefault true;
+  services.fstrim.enable = lib.mkDefault true;
+
+  # Programs
+  programs = {
+    zsh.enable = true;
+    ssh.startAgent = true;
+  };
+
   # Common packages for all headless Linux hosts
+  environment.pathsToLink = ["/share/zsh"];
   environment.systemPackages = with pkgs; [
     yamllint # YAML linter, useful for Home Assistant configurations
     inputs.agenix.packages.${pkgs.system}.agenix
     ssh-to-age
   ];
 
-  fileSystems = lib.mkIf (config.networking.hostName != "stygianlibrary") {
+  fileSystems = lib.mkIf (!builtins.elem config.networking.hostName ["stygianlibrary" "bluedesert" "echelon"]) {
     "/mnt/video" = {
-      device = "172.31.0.100:/volume1/video";
+      device = "${nas.ip}:${nas.shares.video}";
       fsType = "nfs";
     };
     "/mnt/music" = {
-      device = "172.31.0.100:/volume1/music";
+      device = "${nas.ip}:${nas.shares.music}";
       fsType = "nfs";
     };
     "/mnt/books" = {
-      device = "172.31.0.100:/volume1/books";
+      device = "${nas.ip}:${nas.shares.books}";
       fsType = "nfs";
     };
   };

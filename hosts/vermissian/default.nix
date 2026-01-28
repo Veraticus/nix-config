@@ -1,5 +1,8 @@
 let
   user = "joshsymonds";
+  network = import ../../lib/network.nix;
+  self = network.hosts.vermissian;
+  subnet = network.subnets.${self.subnet};
 in
   {
     inputs,
@@ -10,16 +13,14 @@ in
   }: {
     # You can import other NixOS modules here
     imports = [
-      ../common.nix
       ../../modules/services/egoengine-coder.nix
       ../../modules/services/cloudflare-tunnel.nix
-
-      # You can also split up your configuration and import pieces of it here:
-      # ./users.nix
-
-      # Import your generated (nixos-generate-config) hardware configuration
       ./hardware-configuration.nix
     ];
+
+    # Performance tuning
+    performance.profile = "dev";
+    performance.cpuVendor = "intel";
 
     # Hardware setup
     hardware = {
@@ -39,38 +40,15 @@ in
       enableAllFirmware = true;
     };
 
-    nix = {
-      # This will add each flake input as a registry
-      # To make nix3 commands consistent with your flake
-      registry = lib.mapAttrs (_: value: {flake = value;}) inputs;
-
-      # This will additionally add your inputs to the system's legacy channels
-      # Making legacy nix commands consistent as well, awesome!
-      nixPath = lib.mapAttrsToList (key: value: "${key}=${value.to.path}") config.nix.registry;
-
-      gc = {
-        automatic = true;
-        dates = "daily";
-        options = "--delete-older-than 3d";
-      };
-      optimise.automatic = true;
-
-      settings = {
-        # Enable flakes and new 'nix' command
-        experimental-features = "nix-command flakes";
-        # Deduplicate and optimize nix store
-
-        # Shared nix defaults provide cache settings
-      };
-    };
+    # Host-specific nix settings (common.nix provides defaults)
 
     networking = {
       useDHCP = false;
       hostName = "vermissian";
       extraHosts = ''
-        172.31.0.200 ultraviolet
-        172.31.0.201 bluedesert
-        172.31.0.203 echelon
+        ${network.hosts.ultraviolet.ip} ultraviolet
+        ${network.hosts.bluedesert.ip} bluedesert
+        ${network.hosts.echelon.ip} echelon
       '';
       firewall = {
         enable = true;
@@ -88,12 +66,12 @@ in
           9437
         ];
       };
-      defaultGateway = "172.31.0.1";
-      nameservers = ["172.31.0.1"];
-      interfaces.enp0s31f6.ipv4.addresses = [
+      defaultGateway = subnet.gateway;
+      nameservers = subnet.nameservers;
+      interfaces.${self.interface}.ipv4.addresses = [
         {
-          address = "172.31.0.202";
-          prefixLength = 24;
+          address = self.ip;
+          prefixLength = subnet.prefixLength;
         }
       ];
     };
@@ -110,7 +88,7 @@ in
         "nfs4"
       ];
       kernelParams = [
-        "intel_pstate=active"
+        # intel_pstate=active is now provided by performance module
         "i915.enable_fbc=1"
         "i915.enable_psr=2"
       ];
@@ -127,49 +105,7 @@ in
       };
     };
 
-    # Time and internationalization
-    time.timeZone = "America/Los_Angeles";
-    i18n.defaultLocale = "en_US.UTF-8";
-
-    # Users and their homes
-    users = {
-      defaultUserShell = pkgs.zsh;
-      users.${user} = {
-        shell = pkgs.zsh;
-        home = "/home/${user}";
-        isNormalUser = true;
-        extraGroups = [
-          "wheel"
-          config.users.groups.keys.name
-          "podman"
-          "docker"
-        ];
-      };
-    };
-
-    # Security
-    security = {
-      rtkit.enable = true;
-      sudo.extraRules = [
-        {
-          users = ["${user}"];
-          commands = [
-            {
-              command = "ALL";
-              options = [
-                "SETENV"
-                "NOPASSWD"
-              ];
-            }
-          ];
-        }
-      ];
-    };
-
-    programs = {
-      zsh.enable = true;
-      ssh.startAgent = true;
-    };
+    users.users.joshsymonds.extraGroups = ["podman" "docker"];
 
     # Directories and system services
     systemd = {
@@ -403,16 +339,6 @@ in
     };
 
     services = {
-      openssh = {
-        enable = true;
-        settings = {
-          PermitRootLogin = "no";
-          PasswordAuthentication = false;
-          X11Forwarding = true;
-          StreamLocalBindUnlink = true;
-        };
-      };
-
       tailscale = {
         enable = true;
         package = pkgs.tailscale;
@@ -495,10 +421,14 @@ in
       };
     };
 
+    # Host-specific SSH settings
+    services.openssh.settings = {
+      X11Forwarding = true;
+      StreamLocalBindUnlink = true;
+    };
+
     # Environment
     environment = {
-      pathsToLink = ["/share/zsh"];
-
       systemPackages = with pkgs; [
         polkit
         pciutils
@@ -530,8 +460,7 @@ in
         OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
       };
 
-      # SSH agent is now managed by systemd user service
-    };
+};
 
     # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     system.stateVersion = "25.05";

@@ -1,27 +1,11 @@
 {pkgs, ...}: {
   imports = [
-    ../common.nix
-    ../devspaces-host
-    ../linkpearl
-    ../security-tools
+    ../headless-x86_64-linux.nix
   ];
 
-  home = {
-    homeDirectory = "/home/joshsymonds";
-
-    packages = with pkgs; [
-      file
-      unzip
-      dmidecode
-      gcc
-      # Network tools for gateway
-      traceroute
-      mtr
-      tcpdump
-    ];
-  };
-
-  programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false";
-
-  systemd.user.startServices = "sd-switch";
+  home.packages = with pkgs; [
+    traceroute
+    mtr
+    tcpdump
+  ];
 }

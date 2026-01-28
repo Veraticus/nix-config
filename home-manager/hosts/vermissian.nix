@@ -1,50 +1,31 @@
 {pkgs, ...}: {
   imports = [
-    ../common.nix
-    ../devspaces-host
+    ../headless-x86_64-linux.nix
     ../go
-    ../linkpearl
-    ../security-tools
-    ../gmailctl
   ];
 
-  home = {
-    homeDirectory = "/home/joshsymonds";
-
-    packages = with pkgs; [
-      file
-      unzip
-      dmidecode
-      gcc
-      # Integration/automation specific tools
-      jq
-      httpie
-      websocat # WebSocket client
-
-      # Development tools
-      mkcert # Local TLS certificates for development
-      awscli2 # AWS CLI for AWS operations
-      kind # Kubernetes in Docker for local K8s clusters
-      kubectl # Kubernetes CLI
-      ctlptl # Controller for Kind clusters with registry
-      tilt # Local Kubernetes development tool
-      postgresql # PostgreSQL client (psql)
-      mongosh # MongoDB shell
-      tcpdump # Packet capture tool
-      lsof # List open files/ports
-      inetutils # Network utilities (includes netstat-like tools)
-      kubernetes-helm
-      ginkgo
-      prisma
-      prisma-engines
-      nodePackages.prisma
-
-      rustup # Rust toolchain manager
-    ];
-  };
+  home.packages = with pkgs; [
+    jq
+    httpie
+    websocat
+    mkcert
+    awscli2
+    kind
+    kubectl
+    ctlptl
+    tilt
+    postgresql
+    mongosh
+    tcpdump
+    lsof
+    inetutils
+    kubernetes-helm
+    ginkgo
+    prisma
+    prisma-engines
+    nodePackages.prisma
+    rustup
+  ];
 
   programs.go.enable = true;
-  programs.zsh.shellAliases.update = "sudo nixos-rebuild switch --flake \".#$(hostname)\" --option warn-dirty false";
-
-  systemd.user.startServices = "sd-switch";
 }

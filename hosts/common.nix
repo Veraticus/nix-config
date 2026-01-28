@@ -93,7 +93,7 @@ in {
   environment.pathsToLink = ["/share/zsh"];
   environment.systemPackages = with pkgs; [
     yamllint # YAML linter, useful for Home Assistant configurations
-    inputs.agenix.packages.${pkgs.system}.agenix
+    inputs.agenix.packages.${pkgs.stdenv.hostPlatform.system}.agenix
     ssh-to-age
   ];
 

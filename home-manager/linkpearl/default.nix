@@ -35,6 +35,6 @@ in {
     pollInterval = "500ms";
 
     # Use the package from the linkpearl flake
-    package = inputs.linkpearl.packages.${pkgs.system}.default;
+    package = inputs.linkpearl.packages.${pkgs.stdenv.hostPlatform.system}.default;
   };
 }

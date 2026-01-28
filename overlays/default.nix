@@ -5,12 +5,12 @@
   moarVersionString = "${moarVersion}+g${builtins.substring 0 7 moarRev}";
 in {
   default = final: prev: let
-    codexTui = inputs.codex-src.packages.${final.system}.codex-tui;
-    codexCli = inputs.codex-src.packages.${final.system}.codex-cli;
+    codexTui = inputs.codex-src.packages.${final.stdenv.hostPlatform.system}.codex-tui;
+    codexCli = inputs.codex-src.packages.${final.stdenv.hostPlatform.system}.codex-cli;
     codexWrapper = final.writeShellScriptBin "codex" ''
       exec ${codexCli}/bin/codex "$@"
     '';
-    shimmerPkg = inputs.shimmer.packages.${final.system}.default;
+    shimmerPkg = inputs.shimmer.packages.${final.stdenv.hostPlatform.system}.default;
   in {
     shimmer = shimmerPkg;
     myCaddy = final.callPackage ../pkgs/caddy {};
@@ -103,7 +103,7 @@ in {
 
     # Stable packages available under pkgs.stable (if needed)
     stable = import inputs.nixpkgs-stable {
-      inherit (final) system;
+      system = final.stdenv.hostPlatform.system;
       config.allowUnfree = true;
     };
   };

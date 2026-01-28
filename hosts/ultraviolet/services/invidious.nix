@@ -30,6 +30,7 @@
       invidious_companion = [
         {
           private_url = "http://127.0.0.1:8282/companion";
+          public_url = "https://invidious.home.husbuddies.gay";
         }
       ];
 
@@ -99,6 +100,7 @@
   # Caddy reverse proxy
   services.caddy.virtualHosts = {
     "invidious.home.husbuddies.gay".extraConfig = ''
+      reverse_proxy /companion/* 127.0.0.1:8282
       reverse_proxy /* 127.0.0.1:3030
       import cloudflare
     '';

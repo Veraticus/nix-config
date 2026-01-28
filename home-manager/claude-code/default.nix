@@ -5,7 +5,7 @@
   ...
 }: let
   # Get cc-tools binaries from the flake
-  cc-tools = inputs.cc-tools.packages.${pkgs.system}.default;
+  cc-tools = inputs.cc-tools.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in {
   home = {
     # Install Node.js to enable npm

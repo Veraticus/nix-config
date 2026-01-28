@@ -136,6 +136,13 @@
       };
     };
 
+    # Deploy ComfyUI pre-start script (installs SageAttention, FlashAttention, etc.)
+    system.activationScripts.comfyui-config = ''
+      mkdir -p /var/lib/comfyui/storage/user-scripts
+      cp ${./comfyui/pre-start.sh} /var/lib/comfyui/storage/user-scripts/pre-start.sh
+      chmod +x /var/lib/comfyui/storage/user-scripts/pre-start.sh
+    '';
+
     services = {
       xserver.videoDrivers = ["nvidia"];
       ollama = {

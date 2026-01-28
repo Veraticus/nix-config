@@ -18,13 +18,16 @@
 }: let
   cfg = config.performance;
 
+  # With intel_pstate=active, only "performance" and "powersave" governors
+  # are available. HWP (Hardware P-States) handles dynamic scaling internally,
+  # so "powersave" + an EPP hint is the equivalent of schedutil behavior.
   cpuSettings = {
     dev = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_performance";
     };
     server = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_performance";
     };
     workstation = {
@@ -36,7 +39,7 @@
       epp = "power";
     };
     router = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_power";
     };
     none = {

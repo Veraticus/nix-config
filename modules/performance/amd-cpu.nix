@@ -19,13 +19,16 @@
 }: let
   cfg = config.performance;
 
+  # With amd_pstate=active, only "performance" and "powersave" governors
+  # are available. CPPC handles dynamic scaling internally, so "powersave"
+  # + an EPP hint is the equivalent of schedutil behavior.
   cpuSettings = {
     dev = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_performance";
     };
     server = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_performance";
     };
     workstation = {
@@ -37,7 +40,7 @@
       epp = "power";
     };
     router = {
-      governor = "schedutil";
+      governor = "powersave";
       epp = "balance_power";
     };
     none = {

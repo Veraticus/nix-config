@@ -148,7 +148,7 @@ in
           "/var/lib/comfyui/output:/root/ComfyUI/output"
         ];
         extraOptions = [
-          "--gpus=all"
+          "--device=nvidia.com/gpu=all"
         ];
       };
     };

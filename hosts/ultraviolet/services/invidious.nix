@@ -36,6 +36,12 @@
 
       popular_enabled = true;
       quality = "dash";
+
+      # Proxy all video streams through Invidious so clients don't hit googlevideo.com directly
+      # This avoids IP-lock issues when client IP differs from server IP
+      default_user_preferences = {
+        local = true;
+      };
     };
   };
 
@@ -93,6 +99,7 @@
       export HOST=127.0.0.1
       export PORT=8282
       export CACHE_DIRECTORY=/var/tmp
+      export YOUTUBE_SESSION_OAUTH_ENABLED=true
       exec ${pkgs.invidious-companion}/bin/invidious-companion
     '';
   };
@@ -100,6 +107,9 @@
   # Caddy reverse proxy
   services.caddy.virtualHosts = {
     "invidious.home.husbuddies.gay".extraConfig = ''
+      # Rewrite old Yattee companion path to new path (fixed in Yattee 1.5.2-207+)
+      @latestversion path /latest_version
+      rewrite @latestversion /companion{uri}
       reverse_proxy /companion/* 127.0.0.1:8282
       reverse_proxy /* 127.0.0.1:3030
       import cloudflare

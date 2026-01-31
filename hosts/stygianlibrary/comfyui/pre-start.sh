@@ -69,11 +69,8 @@ install_node "ComfyUI_IPAdapter_plus" "https://github.com/cubiq/ComfyUI_IPAdapte
 install_node "ComfyUI-Impact-Pack" "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
 
 # Impact Pack submodule (UltralyticsDetectorProvider for face detection)
-IMPACT_SUBPACK="${CUSTOM_NODES_DIR}/ComfyUI-Impact-Pack/subpack"
-if [ ! -d "$IMPACT_SUBPACK" ]; then
-    echo "[INFO] Installing Impact-Pack submodule..."
-    git clone --depth 1 https://github.com/ltdrdata/ComfyUI-Impact-Subpack "$IMPACT_SUBPACK"
-fi
+# Must be installed as a top-level custom node to be discovered
+install_node "ComfyUI-Impact-Subpack" "https://github.com/ltdrdata/ComfyUI-Impact-Subpack"
 
 # ============================================
 # 3. NODE DEPENDENCIES

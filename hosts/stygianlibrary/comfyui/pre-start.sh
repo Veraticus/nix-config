@@ -56,6 +56,9 @@ install_node "ComfyUI-Frame-Interpolation" "https://github.com/Fannovel16/ComfyU
 install_node "ComfyUI-Unload-Model" "https://github.com/Mircoxi/ComfyUI-Unload-Model"
 install_node "Comfyui-Memory_Cleanup" "https://github.com/Haoming02/Comfyui-Memory_Cleanup"
 
+# Advanced samplers (ClownsharkSampler for better prompt adherence)
+install_node "RES4LYF" "https://github.com/ClownsharkBatwing/RES4LYF"
+
 # ============================================
 # 3. NODE DEPENDENCIES
 # ============================================

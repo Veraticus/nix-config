@@ -59,6 +59,15 @@ install_node "Comfyui-Memory_Cleanup" "https://github.com/Haoming02/Comfyui-Memo
 # Advanced samplers (ClownsharkSampler for better prompt adherence)
 install_node "RES4LYF" "https://github.com/ClownsharkBatwing/RES4LYF"
 
+# Face identity preservation (Stand-In)
+install_node "Stand-In_Preprocessor_ComfyUI" "https://github.com/WeChatCV/Stand-In_Preprocessor_ComfyUI"
+
+# IPAdapter for identity-preserving generation (SDXL FaceID)
+install_node "ComfyUI_IPAdapter_plus" "https://github.com/cubiq/ComfyUI_IPAdapter_plus"
+
+# Impact Pack (FaceDetailer for targeted face regeneration)
+install_node "ComfyUI-Impact-Pack" "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
+
 # ============================================
 # 3. NODE DEPENDENCIES
 # ============================================
@@ -71,6 +80,18 @@ pip install -q accelerate safetensors
 
 # Frame interpolation deps (RIFE)
 pip install -q cupy-cuda12x
+
+# Stand-In face identity deps
+pip install -q insightface onnxruntime-gpu
+
+# RES4LYF (ClownsharkSampler) deps
+pip install -q pywavelets opencv-python matplotlib
+
+# IPAdapter FaceID deps
+pip install -q insightface onnxruntime-gpu
+
+# Impact Pack deps (ultralytics for face detection)
+pip install -q ultralytics segment-anything
 
 # ============================================
 # 4. CLI FLAGS

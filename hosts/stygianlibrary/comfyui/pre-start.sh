@@ -98,10 +98,45 @@ pip install -q insightface onnxruntime-gpu
 pip install -q ultralytics segment-anything
 
 # ============================================
-# 4. CLI FLAGS
+# 4. MODEL DOWNLOADS
 # ============================================
 
-export CLI_ARGS="--use-sage-attention"
+MODELS_DIR="/root/ComfyUI/models"
+
+download_model() {
+    local path="$1"
+    local url="$2"
+    local name="$3"
+
+    if [ ! -f "${MODELS_DIR}/${path}" ]; then
+        echo "[INFO] Downloading ${name}..."
+        mkdir -p "$(dirname "${MODELS_DIR}/${path}")"
+        wget -q --show-progress -O "${MODELS_DIR}/${path}" "$url"
+    fi
+}
+
+# Qwen Image Edit 2511 (photo identity correction)
+download_model "diffusion_models/qwen-image-edit-2511-Q4_K_M.gguf" \
+    "https://huggingface.co/Comfy-Org/Qwen-Image-Edit-2511_GGUF/resolve/main/qwen-image-edit-2511-Q4_K_M.gguf" \
+    "Qwen Image Edit 2511 GGUF"
+
+download_model "text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors" \
+    "https://huggingface.co/Comfy-Org/Qwen_VL_2.5-7B_Instruct_fp8_scaled/resolve/main/qwen_2.5_vl_7b_fp8_scaled.safetensors" \
+    "Qwen 2.5 VL 7B FP8 text encoder"
+
+download_model "vae/qwen_image_vae.safetensors" \
+    "https://huggingface.co/Comfy-Org/Qwen-Image-Edit-2511_GGUF/resolve/main/qwen_image_vae.safetensors" \
+    "Qwen Image VAE"
+
+download_model "loras/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors" \
+    "https://huggingface.co/makisekurisu/Qwen-Image-Edit-2511-Lightning/resolve/main/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors" \
+    "Qwen Lightning LoRA"
+
+# ============================================
+# 5. CLI FLAGS
+# ============================================
+
+export CLI_ARGS="--use-pytorch-cross-attention"
 
 echo "========================================"
 echo "[INFO] Pre-start complete!"

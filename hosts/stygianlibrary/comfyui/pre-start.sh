@@ -132,6 +132,25 @@ download_model "loras/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensor
     "https://huggingface.co/makisekurisu/Qwen-Image-Edit-2511-Lightning/resolve/main/Qwen-Image-Edit-2511-Lightning-4steps-V1.0-bf16.safetensors" \
     "Qwen Lightning LoRA"
 
+# Skin realism LoRA (adds pores, texture)
+download_model "loras/qwen-edit-skin.safetensors" \
+    "https://huggingface.co/tlennon-ie/qwen-edit-skin/resolve/main/qwen-edit-skin.safetensors" \
+    "Qwen Skin Realism LoRA"
+
+# Beauty LoRA (skin tone/lighting balance)
+download_model "loras/Qwen_majic_beauty.safetensors" \
+    "https://huggingface.co/Lingyuzhou/Qwen_majic_beauty/resolve/main/Qwen_majic_beauty.safetensors" \
+    "Qwen Beauty LoRA"
+
+# FaceDetailer models (Impact Pack)
+download_model "ultralytics/bbox/face_yolov8m.pt" \
+    "https://huggingface.co/Bingsu/adetailer/resolve/main/face_yolov8m.pt" \
+    "Face YOLO Detector"
+
+download_model "sams/sam_vit_b_01ec64.pth" \
+    "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth" \
+    "SAM ViT-B Model"
+
 # ============================================
 # 5. CLI FLAGS
 # ============================================

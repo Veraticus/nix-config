@@ -68,6 +68,21 @@ install_node "ComfyUI_IPAdapter_plus" "https://github.com/cubiq/ComfyUI_IPAdapte
 # Impact Pack (FaceDetailer for targeted face regeneration)
 install_node "ComfyUI-Impact-Pack" "https://github.com/ltdrdata/ComfyUI-Impact-Pack"
 
+# Qwen Edit Utils (fixes ghosting with to_ref control)
+install_node "Comfyui-QwenEditUtils" "https://github.com/lrzjason/Comfyui-QwenEditUtils"
+
+# LayerStyle (MaskGrow for mask-based face editing)
+install_node "ComfyUI_LayerStyle" "https://github.com/chflame163/ComfyUI_LayerStyle"
+
+# RMBG (FaceSegment for face masking)
+install_node "ComfyUI-RMBG" "https://github.com/1038lab/ComfyUI-RMBG"
+
+# AutoCropFaces (automatic face detection and cropping)
+install_node "ComfyUI-AutoCropFaces" "https://github.com/liusida/ComfyUI-AutoCropFaces"
+
+# ControlNet Auxiliary Preprocessors (depth, pose, canny, etc.)
+install_node "comfyui_controlnet_aux" "https://github.com/Fannovel16/comfyui_controlnet_aux"
+
 # Impact Pack submodule (UltralyticsDetectorProvider for face detection)
 # Must be installed as a top-level custom node to be discovered
 install_node "ComfyUI-Impact-Subpack" "https://github.com/ltdrdata/ComfyUI-Impact-Subpack"
@@ -111,7 +126,7 @@ download_model() {
     if [ ! -f "${MODELS_DIR}/${path}" ]; then
         echo "[INFO] Downloading ${name}..."
         mkdir -p "$(dirname "${MODELS_DIR}/${path}")"
-        wget -q --show-progress -O "${MODELS_DIR}/${path}" "$url"
+        curl -L -o "${MODELS_DIR}/${path}" "$url"
     fi
 }
 
@@ -139,8 +154,13 @@ download_model "loras/qwen-edit-skin.safetensors" \
 
 # Beauty LoRA (skin tone/lighting balance)
 download_model "loras/Qwen_majic_beauty.safetensors" \
-    "https://huggingface.co/Lingyuzhou/Qwen_majic_beauty/resolve/main/Qwen_majic_beauty.safetensors" \
+    "https://huggingface.co/Lingyuzhou/Qwen_majic_beauty/resolve/main/QWEN_%E9%BA%A6%E6%A9%98%E5%8D%83%E9%97%AE%E7%BE%8E%E4%BA%BA.safetensors" \
     "Qwen Beauty LoRA"
+
+# ControlNet Union for Qwen (depth/structure preservation)
+download_model "controlnet/Qwen-Image-InstantX-ControlNet-Union.safetensors" \
+    "https://huggingface.co/Comfy-Org/Qwen-Image-InstantX-ControlNets/resolve/main/split_files/controlnet/Qwen-Image-InstantX-ControlNet-Union.safetensors" \
+    "Qwen ControlNet Union"
 
 # FaceDetailer models (Impact Pack)
 download_model "ultralytics/bbox/face_yolov8m.pt" \
@@ -150,6 +170,11 @@ download_model "ultralytics/bbox/face_yolov8m.pt" \
 download_model "sams/sam_vit_b_01ec64.pth" \
     "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth" \
     "SAM ViT-B Model"
+
+# SeedVR2 upscaler model (FP8 version - smaller, fits in VRAM better)
+download_model "diffusion_models/seedvr2_ema_7b_fp8_e4m3fn.safetensors" \
+    "https://huggingface.co/numz/SeedVR2_comfyUI/resolve/main/seedvr2_ema_7b_fp8_e4m3fn.safetensors" \
+    "SeedVR2 7B FP8"
 
 # ============================================
 # 5. CLI FLAGS

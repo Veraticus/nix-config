@@ -34,7 +34,7 @@
         enable = true;
         checkReversePath = "loose";
         trustedInterfaces = ["tailscale0"];
-        allowedTCPPorts = [22 2022 8080 8188 11434];
+        allowedTCPPorts = [22 2022 8080 8188 8888 11434];
         allowedUDPPorts = [config.services.tailscale.port];
       };
     };
@@ -161,6 +161,18 @@
         };
       };
       hardware.bolt.enable = true;
+      caddy = {
+        enable = true;
+        virtualHosts.":8888".extraConfig = ''
+          handle /output/* {
+            root * /var/lib/comfyui
+            file_server browse
+          }
+          handle {
+            reverse_proxy localhost:8188
+          }
+        '';
+      };
     };
 
     services.udev.extraRules = ''

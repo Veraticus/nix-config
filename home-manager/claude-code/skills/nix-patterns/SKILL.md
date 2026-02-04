@@ -1,12 +1,26 @@
+---
+name: writing-nix-config
+description: Patterns for this nix-config flake repository. Use when editing .nix files, adding packages, creating modules, or debugging flake issues.
+---
+
 # Nix Configuration Patterns
 
-Auto-apply when editing `.nix` files or working in this nix-config repo.
+## Critical Rules
 
-## Critical Reminders
+| Rule | Why |
+|------|-----|
+| Run `update` after changes | Nothing takes effect until rebuilt |
+| Run `git add` before `nix flake check` | Flakes only see git-tracked files |
+| Use `lib.fakeHash` for unknown hashes | Nix will tell you the real hash on build failure |
 
-**After any change**: Run `update` to rebuild. Nothing takes effect until rebuilt.
+## Common Mistakes
 
-**Before `nix flake check`**: Run `git add` on new/modified files. Flakes only see git-tracked files.
+| Wrong | Right |
+|-------|-------|
+| Running `nix flake check` on new files without `git add` | `git add <file>` first |
+| Editing config and expecting immediate effect | Run `update` to rebuild |
+| Guessing SHA256 hashes | Use `lib.fakeHash`, build, copy real hash from error |
+| Adding package only to overlay | Also add to `pkgs/default.nix` |
 
 ## Commands
 
@@ -59,6 +73,23 @@ Then add to `pkgs/default.nix` and `overlays/default.nix`.
 ```
 
 Then import in `home-manager/common.nix` or platform-specific file.
+
+## Agenix Secret Pattern
+
+```nix
+# 1. Add to secrets/secrets.nix
+"secrets/hosts/<host>/<name>.age".publicKeys = keys.<host>;
+
+# 2. Declare in host config
+age.secrets."<name>" = {
+  file = ../../secrets/hosts/<host>/<name>.age;
+  owner = "<service-user>";
+  mode = "0400";
+};
+
+# 3. Create the secret
+agenix -e secrets/hosts/<host>/<name>.age
+```
 
 ## This Repo's Systems
 

@@ -1,10 +1,21 @@
-# Home Assistant Configuration
+---
+name: configuring-home-assistant
+description: Configures Home Assistant dashboards and automations on ultraviolet. Use when editing HA dashboards, Bubble Cards, YAML configs, or using hass-cli.
+---
 
-Auto-apply when working in `home-assistant/` directory or on HA-related files.
+# Home Assistant Configuration
 
 ## Dashboard Workflow
 
-Dashboards use **YAML mode** (not UI storage). Edit files directly, then run `update` to deploy.
+Dashboards use **YAML mode** (not UI storage). Edit YAML files directly, then run `update` to deploy. UI-based editing will NOT work - changes would be overwritten on rebuild.
+
+## Common Mistakes
+
+| Wrong | Right |
+|-------|-------|
+| Editing dashboards in HA UI | Edit YAML files, run `update` |
+| Using standard `light` card | Use `custom:bubble-card` with `button_type: slider` |
+| Duplicating styles inline | Use YAML anchors from `cards/templates.yaml` |
 
 ```bash
 hass-cli state list                    # List all entities

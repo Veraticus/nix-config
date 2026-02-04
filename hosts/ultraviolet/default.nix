@@ -37,6 +37,7 @@ in
       ./services/shimmer.nix
       ./services/download-proxies.nix
       ./services/flaresolverr.nix
+      ./services/n8n.nix
 
       # Import your generated (nixos-generate-config) hardware configuration
       ./hardware-configuration.nix

@@ -1,92 +1,106 @@
 ---
 name: managing-n8n
-description: Manages n8n workflow automation on ultraviolet. Use when working with n8n workflows, backups, credentials, or service operations.
+description: Manages n8n workflow automation on ultraviolet. Use when creating workflows, managing backups, configuring credentials, or service operations.
 ---
 
 # n8n Workflow Automation
+
+## Workflow Authoring
+
+**Claude creates workflows as JSON files in `n8n/workflows/`**. They sync to n8n on rebuild.
+
+```
+User describes intent → Claude creates JSON → `update` syncs to n8n → User tests in UI
+```
+
+If user modifies in UI and wants to reconcile:
+```bash
+n8n-export <workflow-id>              # Export specific workflow
+n8n-export all                        # Export all workflows
+# Then copy from /tmp/n8n-export to nix-config/n8n/workflows/
+```
+
+## Workflow JSON Structure
+
+```json
+{
+  "id": "unique-workflow-id",
+  "name": "Workflow Name",
+  "active": false,
+  "nodes": [
+    {
+      "id": "node-uuid",
+      "name": "Node Name",
+      "type": "n8n-nodes-base.webhook",
+      "position": [250, 300],
+      "parameters": {}
+    }
+  ],
+  "connections": {
+    "Node Name": {
+      "main": [[{"node": "Next Node", "type": "main", "index": 0}]]
+    }
+  }
+}
+```
+
+## Common Node Types
+
+| Node | Type String | Use |
+|------|-------------|-----|
+| Webhook | `n8n-nodes-base.webhook` | HTTP trigger |
+| Schedule | `n8n-nodes-base.scheduleTrigger` | Cron trigger |
+| HTTP Request | `n8n-nodes-base.httpRequest` | API calls |
+| Code | `n8n-nodes-base.code` | JavaScript |
+| AI Agent | `@n8n/n8n-nodes-langchain.agent` | LLM agent |
+| Anthropic Chat | `@n8n/n8n-nodes-langchain.lmChatAnthropic` | Claude model |
 
 ## Deployment
 
 - **URL**: https://n8n.husbuddies.gay
 - **Host**: ultraviolet (NixOS)
-- **Port**: 5678 (localhost)
-- **Auth**: Cloudflare Access (n8n auth bypassed)
+- **Workflows**: `n8n/workflows/*.json` (git-tracked)
 - **Config**: `hosts/ultraviolet/services/n8n.nix`
 
 ## Service Commands
 
 ```bash
-systemctl status n8n.service      # Check status
-journalctl -u n8n.service -f      # View logs
-sudo systemctl restart n8n.service # Restart
-curl -s http://localhost:5678/healthz # Test connectivity
+systemctl status n8n.service           # Check status
+journalctl -u n8n.service -f           # View logs
+sudo systemctl restart n8n.service     # Restart (reimports workflows)
 ```
 
 ## Backup & Restore
 
-Backups run daily at 3:30 AM to `/mnt/backups/n8n` (NAS).
-
 ```bash
-n8n-restore list                      # List available backups
-n8n-restore latest                    # Restore from latest
-n8n-restore backup-20260204-033000    # Restore specific backup
+n8n-restore list                       # List backups
+n8n-restore latest                     # Restore from latest
 ```
 
 ## Anthropic/AI Setup
 
-**Anthropic credentials MUST be configured via n8n's credential UI.**
+**Credentials MUST be configured via n8n UI** - env vars don't work.
 
-Environment variables like `ANTHROPIC_API_KEY` or `N8N_AI_ANTHROPIC_API_KEY` do NOT work - n8n does not read Anthropic keys from environment variables.
-
-Setup steps:
 1. Open https://n8n.husbuddies.gay
-2. Settings → Credentials → Add Credential
-3. Search "Anthropic" → Enter API key
-4. Save and use in AI Agent nodes
+2. Settings → Credentials → Add Credential → Anthropic
+3. Enter API key and save
 
 ## Common Mistakes
 
 | Wrong | Right |
 |-------|-------|
-| `n8n export:backup --list` | `n8n-restore list` |
 | Setting `ANTHROPIC_API_KEY` env var | Configure in n8n UI → Credentials |
+| Editing workflows only in UI | Create JSON in `n8n/workflows/`, run `update` |
+| Expecting UI changes to persist | Export with `n8n-export` and commit to git |
 | `docker exec n8n ...` | Direct systemctl (not containerized) |
-
-## Environment Variables
-
-These are set in NixOS config (NOT for API keys):
-
-| Variable | Value |
-|----------|-------|
-| `N8N_HOST` | n8n.husbuddies.gay |
-| `N8N_PROTOCOL` | https |
-| `WEBHOOK_URL` | https://n8n.husbuddies.gay/ |
-| `N8N_AUTH_EXCLUDE_ENDPOINTS` | * |
-| `N8N_TRUST_PROXY` | true |
-
-## Workflow Patterns
-
-### Webhook Trigger
-Webhooks accessible at `https://n8n.husbuddies.gay/webhook/<path>`
-
-### AI Agent with Anthropic
-Use `@n8n/n8n-nodes-langchain.agent` node with Anthropic credential configured via UI.
 
 ## Directory Structure
 
 ```
-/var/lib/n8n/           # Data directory (DynamicUser)
-├── .n8n/
-│   ├── database.sqlite # Workflows, credentials, executions
-│   └── config
-/mnt/backups/n8n/       # Backup location (NAS)
-├── backup-YYYYMMDD-HHMMSS/
-└── latest -> backup-*/
+nix-config/
+└── n8n/workflows/          # Git-tracked workflow JSON files
+    └── *.json              # Claude creates these
+
+/var/lib/n8n/               # n8n database (synced from git on rebuild)
+/mnt/backups/n8n/           # Daily backups to NAS
 ```
-
-## Updating n8n
-
-Version pinned in `overlays/default.nix`. To update:
-1. Find new version at https://github.com/n8n-io/n8n/releases
-2. Update version and hashes in overlay
-3. Run `update` to rebuild

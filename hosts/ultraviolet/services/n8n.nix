@@ -3,7 +3,10 @@
   config,
   lib,
   ...
-}: {
+}: let
+  # Git-tracked workflows directory - Claude creates these, sync to n8n on rebuild
+  workflowsDir = ../../../n8n/workflows;
+in {
   # n8n workflow automation
   # Access via Cloudflare Tunnel at n8n.husbuddies.gay
   # Configure route in Cloudflare dashboard: n8n.husbuddies.gay -> http://localhost:5678
@@ -23,6 +26,32 @@
       # Trust proxy headers from Cloudflare
       N8N_TRUST_PROXY = "true";
     };
+  };
+
+  # Override n8n service to add workflow import on startup
+  systemd.services.n8n = {
+    # Import git-tracked workflows before starting n8n
+    preStart = let
+      importScript = pkgs.writeShellScript "n8n-import-workflows" ''
+        set -euo pipefail
+
+        WORKFLOWS_DIR="${workflowsDir}"
+
+        # Check if workflows directory has any JSON files
+        if compgen -G "$WORKFLOWS_DIR/*.json" > /dev/null 2>&1; then
+          echo "Importing workflows from $WORKFLOWS_DIR..."
+          ${pkgs.n8n}/bin/n8n import:workflow --separate --input="$WORKFLOWS_DIR" || {
+            echo "Warning: Workflow import failed (may be first run before DB init)"
+          }
+          echo "Workflow import complete"
+        else
+          echo "No workflow files found in $WORKFLOWS_DIR"
+        fi
+      '';
+    in
+      lib.mkAfter ''
+        ${importScript}
+      '';
   };
 
   # Backup service for n8n database
@@ -93,8 +122,9 @@
     };
   };
 
-  # Restore helper script
+  # Helper scripts
   environment.systemPackages = [
+    # Restore from backup
     (pkgs.writeShellScriptBin "n8n-restore" ''
       set -e
 
@@ -145,6 +175,45 @@
 
           echo ""
           echo "Restore complete. Start n8n with: sudo systemctl start n8n"
+          ;;
+      esac
+    '')
+
+    # Export workflow(s) from n8n for reconciliation with git
+    (pkgs.writeShellScriptBin "n8n-export" ''
+      set -e
+
+      OUTPUT_DIR="''${2:-/tmp/n8n-export}"
+      mkdir -p "$OUTPUT_DIR"
+
+      case "''${1:-help}" in
+        all|--all|-a)
+          echo "Exporting all workflows to $OUTPUT_DIR..."
+          sudo -u n8n ${pkgs.n8n}/bin/n8n export:workflow --all --separate --output="$OUTPUT_DIR"
+          echo ""
+          echo "Exported workflows:"
+          ls -la "$OUTPUT_DIR"/*.json 2>/dev/null || echo "No workflows found"
+          echo ""
+          echo "Copy desired files to nix-config/n8n/workflows/ and commit"
+          ;;
+        help|--help|-h|"")
+          echo "n8n-export - Export workflows for git reconciliation"
+          echo ""
+          echo "Usage:"
+          echo "  n8n-export all [output-dir]     Export all workflows"
+          echo "  n8n-export <id> [output-dir]    Export specific workflow by ID"
+          echo ""
+          echo "Default output: /tmp/n8n-export"
+          echo ""
+          echo "After exporting, copy files to nix-config/n8n/workflows/"
+          ;;
+        *)
+          WORKFLOW_ID="$1"
+          echo "Exporting workflow $WORKFLOW_ID to $OUTPUT_DIR..."
+          sudo -u n8n ${pkgs.n8n}/bin/n8n export:workflow --id="$WORKFLOW_ID" --output="$OUTPUT_DIR/$WORKFLOW_ID.json"
+          echo "Exported: $OUTPUT_DIR/$WORKFLOW_ID.json"
+          echo ""
+          echo "Copy to nix-config/n8n/workflows/ and commit"
           ;;
       esac
     '')

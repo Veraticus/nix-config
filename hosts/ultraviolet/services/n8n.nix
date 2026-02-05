@@ -62,6 +62,8 @@
       N8N_TRUST_PROXY = "true";
       # Enable executeCommand node (disabled by default in v2 for security)
       NODES_EXCLUDE = "[]";
+      # Allow workflows to access env vars (for API keys via EnvironmentFile)
+      N8N_BLOCK_ENV_ACCESS_IN_NODE = "false";
     };
   };
 
@@ -73,6 +75,10 @@
       User = "n8n";
       Group = "n8n";
       DynamicUser = lib.mkForce false;
+      # Allow n8n to read/write the obsidian vault via executeCommand nodes
+      ProtectHome = lib.mkForce false;
+      ProtectSystem = lib.mkForce "full";
+      PrivateTmp = lib.mkForce false;
       EnvironmentFile = [
         config.age.secrets."n8n-anthropic-api-key".path
         config.age.secrets."n8n-ntfy-auth".path

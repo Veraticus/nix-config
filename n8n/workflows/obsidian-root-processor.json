@@ -97,27 +97,40 @@
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "https://api.anthropic.com/v1/messages",
-        "authentication": "none",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+        "jsCode": "const taxonomy = $('Read Taxonomy').first().json.stdout;\nconst noteData = $('Parse Frontmatter').first().json;\n\nconst prompt = `You are an Obsidian vault organizer. Given a note and the vault's folder taxonomy, determine where this note belongs.\n\n## Folder Taxonomy\n${taxonomy}\n\n## Note to Categorize\nFilename: ${noteData.fileName}\n\nExisting frontmatter: ${JSON.stringify(noteData.frontmatter)}\n\nContent:\n${noteData.body.slice(0, 4000)}\n\n## Instructions\n1. Choose the best folder path from the taxonomy above\n2. Be VERY conservative about suggesting new second-level folders - only if nothing existing fits at all\n3. You may suggest new third-level folders if appropriate\n4. Generate a brief summary (1 sentence) if no 'about' field exists\n5. Suggest relevant tags (2-5 tags)\n\nRespond in JSON format only:\n{\n  \"destination\": \"/full/path/to/folder\",\n  \"confidence\": \"high\" | \"medium\" | \"low\",\n  \"summary\": \"one sentence summary (omit if note has 'about' field)\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"reasoning\": \"brief explanation of choice\"\n}`;\n\nreturn [{ json: { ...noteData, prompt } }];"
+      },
+      "id": "build-prompt",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, -100]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": { "__rl": true, "mode": "id", "value": "claude-haiku-4-5-20251001" },
+        "messages": {
+          "values": [
+            { "content": "={{ $json.prompt }}", "role": "user" }
           ]
         },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-20250514\",\n  \"max_tokens\": 1024,\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": \"You are an Obsidian vault organizer. Given a note and the vault's folder taxonomy, determine where this note belongs.\\n\\n## Folder Taxonomy\\n\" + $('Read Taxonomy').first().json.stdout + \"\\n\\n## Note to Categorize\\nFilename: \" + $json.fileName + \"\\n\\nExisting frontmatter: \" + JSON.stringify($json.frontmatter) + \"\\n\\nContent:\\n\" + $json.body.slice(0, 4000) + \"\\n\\n## Instructions\\n1. Choose the best folder path from the taxonomy above\\n2. Be VERY conservative about suggesting new second-level folders - only if nothing existing fits at all\\n3. You may suggest new third-level folders if appropriate\\n4. Generate a brief summary (1 sentence) if no 'about' field exists\\n5. Suggest relevant tags (2-5 tags)\\n\\nRespond in JSON format only:\\n{\\n  \\\"destination\\\": \\\"/full/path/to/folder\\\",\\n  \\\"confidence\\\": \\\"high\\\" | \\\"medium\\\" | \\\"low\\\",\\n  \\\"summary\\\": \\\"one sentence summary (omit if note has 'about' field)\\\",\\n  \\\"tags\\\": [\\\"tag1\\\", \\\"tag2\\\"],\\n  \\\"reasoning\\\": \\\"brief explanation of choice\\\"\\n}\"\n  }]\n}",
-        "options": {}
+        "simplify": false,
+        "options": {
+          "maxTokens": 1024
+        }
       },
       "id": "claude-categorize",
       "name": "Claude Categorize",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [1760, -100]
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [1980, -100],
+      "credentials": {
+        "anthropicApi": {
+          "id": "rGTzFgsM74iw9kiW",
+          "name": "Anthropic account"
+        }
+      }
     },
     {
       "parameters": {
@@ -127,7 +140,7 @@
       "name": "Parse Claude Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1980, -100]
+      "position": [2200, -100]
     },
     {
       "parameters": {
@@ -153,7 +166,7 @@
       "name": "Confident?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
-      "position": [2200, -100]
+      "position": [2420, -100]
     },
     {
       "parameters": {
@@ -163,7 +176,7 @@
       "name": "Build New Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, -200]
+      "position": [2640, -200]
     },
     {
       "parameters": {
@@ -173,17 +186,17 @@
       "name": "Write to Destination",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [2640, -200]
+      "position": [2860, -200]
     },
     {
       "parameters": {
-        "command": "=rm \"{{ $json.filePath }}\""
+        "command": "=rm \"{{ $('Build New Content').first().json.filePath }}\""
       },
       "id": "delete-original",
       "name": "Delete Original",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [2860, -200]
+      "position": [3080, -200]
     },
     {
       "parameters": {
@@ -194,19 +207,20 @@
         "headerParameters": {
           "parameters": [
             { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
-            { "name": "Title", "value": "Obsidian: Note Categorized" }
+            { "name": "Title", "value": "={{ $('Build New Content').first().json.fileName }}" },
+            { "name": "Tags", "value": "file_folder" }
           ]
         },
         "sendBody": true,
         "specifyBody": "string",
-        "body": "=Moved \"{{ $json.fileName }}\" → {{ $json.destination }}",
+        "body": "=Filed to {{ $('Build New Content').first().json.destination.replace('/home/joshsymonds/obsidian-vault/chancel/', '') }}\n{{ $('Build New Content').first().json.reasoning }}",
         "options": {}
       },
       "id": "notify-success",
       "name": "Notify Success",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3080, -200]
+      "position": [3300, -200]
     },
     {
       "parameters": {
@@ -216,7 +230,7 @@
       "name": "Build Error Content",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 0]
+      "position": [2640, 0]
     },
     {
       "parameters": {
@@ -226,7 +240,7 @@
       "name": "Write Error Marker",
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
-      "position": [2640, 0]
+      "position": [2860, 0]
     },
     {
       "parameters": {
@@ -237,20 +251,20 @@
         "headerParameters": {
           "parameters": [
             { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
-            { "name": "Title", "value": "Obsidian: Low Confidence" },
-            { "name": "Priority", "value": "default" }
+            { "name": "Title", "value": "={{ $('Build Error Content').first().json.fileName }}" },
+            { "name": "Tags", "value": "thinking" }
           ]
         },
         "sendBody": true,
         "specifyBody": "string",
-        "body": "=⚠️ \"{{ $json.fileName }}\" left at root - needs manual review\n{{ $json.reasoning }}",
+        "body": "=Left at vault root - needs manual filing\n{{ $('Build Error Content').first().json.reasoning }}",
         "options": {}
       },
       "id": "notify-low-confidence",
       "name": "Notify Low Confidence",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2860, 0]
+      "position": [3080, 0]
     },
     {
       "parameters": {},
@@ -266,7 +280,7 @@
       "name": "Loop Done",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
-      "position": [3300, 0]
+      "position": [3500, 0]
     }
   ],
   "connections": {
@@ -281,8 +295,8 @@
     },
     "Process Each File": {
       "main": [
-        [{ "node": "Read Note", "type": "main", "index": 0 }],
-        [{ "node": "Loop Done", "type": "main", "index": 0 }]
+        [{ "node": "Loop Done", "type": "main", "index": 0 }],
+        [{ "node": "Read Note", "type": "main", "index": 0 }]
       ]
     },
     "Read Note": {
@@ -301,6 +315,9 @@
       "main": [[{ "node": "Process Each File", "type": "main", "index": 0 }]]
     },
     "Read Taxonomy": {
+      "main": [[{ "node": "Build Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Prompt": {
       "main": [[{ "node": "Claude Categorize", "type": "main", "index": 0 }]]
     },
     "Claude Categorize": {

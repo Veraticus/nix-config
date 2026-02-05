@@ -38,6 +38,7 @@ in
       ./services/download-proxies.nix
       ./services/flaresolverr.nix
       ./services/n8n.nix
+      ./services/obsidian.nix
 
       # Import your generated (nixos-generate-config) hardware configuration
       ./hardware-configuration.nix
@@ -260,6 +261,13 @@ in
         file = ../../secrets/hosts/ultraviolet/redlib-collections.age;
         owner = "root";
         group = "root";
+        mode = "0400";
+      };
+
+      "x11vnc-password" = {
+        file = ../../secrets/hosts/ultraviolet/x11vnc-password.age;
+        owner = "joshsymonds";
+        group = "users";
         mode = "0400";
       };
     };

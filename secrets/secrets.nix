@@ -16,6 +16,9 @@ in {
   "secrets/hosts/ultraviolet/shimmer-jwt-secret.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/shimmer-env.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/invidious-companion-key.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/x11vnc-password.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/n8n-anthropic-api-key.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/n8n-ntfy-auth.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/vermissian/cloudflared-token.age".publicKeys = keys.vermissian;
   "secrets/hosts/vermissian/coder-ghcr-cache-auth.age".publicKeys = keys.vermissian;
 }

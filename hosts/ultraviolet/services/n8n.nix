@@ -3,10 +3,45 @@
   config,
   lib,
   ...
-}: let
-  # Git-tracked workflows directory - Claude creates these, sync to n8n on rebuild
-  workflowsDir = ../../../n8n/workflows;
-in {
+}: {
+  # Create n8n user for the service
+  users.users.n8n = {
+    isSystemUser = true;
+    group = "n8n";
+    home = "/var/lib/n8n";
+    createHome = true;
+  };
+  users.groups.n8n = {};
+
+  # Set ACLs to give n8n access to obsidian vault without changing ownership
+  system.activationScripts.n8n-vault-acl = {
+    deps = ["users"];
+    text = ''
+      # Execute permission on parent directories for traversal
+      ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds
+      ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds/obsidian-vault
+      # Full access to chancel and all contents
+      ${pkgs.acl}/bin/setfacl -R -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
+      ${pkgs.acl}/bin/setfacl -R -d -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
+    '';
+  };
+
+  # Secrets for n8n workflows
+  age.secrets = {
+    "n8n-anthropic-api-key" = {
+      file = ../../../secrets/hosts/ultraviolet/n8n-anthropic-api-key.age;
+      owner = "root";
+      group = "root";
+      mode = "0444"; # Readable by n8n service via EnvironmentFile
+    };
+    "n8n-ntfy-auth" = {
+      file = ../../../secrets/hosts/ultraviolet/n8n-ntfy-auth.age;
+      owner = "root";
+      group = "root";
+      mode = "0444";
+    };
+  };
+
   # n8n workflow automation
   # Access via Cloudflare Tunnel at n8n.husbuddies.gay
   # Configure route in Cloudflare dashboard: n8n.husbuddies.gay -> http://localhost:5678
@@ -25,33 +60,24 @@ in {
       N8N_AUTH_EXCLUDE_ENDPOINTS = "*";
       # Trust proxy headers from Cloudflare
       N8N_TRUST_PROXY = "true";
+      # Enable executeCommand node (disabled by default in v2 for security)
+      NODES_EXCLUDE = "[]";
     };
   };
 
-  # Override n8n service to add workflow import on startup
+  # Configure n8n service to use our static user instead of DynamicUser
   systemd.services.n8n = {
-    # Import git-tracked workflows before starting n8n
-    preStart = let
-      importScript = pkgs.writeShellScript "n8n-import-workflows" ''
-        set -euo pipefail
-
-        WORKFLOWS_DIR="${workflowsDir}"
-
-        # Check if workflows directory has any JSON files
-        if compgen -G "$WORKFLOWS_DIR/*.json" > /dev/null 2>&1; then
-          echo "Importing workflows from $WORKFLOWS_DIR..."
-          ${pkgs.n8n}/bin/n8n import:workflow --separate --input="$WORKFLOWS_DIR" || {
-            echo "Warning: Workflow import failed (may be first run before DB init)"
-          }
-          echo "Workflow import complete"
-        else
-          echo "No workflow files found in $WORKFLOWS_DIR"
-        fi
-      '';
-    in
-      lib.mkAfter ''
-        ${importScript}
-      '';
+    # Add nodejs to PATH for task runner child processes (Code nodes)
+    path = [pkgs.nodejs];
+    serviceConfig = {
+      User = "n8n";
+      Group = "n8n";
+      DynamicUser = lib.mkForce false;
+      EnvironmentFile = [
+        config.age.secrets."n8n-anthropic-api-key".path
+        config.age.secrets."n8n-ntfy-auth".path
+      ];
+    };
   };
 
   # Backup service for n8n database
@@ -179,6 +205,52 @@ in {
       esac
     '')
 
+    # Import workflow(s) into n8n from git
+    (pkgs.writeShellScriptBin "n8n-import" ''
+      set -e
+
+      WORKFLOWS_DIR="/home/joshsymonds/nix-config/n8n/workflows"
+
+      # Run n8n CLI as root with n8n's data directory
+      run_n8n() {
+        sudo HOME=/var/lib/n8n N8N_USER_FOLDER=/var/lib/n8n ${pkgs.n8n}/bin/n8n "$@"
+      }
+
+      case "''${1:-help}" in
+        all|--all|-a)
+          echo "Importing all workflows from $WORKFLOWS_DIR..."
+          for f in "$WORKFLOWS_DIR"/*.json; do
+            [ -e "$f" ] || continue
+            echo "Importing $(basename "$f")..."
+            run_n8n import:workflow --input="$f"
+          done
+          sudo chown -R n8n:n8n /var/lib/n8n
+          echo ""
+          echo "Done. Activate workflows in n8n UI at https://n8n.husbuddies.gay"
+          ;;
+        help|--help|-h|"")
+          echo "n8n-import - Import workflows from git"
+          echo ""
+          echo "Usage:"
+          echo "  n8n-import all              Import all workflows from nix-config"
+          echo "  n8n-import <path>           Import specific workflow JSON file"
+          echo ""
+          echo "Workflows dir: $WORKFLOWS_DIR"
+          ;;
+        *)
+          INPUT_FILE="$1"
+          if [ ! -f "$INPUT_FILE" ]; then
+            echo "Error: File not found: $INPUT_FILE"
+            exit 1
+          fi
+          echo "Importing $INPUT_FILE..."
+          run_n8n import:workflow --input="$INPUT_FILE"
+          sudo chown -R n8n:n8n /var/lib/n8n
+          echo "Done. Activate in n8n UI."
+          ;;
+      esac
+    '')
+
     # Export workflow(s) from n8n for reconciliation with git
     (pkgs.writeShellScriptBin "n8n-export" ''
       set -e
@@ -186,10 +258,15 @@ in {
       OUTPUT_DIR="''${2:-/tmp/n8n-export}"
       mkdir -p "$OUTPUT_DIR"
 
+      # Run n8n CLI as root with n8n's data directory
+      run_n8n() {
+        sudo HOME=/var/lib/n8n N8N_USER_FOLDER=/var/lib/n8n ${pkgs.n8n}/bin/n8n "$@"
+      }
+
       case "''${1:-help}" in
         all|--all|-a)
           echo "Exporting all workflows to $OUTPUT_DIR..."
-          sudo -u n8n ${pkgs.n8n}/bin/n8n export:workflow --all --separate --output="$OUTPUT_DIR"
+          run_n8n export:workflow --all --separate --output="$OUTPUT_DIR"
           echo ""
           echo "Exported workflows:"
           ls -la "$OUTPUT_DIR"/*.json 2>/dev/null || echo "No workflows found"
@@ -210,7 +287,7 @@ in {
         *)
           WORKFLOW_ID="$1"
           echo "Exporting workflow $WORKFLOW_ID to $OUTPUT_DIR..."
-          sudo -u n8n ${pkgs.n8n}/bin/n8n export:workflow --id="$WORKFLOW_ID" --output="$OUTPUT_DIR/$WORKFLOW_ID.json"
+          run_n8n export:workflow --id="$WORKFLOW_ID" --output="$OUTPUT_DIR/$WORKFLOW_ID.json"
           echo "Exported: $OUTPUT_DIR/$WORKFLOW_ID.json"
           echo ""
           echo "Copy to nix-config/n8n/workflows/ and commit"

@@ -40,6 +40,12 @@
       group = "root";
       mode = "0444";
     };
+    "n8n-user-bio" = {
+      file = ../../../secrets/hosts/ultraviolet/n8n-user-bio.age;
+      owner = "root";
+      group = "root";
+      mode = "0444";
+    };
   };
 
   # n8n workflow automation
@@ -82,6 +88,7 @@
       EnvironmentFile = [
         config.age.secrets."n8n-anthropic-api-key".path
         config.age.secrets."n8n-ntfy-auth".path
+        config.age.secrets."n8n-user-bio".path
       ];
     };
   };

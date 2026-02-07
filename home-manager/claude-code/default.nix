@@ -31,6 +31,7 @@ in {
       NPM_CONFIG_PREFIX = "$HOME/.npm-global";
       CC_TOOLS_SOCKET = "/run/user/\${UID}/cc-tools.sock";
       CLAUDE_CODE_ENABLE_TASKS = "true";
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
     };
 
     # Create and manage ~/.claude directory

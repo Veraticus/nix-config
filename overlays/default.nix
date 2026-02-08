@@ -51,17 +51,6 @@ in {
       version = "0.9.21";
     });
 
-    catppuccin-gtk = prev.catppuccin-gtk.override {
-      accents = ["lavender"];
-      size = "compact";
-      tweaks = ["rimless" "black"];
-      variant = "mocha";
-    };
-
-    catppuccin-plymouth = prev.catppuccin-plymouth.override {
-      variant = "mocha";
-    };
-
     moor = prev.moor.overrideAttrs (_: {
       version = moarVersion;
       src = final.fetchFromGitHub {

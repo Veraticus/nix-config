@@ -3,6 +3,7 @@
     ./common.nix
     ./aerospace
     ./devspaces-client
+    ./go
     ./ssh-hosts
     ./ssh-config
     ./linkpearl
@@ -15,6 +16,7 @@
     maple-mono.NF-CN-unhinted
   ];
 
+  programs.go.enable = true;
   programs.zsh.shellAliases.update = "sudo darwin-rebuild switch --flake \".#$(hostname -s)\" --option warn-dirty false";
   programs.kitty.font.size = 13;
 }

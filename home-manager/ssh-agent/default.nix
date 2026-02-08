@@ -109,22 +109,6 @@ in {
     SSH_AUTH_SOCK = sshAgentSocket;
   };
 
-  # macOS: launchd agent for SSH key management
-  launchd.agents.ssh-add-git-keys = lib.mkIf pkgs.stdenv.isDarwin {
-    enable = true;
-    config = {
-      Label = "com.user.ssh-add-git-keys";
-      ProgramArguments = ["${addGitKeys}/bin/ssh-add-git-keys"];
-      RunAtLoad = true;
-      KeepAlive = false;
-      StandardOutPath = "/tmp/ssh-add-git-keys.log";
-      StandardErrorPath = "/tmp/ssh-add-git-keys.error.log";
-      EnvironmentVariables = {
-        PATH = "/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/bin";
-      };
-    };
-  };
-
   # Add the helper script to user packages
   home.packages = [addGitKeys];
 }

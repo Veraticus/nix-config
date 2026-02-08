@@ -116,10 +116,6 @@ in {
         fi
       ''}
 
-      # Prepend Homebrew to PATH so it takes precedence over Nix packages
-      # This fixes issues with broken Nix packages like shellspec
-      [ -d "/opt/homebrew/bin" ] && export PATH=/opt/homebrew/bin:''${PATH}
-
       # Disable mouse reporting in shell when not in tmux
       # This prevents raw mouse escape sequences from appearing
       if [ -z "$TMUX" ] && [ -n "$SSH_TTY" ]; then

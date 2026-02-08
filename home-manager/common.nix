@@ -6,9 +6,6 @@
 }: let
   tmuxDevspaceHelper =
     pkgs.writeShellScriptBin "tmux-devspace" (builtins.readFile ./tmux/scripts/tmux-devspace.sh);
-  firefoxCli = pkgs.writeShellScriptBin "firefox" ''
-    open -n -a "${pkgs.firefox-bin-unwrapped}/Applications/Firefox.app" "$@"
-  '';
 in {
   imports = [
     ./atuin
@@ -48,7 +45,6 @@ in {
           devenv
           docker
           eza
-          eternal-terminal
           fzf
           gh
           git
@@ -72,7 +68,6 @@ in {
           parallel
         ]
         ++ lib.optionals (!stdenv.isDarwin) [parted]
-        ++ lib.optionals stdenv.isDarwin [firefoxCli]
         ++ [
           ranger
           ripgrep

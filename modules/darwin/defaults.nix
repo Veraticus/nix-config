@@ -24,7 +24,7 @@
       NSAutomaticSpellingCorrectionEnabled = false;
       NSWindowResizeTime = 0.001;
       NSWindowShouldDragOnGesture = true;
-      _HIHideMenuBar = true;
+      _HIHideMenuBar = false;
     };
 
     trackpad = {

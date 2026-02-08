@@ -3,6 +3,11 @@
   lib,
   ...
 }: {
+  # Settings not yet in nix-darwin's system.defaults
+  system.activationScripts.extraDefaults.text = ''
+    defaults write NSGlobalDomain AppleReduceDesktopTinting -bool true
+  '';
+
   system.defaults = {
     NSGlobalDomain = {
       AppleFontSmoothing = 1;
@@ -10,12 +15,26 @@
       ApplePressAndHoldEnabled = false;
       AppleShowAllExtensions = true;
       AppleShowScrollBars = "Automatic";
+      InitialKeyRepeat = 10;
+      KeyRepeat = 1;
       NSAutomaticCapitalizationEnabled = false;
       NSAutomaticDashSubstitutionEnabled = false;
       NSAutomaticPeriodSubstitutionEnabled = false;
       NSAutomaticQuoteSubstitutionEnabled = false;
       NSAutomaticSpellingCorrectionEnabled = false;
-      _HIHideMenuBar = false;
+      NSWindowResizeTime = 0.001;
+      NSWindowShouldDragOnGesture = true;
+      _HIHideMenuBar = true;
+    };
+
+    trackpad = {
+      Clicking = true;
+    };
+
+    screencapture = {
+      disable-shadow = true;
+      location = "~/Desktop";
+      type = "png";
     };
 
     dock = {
@@ -30,6 +49,16 @@
       minimize-to-application = true;
       mru-spaces = false;
       orientation = "bottom";
+      persistent-apps = [
+        "/Applications/1Password.app"
+        "/Applications/Spark Desktop.app"
+        "/Applications/Firefox.app"
+        "/Applications/Nix Apps/kitty.app"
+        "/Applications/Spotify.app"
+        "/Applications/Obsidian.app"
+        "/Applications/Signal.app"
+        "/System/Applications/Messages.app"
+      ];
       show-process-indicators = true;
       show-recents = false;
       tilesize = 36;
@@ -52,6 +81,12 @@
 
     spaces = {
       spans-displays = true;
+    };
+
+    WindowManager = {
+      StandardHideWidgets = true;
+      StageManagerHideWidgets = true;
+      EnableStandardClickToShowDesktop = false;
     };
   };
 }

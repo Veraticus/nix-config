@@ -102,13 +102,6 @@ _: {
                   type: jellyfin
                   url: http://127.0.0.1:8096
                   key: {{HOMEPAGE_FILE_JELLYFIN_API_KEY}}
-            - Transmission:
-                icon: transmission.png
-                href: https://transmission.home.husbuddies.gay
-                description: Torrent management
-                widget:
-                  type: transmission
-                  url: http://172.31.0.201:9091
             - SABnzbd:
                 icon: sabnzbd.png
                 href: https://sabnzbd.home.husbuddies.gay

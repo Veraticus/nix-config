@@ -10,7 +10,7 @@ _: {
     ];
     extraOptions = [
       "--network=host"
-      "--cpu-shares=512"
+      "--cpu-shares=1024"
       "--memory=2g"
       "--security-opt=no-new-privileges"
     ];

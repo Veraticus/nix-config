@@ -1,6 +1,6 @@
 _: {
   systemd.tmpfiles.rules = [
-    "d /etc/bazarr/config 0644 root root -"
+    "d /etc/bazarr/config 0755 1000 1000 -"
   ];
 
   virtualisation.oci-containers.containers.bazarr = {
@@ -13,8 +13,8 @@ _: {
       "/mnt/video/:/mnt/video"
     ];
     environment = {
-      PUID = "0";
-      PGID = "0";
+      PUID = "1000";
+      PGID = "1000";
     };
     autoStart = true;
     extraOptions = [

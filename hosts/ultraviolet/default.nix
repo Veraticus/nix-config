@@ -32,6 +32,10 @@ in
       ./services/arr-extras.nix
       ./services/jellyseerr.nix
       ./services/bazarr.nix
+      ./services/arr-healthcheck.nix
+      ./services/service-reliability.nix
+      ./services/media-backups.nix
+      ./services/recyclarr.nix
       ./services/invidious.nix
       ./services/redlib.nix
       ./services/shimmer.nix

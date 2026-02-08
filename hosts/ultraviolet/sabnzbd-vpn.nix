@@ -55,7 +55,7 @@
 
       # SABnzbd container - routes through Gluetun
       sabnzbd = {
-        image = "linuxserver/sabnzbd:latest";
+        image = "linuxserver/sabnzbd:4.5.2";
 
         environment = {
           PUID = "1000";

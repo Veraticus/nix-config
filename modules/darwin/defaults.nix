@@ -58,6 +58,7 @@
         "/Applications/Obsidian.app"
         "/Applications/Signal.app"
         "/System/Applications/Messages.app"
+        "/Applications/Claude.app"
       ];
       show-process-indicators = true;
       show-recents = false;

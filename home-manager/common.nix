@@ -44,6 +44,7 @@ in {
           curl
           devenv
           docker
+          eternal-terminal
           eza
           fzf
           gh

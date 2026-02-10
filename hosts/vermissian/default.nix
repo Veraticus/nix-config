@@ -13,7 +13,6 @@ in
   }: {
     # You can import other NixOS modules here
     imports = [
-      ../../modules/services/egoengine-coder.nix
       ../../modules/services/cloudflare-tunnel.nix
       ./hardware-configuration.nix
     ];
@@ -166,41 +165,6 @@ in
           };
         };
 
-        "coder-ghcr-cache-config" = {
-          description = "Install GHCR cache Docker config for Coder";
-          after = ["run-agenix.d.mount"];
-          before = ["docker-coder.service"];
-          partOf = ["docker-coder.service"];
-          wantedBy = ["multi-user.target"];
-          restartTriggers = [config.age.secrets."coder-ghcr-cache-auth".path];
-          serviceConfig = {
-            Type = "oneshot";
-            ExecStart = pkgs.writeShellScript "install-ghcr-cache-config" ''
-              set -euo pipefail
-              ${pkgs.coreutils}/bin/install -d -m 0750 -o root -g root /var/lib/coder/ghcr-cache
-              if ! read -r auth_line <${config.age.secrets."coder-ghcr-cache-auth".path}; then
-                echo "Unable to read GHCR auth secret" >&2
-                exit 1
-              fi
-              username="''${auth_line%%=*}"
-              token="''${auth_line#*=}"
-              if [ -z "$username" ] || [ -z "$token" ] || [ "$username" = "$auth_line" ]; then
-                echo "Invalid GHCR auth secret format (expected username=token)" >&2
-                exit 1
-              fi
-              auth=$(${pkgs.coreutils}/bin/printf '%s:%s' "$username" "$token" | ${pkgs.coreutils}/bin/base64 -w0)
-              config_path="/var/lib/coder/ghcr-cache/config.json"
-              ${pkgs.jq}/bin/jq -n --arg auth "$auth" "{ \"auths\": { \"ghcr.io\": { \"auth\": \$auth } } }" > "$config_path"
-              chmod 600 "$config_path"
-            '';
-          };
-        };
-
-        "docker-coder" = {
-          after = lib.mkAfter ["coder-ghcr-cache-config.service"];
-          requires = lib.mkAfter ["coder-ghcr-cache-config.service"];
-        };
-
         remote-mounts = {
           description = "Check if remote mounts are available";
           after = [
@@ -331,13 +295,6 @@ in
       mode = "0400";
     };
 
-    age.secrets."coder-ghcr-cache-auth" = {
-      file = ../../secrets/hosts/vermissian/coder-ghcr-cache-auth.age;
-      owner = "root";
-      group = "root";
-      mode = "0400";
-    };
-
     services = {
       tailscale = {
         enable = true;
@@ -349,13 +306,6 @@ in
       cloudflareTunnel = {
         enable = true;
         tokenFile = config.age.secrets."cloudflared-token".path;
-      };
-
-      egoengine.coder = {
-        enable = true;
-        accessUrl = "https://coder.husbuddies.gay";
-        internalUrl = "https://coder.husbuddies.gay";
-        autoRegisterTemplates = false;
       };
     };
 

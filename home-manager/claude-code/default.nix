@@ -86,6 +86,14 @@ in {
       mkdir -p "$HOME/.local/bin"
       rm -f "$HOME/.local/bin/claude"
       ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
+
+      # Ensure vim mode is enabled in Claude Code preferences
+      CLAUDE_PREFS="$HOME/.claude.json"
+      if [ -f "$CLAUDE_PREFS" ]; then
+        ${pkgs.jq}/bin/jq '.editorMode = "vim"' "$CLAUDE_PREFS" > "$CLAUDE_PREFS.tmp" && mv "$CLAUDE_PREFS.tmp" "$CLAUDE_PREFS"
+      else
+        echo '{"editorMode":"vim"}' > "$CLAUDE_PREFS"
+      fi
     '';
 
     # Install declared plugins if not already installed

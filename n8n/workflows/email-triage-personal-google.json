@@ -10,8 +10,7 @@
         "simple": false,
         "filters": {
           "readStatus": "unread",
-          "includeSpamTrash": false,
-          "q": "subject:N8N_TRIAGE_TEST"
+          "includeSpamTrash": false
         }
       },
       "id": "gmail-trigger",
@@ -226,8 +225,8 @@
         "content": "=Email: {{ $json.subject }}",
         "project": {
           "__rl": true,
-          "mode": "list",
-          "value": ""
+          "mode": "id",
+          "value": "6Wx6X8FJCCG3jpWM"
         },
         "options": {
           "description": "=From: {{ $json.from }}\nDate: {{ $json.date }}\n\n{{ $json.reasoning }}",

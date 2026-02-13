@@ -194,5 +194,22 @@ in {
       BROWSER = "remote-link-open";
       DEFAULT_BROWSER = "remote-link-open";
     };
+
+    # systemd user service to keep tmux server running (Linux only)
+    systemd.user.services.tmux = mkIf pkgs.stdenv.isLinux {
+      Unit = {
+        Description = "tmux server";
+      };
+      Service = {
+        Type = "forking";
+        ExecStart = "${pkgs.tmux}/bin/tmux new-session -d -s main";
+        ExecStop = "${pkgs.tmux}/bin/tmux kill-server";
+        Restart = "on-failure";
+        RestartSec = "2s";
+      };
+      Install = {
+        WantedBy = ["default.target"];
+      };
+    };
   };
 }

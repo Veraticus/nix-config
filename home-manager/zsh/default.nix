@@ -110,9 +110,12 @@ in {
       }
 
       ${lib.optionalString autoAttachRemoteTmux ''
-        # Auto-start tmux on remote hosts unless explicitly disabled
+        # Auto-attach to tmux on remote hosts (managed by systemd user service)
+        # No exec — shell survives if tmux dies, so kill-server is safe
         if [[ $- == *i* ]] && [[ -z "''${TMUX:-}" ]] && [[ "''${NO_REMOTE_TMUX:-0}" != 1 ]]; then
-          exec tmux -u new-session -A -s main
+          if tmux has-session -t main 2>/dev/null; then
+            tmux attach -t main
+          fi
         fi
       ''}
 

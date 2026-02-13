@@ -36,8 +36,8 @@
       group = "root";
       mode = "0444"; # Readable by n8n service via EnvironmentFile
     };
-    "n8n-ntfy-auth" = {
-      file = ../../../secrets/hosts/ultraviolet/n8n-ntfy-auth.age;
+    "n8n-ntfy-url" = {
+      file = ../../../secrets/hosts/ultraviolet/n8n-ntfy-url.age;
       owner = "root";
       group = "root";
       mode = "0444";
@@ -89,7 +89,7 @@
       PrivateTmp = lib.mkForce false;
       EnvironmentFile = [
         config.age.secrets."n8n-anthropic-api-key".path
-        config.age.secrets."n8n-ntfy-auth".path
+        config.age.secrets."n8n-ntfy-url".path
         config.age.secrets."n8n-user-bio".path
       ];
     };

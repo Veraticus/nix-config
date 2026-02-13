@@ -201,12 +201,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://ntfy.sh/n8n",
+        "url": "={{ $env.NTFY_URL }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
             { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "={{ $('Build New Content').first().json.fileName }}" },
             { "name": "Tags", "value": "file_folder" }
@@ -246,12 +245,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://ntfy.sh/n8n",
+        "url": "={{ $env.NTFY_URL }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
             { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "={{ $('Build Error Content').first().json.fileName }}" },
             { "name": "Tags", "value": "thinking" }

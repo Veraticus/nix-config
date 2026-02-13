@@ -195,21 +195,20 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://ntfy.sh/n8n",
+        "url": "={{ $env.NTFY_URL }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
             { "name": "Content-Type", "value": "text/plain" },
-            { "name": "Title", "value": "={{ $('Extract Metadata').first().json.subject }}" },
+            { "name": "Title", "value": "Urgent email received" },
             { "name": "Priority", "value": "high" },
             { "name": "Tags", "value": "rotating_light" }
           ]
         },
         "sendBody": true,
         "specifyBody": "string",
-        "body": "=From: {{ $('Extract Metadata').first().json.from }}\n{{ $('Parse Response').first().json.reasoning }}",
+        "body": "Check your email app for details",
         "options": {}
       },
       "id": "notify-urgent",
@@ -248,21 +247,20 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://ntfy.sh/n8n",
+        "url": "={{ $env.NTFY_URL }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
             { "name": "Content-Type", "value": "text/plain" },
-            { "name": "Title", "value": "=Calendar: {{ $json.subject }}" },
+            { "name": "Title", "value": "Calendar invite received" },
             { "name": "Priority", "value": "default" },
             { "name": "Tags", "value": "calendar" }
           ]
         },
         "sendBody": true,
         "specifyBody": "string",
-        "body": "=From: {{ $json.from }}\n{{ $json.reasoning }}",
+        "body": "Check your email app for details",
         "options": {}
       },
       "id": "notify-calendar",
@@ -312,12 +310,11 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://ntfy.sh/n8n",
+        "url": "={{ $env.NTFY_URL }}",
         "authentication": "none",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "={{ $env.NTFY_AUTH }}" },
             { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "Email triage error" },
             { "name": "Priority", "value": "high" },
@@ -326,7 +323,7 @@
         },
         "sendBody": true,
         "specifyBody": "string",
-        "body": "=Failed to categorize email from {{ $json.from }}\nSubject: {{ $json.subject }}\nError: {{ $json.reasoning }}",
+        "body": "=Failed to categorize an email. Check n8n for details.\nError: {{ $json.reasoning }}",
         "options": {}
       },
       "id": "notify-error",

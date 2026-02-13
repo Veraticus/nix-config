@@ -66,6 +66,17 @@ if [[ "${CLAUDE_HOOKS_NTFY_DISABLED:-}" == "true" ]]; then
     exit 0
 fi
 
+# Load URL from file if CLAUDE_HOOKS_NTFY_URL is not set
+if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]] && [[ -n "${CLAUDE_HOOKS_NTFY_URL_FILE:-}" ]]; then
+    if [[ -f "$CLAUDE_HOOKS_NTFY_URL_FILE" ]]; then
+        CLAUDE_HOOKS_NTFY_URL=$(cat "$CLAUDE_HOOKS_NTFY_URL_FILE")
+        export CLAUDE_HOOKS_NTFY_URL
+        log_debug "Loaded URL from $CLAUDE_HOOKS_NTFY_URL_FILE"
+    else
+        log_debug "URL file not found: $CLAUDE_HOOKS_NTFY_URL_FILE"
+    fi
+fi
+
 # Try to read configuration from file if CLAUDE_HOOKS_NTFY_URL is not set
 if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]]; then
     CONFIG_FILE="$HOME/.config/claude-code-ntfy/config.yaml"

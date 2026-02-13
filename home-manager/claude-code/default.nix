@@ -8,6 +8,10 @@
   # Get cc-tools binaries from the flake
   cc-tools = inputs.cc-tools.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in {
+  age.secrets."ntfy-url" = {
+    file = ../../secrets/user/ntfy-url.age;
+  };
+
   home = {
     # Install Node.js to enable npm
     packages =
@@ -33,7 +37,7 @@ in {
       CC_TOOLS_SOCKET = "/run/user/\${UID}/cc-tools.sock";
       CLAUDE_CODE_ENABLE_TASKS = "true";
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
-      CLAUDE_HOOKS_NTFY_URL = "https://ntfy.sh/CUFVGE2uFcTRl7Br";
+      CLAUDE_HOOKS_NTFY_URL_FILE = config.age.secrets."ntfy-url".path;
     };
 
     # Create and manage ~/.claude directory

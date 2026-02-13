@@ -7,6 +7,9 @@ in {
   "secrets/shared/coder-db-password.age".publicKeys = keys.vermissian;
   "secrets/shared/coder-env.age".publicKeys = keys.vermissian;
 
+  # User secrets (home-manager agenix, all machines)
+  "secrets/user/ntfy-url.age".publicKeys = keys.joshsymonds;
+
   # Host-specific secrets
   "secrets/hosts/ultraviolet/cloudflare-api-token.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/cloudflared-token.age".publicKeys = keys.ultraviolet;
@@ -18,7 +21,7 @@ in {
   "secrets/hosts/ultraviolet/invidious-companion-key.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/x11vnc-password.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/n8n-anthropic-api-key.age".publicKeys = keys.ultraviolet;
-  "secrets/hosts/ultraviolet/n8n-ntfy-auth.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/n8n-ntfy-url.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/n8n-user-bio.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/mullvad-privatekey.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/mullvad-addresses.age".publicKeys = keys.ultraviolet;

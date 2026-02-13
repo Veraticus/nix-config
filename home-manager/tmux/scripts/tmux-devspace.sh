@@ -1,455 +1,192 @@
 #!/usr/bin/env bash
+# tmux-devspace — manage named tmux sessions with dev context metadata
+#
+# Commands:
+#   new [--label L] [--icon I] [--name N] [name] [-- cmd...]  Create session
+#   attach [--icon I] <name> [-- cmd...]                       Attach or create
+#   name                                                        Print auto name
+#   rename [cmd]                                                Auto-rename session
+#   title-path [path]                                           Fish-style path
 set -euo pipefail
 
-separator='·'
-truncation_length=2
-fish_component_length=2
-truncation_symbol='…/'
-label_override=''
-new_icon=''
+die() { echo "tmux-devspace: $*" >&2; exit 64; }
 
-usage() {
-  cat <<'USAGE' >&2
-Usage: tmux-devspace <command> [args]
-  new [--label slug] [name] [-- command ...]
-                             Create a tmux session (auto name if NAME omitted)
-  attach <name> [command ...] Attach to a session, creating it if needed
-  name                        Print a generated session name
-  rename [command]            Recompute and rename the current session (inside tmux)
-USAGE
-  exit 64
+# --- Helpers ---
+
+sanitize() {
+  local s="${1,,}"                          # lowercase
+  s="${s//[^[:alnum:]-]/-}"                 # replace non-alnum
+  s="${s##-}"; s="${s%%-}"                   # trim leading/trailing -
+  s="${s//--/-}"                             # collapse --
+  printf '%s' "${s:-session}"
 }
 
-ensure_tmux() {
-  if ! command -v tmux >/dev/null 2>&1; then
-    echo "tmux-devspace: tmux is not available in PATH" >&2
-    exit 127
-  fi
+label() {
+  # Priority: explicit override > TMUX_LABEL_OVERRIDE > TMUX_DEVSPACE > hostname
+  printf '%s' "${label_override:-${TMUX_LABEL_OVERRIDE:-${TMUX_DEVSPACE:-$(hostname -s 2>/dev/null || echo host)}}}"
 }
 
-sanitize_label() {
-  local input="$1"
-  input=$(printf '%s' "$input" | tr '[:upper:]' '[:lower:]')
-  input=$(printf '%s' "$input" | tr -c '[:alnum:]-' '-')
-  input=$(printf '%s' "$input" | sed 's/^-*//;s/-*$//;s/--*/-/g')
-  if [ -z "$input" ]; then
-    input="session"
+compress_path() {
+  local path="${1:-${PWD:-$(pwd)}}" prefix=""
+  if [[ "$path" == "$HOME"* ]]; then
+    prefix="~"; path="${path#"$HOME"}"
   fi
-  printf '%s' "$input"
-}
-
-effective_label() {
-  if [ -n "$label_override" ]; then
-    printf '%s' "$label_override"
-  elif [ -n "${TMUX_LABEL_OVERRIDE:-}" ]; then
-    printf '%s' "$TMUX_LABEL_OVERRIDE"
-  elif [ -n "${TMUX_DEVSPACE:-}" ]; then
-    printf '%s' "$TMUX_DEVSPACE"
-  else
-    local host
-    host=$(hostname -s 2>/dev/null || hostname 2>/dev/null || echo "host")
-    printf '%s' "$host"
-  fi
-}
-
-host_segment() {
-  printf '%s' "$(effective_label)"
-}
-
-strip_path() {
-  local input="${1:-}"
-  local path home prefix
-  if [ -n "$input" ]; then
-    path="$input"
-  else
-    path=${PWD:-$(pwd)}
-  fi
-  home=${HOME:-}
-  prefix=""
-
-  if [ -n "$home" ] && [ "${path#"${home}"}" != "$path" ]; then
-    prefix="~"
-    path="${path#$home}"
-  fi
-
   path="${path#/}"
-  IFS='/' read -r -a raw_parts <<< "$path"
-  local parts=()
-  for seg in "${raw_parts[@]}"; do
-    if [ -n "$seg" ]; then
-      parts+=( "$seg" )
-    fi
+  [[ -z "$path" ]] && { printf '%s' "${prefix:-/}"; return; }
+
+  IFS='/' read -ra parts <<< "$path"
+  local n=${#parts[@]}
+  if (( n > 2 )); then
+    printf '%s/…/%s/%s' "$prefix" "${parts[-2]}" "${parts[-1]}"
+  elif (( n == 2 )); then
+    local short="${parts[0]}"; (( ${#short} > 2 )) && short="${short:0:2}"
+    printf '%s/%s/%s' "$prefix" "$short" "${parts[1]}"
+  else
+    printf '%s/%s' "$prefix" "${parts[0]}"
+  fi
+}
+
+command_name() {
+  local cmd="${1:-}"
+  [[ -z "$cmd" ]] && { basename "${SHELL:-zsh}"; return; }
+  cmd="${cmd%%$'\n'*}"       # first line
+  cmd="${cmd%% *}"           # first word
+  printf '%s' "${cmd##*/}"   # strip path
+}
+
+dynamic_name() {
+  printf '%s·%s·%s' "$(label)" "$(compress_path)" "$(command_name "${1:-}")"
+}
+
+set_context() {
+  local session="$1" lbl="$2" auto="$3" icon="${4:-}"
+  local -a vars=(
+    "TMUX_DEVSPACE=$lbl"
+    "TMUX_LABEL_OVERRIDE=$lbl"
+    "TMUX_AUTO_NAME=$auto"
+    "DEV_CONTEXT=$lbl"
+    "DEV_CONTEXT_KIND=tmux"
+  )
+  [[ -n "$icon" ]] && vars+=("DEV_CONTEXT_ICON=$icon")
+  for v in "${vars[@]}"; do
+    tmux set-environment -t "$session" -g "${v%%=*}" "${v#*=}" 2>/dev/null || true
   done
+  tmux set-option -t "$session" @dev_context "$lbl" 2>/dev/null || true
+  tmux set-option -t "$session" @dev_context_kind "tmux" 2>/dev/null || true
+  [[ -n "$icon" ]] && tmux set-option -t "$session" @dev_context_icon "$icon" 2>/dev/null || true
+}
 
-  if [ ${#parts[@]} -eq 0 ]; then
-    if [ -n "$prefix" ]; then
-      printf '%s' "$prefix"
-    else
-      printf '/'
-    fi
-    return
-  fi
-
-  local truncated=0
-  local formatted=()
-  if [ ${#parts[@]} -gt $truncation_length ]; then
-    truncated=1
-    parts=( "${parts[@]: -$truncation_length}" )
-    formatted=( "${parts[@]}" )
+connect() {
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux switch-client -t "$1"
   else
-    local last_index=$(( ${#parts[@]} - 1 ))
-    local idx=0
-    for seg in "${parts[@]}"; do
-      if [ $idx -lt $last_index ]; then
-        if [ ${#seg} -gt $fish_component_length ]; then
-          formatted+=( "${seg:0:$fish_component_length}" )
-        else
-          formatted+=( "$seg" )
-        fi
-      else
-        formatted+=( "$seg" )
-      fi
-      idx=$(( idx + 1 ))
-    done
-  fi
-
-  local combined=""
-  for seg in "${formatted[@]}"; do
-    if [ -n "$combined" ]; then
-      combined="${combined}/${seg}"
-    else
-      combined="$seg"
-    fi
-  done
-
-  local indicator=""
-  if [ $truncated -eq 1 ]; then
-    indicator=$truncation_symbol
-  fi
-
-  if [ -n "$prefix" ]; then
-    if [ -n "$combined" ]; then
-      printf '%s/%s%s' "$prefix" "$indicator" "$combined"
-    else
-      printf '%s' "$prefix"
-    fi
-  else
-    if [ -n "$combined" ]; then
-      printf '/%s%s' "$indicator" "$combined"
-    else
-      printf '/'
-    fi
+    exec tmux attach-session -t "$1"
   fi
 }
 
-command_segment() {
-  local input="${1:-}"
-  if [ -z "$input" ]; then
-    printf '%s' "$(basename "${SHELL:-zsh}")"
-    return
-  fi
+# --- Commands ---
 
-  input="${input%%$'\n'*}"
-  local first="${input%% *}"
-  if [ -z "$first" ]; then
-    first="$input"
-  fi
-  first=${first##*/}
-  if [ -z "$first" ]; then
-    first="$input"
-  fi
-  printf '%s' "$first"
-}
-
-build_dynamic_name() {
-  local cmd_hint="${1:-}"
-  printf '%s%s%s%s%s' "$(host_segment)" "$separator" "$(strip_path)" "$separator" "$(command_segment "$cmd_hint")"
-}
-
-set_session_context() {
-  local session="$1"
-  local env_label="$2"
-  local auto_flag="$3"
-  local context_icon="$4"
-
-  tmux set-environment -t "$session" -g TMUX_DEVSPACE "$env_label" >/dev/null 2>&1 || true
-  tmux set-environment -t "$session" -g TMUX_LABEL_OVERRIDE "$env_label" >/dev/null 2>&1 || true
-  tmux set-environment -t "$session" -g TMUX_AUTO_NAME "$auto_flag" >/dev/null 2>&1 || true
-
-  tmux set-environment -t "$session" -g DEV_CONTEXT "$env_label" >/dev/null 2>&1 || true
-  tmux set-environment -t "$session" -g DEV_CONTEXT_KIND "tmux" >/dev/null 2>&1 || true
-
-  tmux set-option -t "$session" @dev_context "$env_label" >/dev/null 2>&1 || true
-  tmux set-option -t "$session" @dev_context_kind "tmux" >/dev/null 2>&1 || true
-
-  if [ -n "$context_icon" ]; then
-    tmux set-environment -t "$session" -g DEV_CONTEXT_ICON "$context_icon" >/dev/null 2>&1 || true
-    tmux set-option -t "$session" @dev_context_icon "$context_icon" >/dev/null 2>&1 || true
-  fi
-}
-
-attach_or_switch() {
-  local session="$1"
-  if [ -n "${TMUX:-}" ]; then
-    tmux switch-client -t "$session"
-  else
-    exec tmux attach-session -t "$session"
-  fi
-}
-
-tmux_new_session() {
-  local session="$1"; shift
-  local env_label="$1"; shift
-  local auto_flag="$1"; shift
-  local context_icon="$1"; shift
-  # Always create the session detached so we can reliably set
-  # its environment before attaching or switching clients.
-  if [ $# -gt 0 ]; then
-    tmux new-session -d -s "$session" "$@"
-  else
-    tmux new-session -d -s "$session"
-  fi
-  set_session_context "$session" "$env_label" "$auto_flag" "$context_icon"
-  attach_or_switch "$session"
-}
-
-session_label_or_default() {
-  local session="$1"
-  local value
-  value=$(tmux show-environment -t "$session" TMUX_LABEL_OVERRIDE 2>/dev/null | sed 's/^[^=]*=//')
-  if [ -n "$value" ]; then
-    printf '%s' "$value"
-  else
-    printf '%s' "$session"
-  fi
-}
-
-current_session() {
-  tmux display-message -p '#S' 2>/dev/null || true
-}
-
-parse_new_args() {
-  label_override=''
-  new_icon=''
-  new_name=''
-  auto_hint='0'
-  new_cmd_hint=''
-  new_cmd=()
-  local parsing=1
-
-  while [ $parsing -eq 1 ] && [ $# -gt 0 ]; do
+cmd_new() {
+  local label_override="" icon="" name="" cmd=()
+  while (( $# )); do
     case "$1" in
-      --label)
-        [ $# -ge 2 ] || { echo "tmux-devspace: --label requires an argument" >&2; exit 64; }
-        label_override=$(sanitize_label "$2")
-        shift 2
-        ;;
-      --label=*)
-        label_override=$(sanitize_label "${1#--label=}")
-        shift
-        ;;
-      --icon)
-        [ $# -ge 2 ] || { echo "tmux-devspace: --icon requires an argument" >&2; exit 64; }
-        new_icon="$2"
-        shift 2
-        ;;
-      --icon=*)
-        new_icon="${1#--icon=}"
-        shift
-        ;;
-      --name)
-        [ $# -ge 2 ] || { echo "tmux-devspace: --name requires an argument" >&2; exit 64; }
-        new_name=$(sanitize_label "$2")
-        shift 2
-        ;;
-      --name=*)
-        new_name=$(sanitize_label "${1#--name=}")
-        shift
-        ;;
-      --)
-        shift
-        parsing=0
-        ;;
-      *)
-        parsing=0
-        ;;
+      --label)  label_override="$(sanitize "$2")"; shift 2 ;;
+      --label=*) label_override="$(sanitize "${1#*=}")"; shift ;;
+      --icon)   icon="$2"; shift 2 ;;
+      --icon=*) icon="${1#*=}"; shift ;;
+      --name)   name="$(sanitize "$2")"; shift 2 ;;
+      --name=*) name="$(sanitize "${1#*=}")"; shift ;;
+      --)       shift; cmd=("$@"); break ;;
+      -*)       cmd=("$@"); break ;;
+      *)        [[ -z "$name" ]] && { name="$(sanitize "$1")"; shift; } || { cmd=("$@"); break; } ;;
     esac
   done
 
-  if [ -z "$new_name" ] && [ $# -gt 0 ] && [ "${1:-}" != "--" ]; then
-    new_name=$(sanitize_label "$1")
-    shift
-  fi
-
-  if [ $# -gt 0 ] && [ "${1:-}" = "--" ]; then
-    shift
-  fi
-
-  if [ $# -gt 0 ]; then
-    new_cmd=( "$@" )
-    new_cmd_hint="${new_cmd[0]}"
+  local session auto
+  if [[ -n "$name" ]]; then
+    session="$name"; auto=0
   else
-    new_cmd_hint=""
-  fi
-}
-
-cmd_new() {
-  ensure_tmux
-  parse_new_args "$@"
-
-  local session env_label auto_flag
-  if [ -n "$new_name" ]; then
-    session="$new_name"
-    env_label="${label_override:-$session}"
-    auto_flag='0'
-  else
-    env_label="$(effective_label)"
-    session="$(build_dynamic_name "$new_cmd_hint")"
-    auto_flag='1'
+    session="$(dynamic_name "${cmd[0]:-}")"; auto=1
   fi
 
-  tmux_new_session "$session" "$env_label" "$auto_flag" "$new_icon" "${new_cmd[@]}"
+  tmux new-session -d -s "$session" "${cmd[@]}" 2>/dev/null || true
+  set_context "$session" "${label_override:-${name:-$(label)}}" "$auto" "$icon"
+  connect "$session"
 }
 
 cmd_attach() {
-  ensure_tmux
-
-  if [ $# -lt 1 ]; then
-    echo "tmux-devspace attach [--icon icon] <name> [command ...]" >&2
-    exit 64
-  fi
-
-  local icon_override=''
-  local parsing=1
-  while [ $parsing -eq 1 ] && [ $# -gt 0 ]; do
+  local icon=""
+  while (( $# )); do
     case "$1" in
-      --icon)
-        [ $# -ge 2 ] || { echo "tmux-devspace: --icon requires an argument" >&2; exit 64; }
-        icon_override="$2"
-        shift 2
-        ;;
-      --icon=*)
-        icon_override="${1#--icon=}"
-        shift
-        ;;
-      --)
-        parsing=0
-        shift
-        ;;
-      -*)
-        parsing=0
-        ;;
-      *)
-        parsing=0
-        ;;
+      --icon)   icon="$2"; shift 2 ;;
+      --icon=*) icon="${1#*=}"; shift ;;
+      --)       shift; break ;;
+      -*)       break ;;
+      *)        break ;;
     esac
   done
+  (( $# )) || die "attach requires a session name"
 
-  if [ $# -lt 1 ]; then
-    echo "tmux-devspace attach [--icon icon] <name> [command ...]" >&2
-    exit 64
-  fi
+  local name="$1"; shift
+  [[ "${1:-}" == "--" ]] && shift
+  local sanitized="$(sanitize "$name")"
 
-  local requested_session="$1"
-  shift || true
-  local sanitized="$(sanitize_label "$requested_session")"
-  local session="$requested_session"
-  if ! tmux has-session -t "$session" >/dev/null 2>&1 && [ "$sanitized" != "$session" ]; then
-    if tmux has-session -t "$sanitized" >/dev/null 2>&1; then
-      session="$sanitized"
-    fi
-  fi
-  if [ $# -gt 0 ] && [ "${1:-}" = "--" ]; then
-    shift
-  fi
-
-  local -a cmd=()
-  if [ $# -gt 0 ]; then
-    cmd=( "$@" )
-  fi
-
-  if tmux has-session -t "$session" >/dev/null 2>&1; then
-    local label
-    label=$(session_label_or_default "$session")
-    set_session_context "$session" "$label" 0 "$icon_override"
-  else
-    local -a env_opts=(
-      "-e" "TMUX_DEVSPACE=$sanitized"
-      "-e" "TMUX_LABEL_OVERRIDE=$sanitized"
-      "-e" "TMUX_AUTO_NAME=0"
-      "-e" "DEV_CONTEXT=$sanitized"
-      "-e" "DEV_CONTEXT_KIND=tmux"
-    )
-    if [ -n "$icon_override" ]; then
-      env_opts+=( "-e" "DEV_CONTEXT_ICON=$icon_override" )
-    fi
-    if [ ${#cmd[@]} -gt 0 ]; then
-      tmux new-session -d "${env_opts[@]}" -s "$sanitized" "${cmd[@]}"
-    else
-      tmux new-session -d "${env_opts[@]}" -s "$sanitized"
-    fi
-    set_session_context "$sanitized" "$sanitized" 0 "$icon_override"
+  # Find existing session: try raw name, then sanitized
+  local session=""
+  if tmux has-session -t "$name" 2>/dev/null; then
+    session="$name"
+  elif [[ "$sanitized" != "$name" ]] && tmux has-session -t "$sanitized" 2>/dev/null; then
     session="$sanitized"
   fi
-  attach_or_switch "$session"
+
+  if [[ -n "$session" ]]; then
+    # Existing session — update context and attach
+    local lbl
+    lbl="$(tmux show-environment -t "$session" TMUX_LABEL_OVERRIDE 2>/dev/null | cut -d= -f2- || echo "$session")"
+    set_context "$session" "${lbl:-$session}" 0 "$icon"
+  else
+    # Create new session
+    session="$sanitized"
+    local -a env_opts=(
+      -e "TMUX_DEVSPACE=$sanitized"
+      -e "TMUX_LABEL_OVERRIDE=$sanitized"
+      -e "TMUX_AUTO_NAME=0"
+      -e "DEV_CONTEXT=$sanitized"
+      -e "DEV_CONTEXT_KIND=tmux"
+    )
+    [[ -n "$icon" ]] && env_opts+=(-e "DEV_CONTEXT_ICON=$icon")
+    tmux new-session -d "${env_opts[@]}" -s "$sanitized" "$@"
+    set_context "$sanitized" "$sanitized" 0 "$icon"
+  fi
+  connect "$session"
 }
 
 cmd_name() {
-  printf '%s\n' "$(build_dynamic_name)"
+  printf '%s\n' "$(dynamic_name)"
 }
 
 cmd_rename() {
-  if [ -z "${TMUX:-}" ]; then
-    return 0
-  fi
-  if [ "${TMUX_AUTO_NAME:-0}" != "1" ]; then
-    return 0
-  fi
-  ensure_tmux
+  [[ -z "${TMUX:-}" ]] && return 0
+  [[ "${TMUX_AUTO_NAME:-0}" == "1" ]] || return 0
   local session
-  session=$(current_session)
-  if [ -z "$session" ]; then
-    return 0
-  fi
-  local new_name
-  new_name=$(build_dynamic_name "${1:-}")
-  tmux rename-session -t "$session" "$new_name"
+  session="$(tmux display-message -p '#S' 2>/dev/null)" || return 0
+  [[ -n "$session" ]] && tmux rename-session -t "$session" "$(dynamic_name "${1:-}")"
 }
 
 cmd_title_path() {
-  local target="${1:-}"
-  if [ -n "$target" ]; then
-    strip_path "$target"
-  else
-    strip_path
-  fi
+  compress_path "${1:-}"
   printf '\n'
 }
 
-command="${1:-}"
-if [ -z "$command" ]; then
-  usage
-fi
+# --- Dispatch ---
 
-shift || true
-
-case "$command" in
-  new)
-    cmd_new "$@"
-    ;;
-  attach)
-    cmd_attach "$@"
-    ;;
-  name)
-    cmd_name
-    ;;
-  rename)
-    cmd_rename "$@"
-    ;;
-  title-path)
-    cmd_title_path "$@"
-    ;;
-  *)
-    usage
-    ;;
+[[ $# -gt 0 ]] || die "usage: tmux-devspace {new|attach|name|rename|title-path} [args]"
+cmd="$1"; shift
+case "$cmd" in
+  new)        cmd_new "$@" ;;
+  attach)     cmd_attach "$@" ;;
+  name)       cmd_name ;;
+  rename)     cmd_rename "$@" ;;
+  title-path) cmd_title_path "$@" ;;
+  *)          die "unknown command: $cmd" ;;
 esac

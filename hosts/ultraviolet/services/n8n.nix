@@ -17,12 +17,14 @@
   system.activationScripts.n8n-vault-acl = {
     deps = ["users"];
     text = ''
-      # Execute permission on parent directories for traversal
-      ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds
-      ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds/obsidian-vault
-      # Full access to chancel and all contents
-      ${pkgs.acl}/bin/setfacl -R -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
-      ${pkgs.acl}/bin/setfacl -R -d -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
+      if [[ -d /home/joshsymonds/obsidian-vault/chancel ]]; then
+        # Execute permission on parent directories for traversal
+        ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds
+        ${pkgs.acl}/bin/setfacl -m u:n8n:x /home/joshsymonds/obsidian-vault
+        # Full access to chancel and all contents
+        ${pkgs.acl}/bin/setfacl -R -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
+        ${pkgs.acl}/bin/setfacl -R -d -m u:n8n:rwX /home/joshsymonds/obsidian-vault/chancel
+      fi
     '';
   };
 

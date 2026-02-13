@@ -34,7 +34,7 @@
         enable = true;
         checkReversePath = "loose";
         trustedInterfaces = ["tailscale0"];
-        allowedTCPPorts = [22 2022 8080 8188 8888 11434];
+        allowedTCPPorts = [22 2022 8080 8188 8888 9090 11434];
         allowedUDPPorts = [config.services.tailscale.port];
       };
     };
@@ -172,7 +172,16 @@
             reverse_proxy localhost:8188
           }
         '';
+        virtualHosts.":9090".extraConfig = ''
+          root * /home/joshsymonds/creative-lab/ai-toolkit/output
+          file_server browse
+        '';
       };
+    };
+
+    systemd.services.caddy.serviceConfig = {
+      ProtectHome = lib.mkForce "tmpfs";
+      BindReadOnlyPaths = ["/home/joshsymonds/creative-lab/ai-toolkit/output"];
     };
 
     services.udev.extraRules = ''

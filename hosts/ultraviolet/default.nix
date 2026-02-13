@@ -81,6 +81,7 @@ in
 
     networking = {
       useDHCP = false;
+      useNetworkd = true;
       hostName = "ultraviolet";
       firewall = {
         enable = true;
@@ -104,15 +105,13 @@ in
           8123 # Home Assistant (LAN access for TTS fetch by Sonos)
         ];
       };
-      defaultGateway = subnet.gateway;
-      nameservers = subnet.nameservers;
-      interfaces.${self.interface}.ipv4.addresses = [
-        {
-          address = self.ip;
-          prefixLength = subnet.prefixLength;
-        }
-      ];
-      interfaces.enp0s20f0u12.useDHCP = false;
+    };
+
+    systemd.network.networks."10-lan" = {
+      matchConfig.Name = "en*";
+      address = ["${self.ip}/${toString subnet.prefixLength}"];
+      gateway = [subnet.gateway];
+      dns = subnet.nameservers;
     };
 
     boot = {
@@ -173,7 +172,6 @@ in
       # Enable NFS client for better NAS performance
       nfs.server.enable = true;
       rpcbind.enable = true;
-
     };
 
     programs.nix-ld.enable = true;
@@ -308,8 +306,7 @@ in
         chromium
         signal-cli
       ];
-
-};
+    };
 
     # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     system.stateVersion = "25.05";

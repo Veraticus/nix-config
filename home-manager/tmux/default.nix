@@ -117,6 +117,9 @@ in {
         set -g allow-passthrough on
         set -g set-clipboard on
 
+        # Keep server alive even when all sessions are destroyed
+        set -g exit-empty off
+
         # General Settings
         setw -g pane-base-index 1
         set -g renumber-windows on

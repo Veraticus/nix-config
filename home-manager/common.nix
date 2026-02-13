@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   lib,
   pkgs,
@@ -116,6 +117,9 @@ in {
         settings.show_program_path = true;
       };
     };
+
+    # Agenix identity for home-manager secret decryption
+    age.identityPaths = ["${config.home.homeDirectory}/.age/identity.txt"];
 
     xdg.enable = true;
 

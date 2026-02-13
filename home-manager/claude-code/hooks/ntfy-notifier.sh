@@ -10,9 +10,10 @@
 #   Supports both CLI mode for testing and hook mode for actual notifications.
 #
 # CONFIGURATION
-#   CLAUDE_HOOKS_NTFY_DISABLED  Set to "true" to disable notifications (enabled by default)
-#   CLAUDE_HOOKS_NTFY_URL       Full ntfy URL (e.g., https://ntfy.sh/mytopic)
-#   CLAUDE_HOOKS_NTFY_TOKEN     Optional authentication token
+#   CLAUDE_HOOKS_NTFY_DISABLED    Set to "true" to disable notifications (enabled by default)
+#   CLAUDE_HOOKS_NTFY_URL         Full ntfy URL (e.g., https://ntfy.sh/mytopic)
+#   CLAUDE_HOOKS_NTFY_TOKEN       Authentication token (direct value)
+#   CLAUDE_HOOKS_NTFY_TOKEN_FILE  Path to file containing auth token (e.g., agenix secret)
 #
 # EXAMPLES
 #   # Test notification in CLI mode
@@ -78,6 +79,17 @@ if [[ -z "${CLAUDE_HOOKS_NTFY_URL:-}" ]]; then
             log_debug "Loaded ntfy config from $CONFIG_FILE"
             log_debug "Server: $NTFY_SERVER, Topic: $NTFY_TOPIC"
         fi
+    fi
+fi
+
+# Load token from file if CLAUDE_HOOKS_NTFY_TOKEN is not set
+if [[ -z "${CLAUDE_HOOKS_NTFY_TOKEN:-}" ]] && [[ -n "${CLAUDE_HOOKS_NTFY_TOKEN_FILE:-}" ]]; then
+    if [[ -f "$CLAUDE_HOOKS_NTFY_TOKEN_FILE" ]]; then
+        CLAUDE_HOOKS_NTFY_TOKEN=$(cat "$CLAUDE_HOOKS_NTFY_TOKEN_FILE")
+        export CLAUDE_HOOKS_NTFY_TOKEN
+        log_debug "Loaded token from $CLAUDE_HOOKS_NTFY_TOKEN_FILE"
+    else
+        log_debug "Token file not found: $CLAUDE_HOOKS_NTFY_TOKEN_FILE"
     fi
 fi
 

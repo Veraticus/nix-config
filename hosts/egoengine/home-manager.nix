@@ -13,6 +13,8 @@ in
     inherit pkgs;
 
     modules = [
+      inputs.agenix.homeManagerModules.default
+
       # Import common home-manager configuration
       ../../home-manager/common.nix
 

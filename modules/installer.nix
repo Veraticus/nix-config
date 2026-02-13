@@ -192,6 +192,24 @@
     fi
   '';
 
+  # nixos-install's built-in bootloader step calls `bootctl status` which fails
+  # in a chroot when /boot is empty. Work around: install with --no-bootloader,
+  # then manually run bootctl install + the NixOS bootloader script.
+  bootloaderFixup = ''
+    echo "Installing bootloader..."
+    for fs in dev proc sys; do mount --rbind /$fs /mnt/$fs && mount --make-rslave /mnt/$fs; done
+    mount -t efivarfs efivarfs /mnt/sys/firmware/efi/efivars 2>/dev/null || true
+
+    # Use the ISO's bootctl to pre-install systemd-boot EFI binaries
+    ${pkgs.systemd}/bin/bootctl install --root=/mnt --esp-path=/boot || true
+
+    # Now run the NixOS bootloader script (bootctl status will pass since it's installed)
+    NIXOS_INSTALL_BOOTLOADER=1 chroot /mnt /nix/var/nix/profiles/system/bin/switch-to-configuration boot || echo "WARNING: switch-to-configuration had errors (non-fatal for boot)"
+
+    umount /mnt/sys/firmware/efi/efivars 2>/dev/null || true
+    for fs in sys proc dev; do umount -R /mnt/$fs 2>/dev/null || true; done
+  '';
+
   installScript =
     if cfg.prebuilt
     then ''
@@ -201,7 +219,10 @@
         --root /mnt \
         --no-root-passwd \
         --no-channel-copy \
+        --no-bootloader \
         --cores 0
+
+      ${bootloaderFixup}
     ''
     else ''
       echo "Running nixos-install from flake (building on target)..."
@@ -215,7 +236,10 @@
         --root /mnt \
         --no-root-passwd \
         --no-channel-copy \
+        --no-bootloader \
         --cores 0
+
+      ${bootloaderFixup}
     '';
 
   cleanupScript =

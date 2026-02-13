@@ -8,6 +8,20 @@
   isCloudbank = hostname == "cloudbank";
   autoAttachRemoteTmux = hostname != null && !isCloudbank;
 in {
+  home.sessionVariables =
+    {
+      NIX_CONFIG = "experimental-features = nix-command flakes";
+      ZVM_CURSOR_STYLE_ENABLED = "false";
+      XL_SECRET_PROVIDER = "FILE";
+      WINEDLLOVERRIDES = "d3dcompiler_47=n;d3d11=n,b";
+    }
+    // lib.optionalAttrs pkgs.stdenv.isLinux {
+      PRISMA_SCHEMA_ENGINE_BINARY = "${pkgs.prisma-engines}/bin/schema-engine";
+      PRISMA_QUERY_ENGINE_LIBRARY = "${pkgs.prisma-engines}/lib/libquery_engine.node";
+      PRISMA_QUERY_ENGINE_BINARY = "${pkgs.prisma-engines}/bin/query-engine";
+      PRISMA_FMT_BINARY = "${pkgs.prisma-engines}/bin/prisma-fmt";
+    };
+
   xdg.configFile."zsh" = {
     source = ./zsh;
     recursive = true;
@@ -32,24 +46,17 @@ in {
     };
 
     envExtra = ''
-      export NIX_CONFIG="experimental-features = nix-command flakes"
+      # Source home-manager session variables (path differs between NixOS and macOS)
+      if [ -f "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh" ]; then
+        . "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh"
+      elif [ -f "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ]; then
+        . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
+      fi
 
       # Only set LS_COLORS if vivid is available
       if command -v vivid &>/dev/null; then
         export LS_COLORS="$(vivid generate catppuccin-mocha)"
       fi
-
-      export ZVM_CURSOR_STYLE_ENABLED=false
-      export XL_SECRET_PROVIDER=FILE
-      export WINEDLLOVERRIDES="d3dcompiler_47=n;d3d11=n,b"
-
-      # Set up Prisma to use Nix-provided engines on NixOS
-      ${lib.optionalString pkgs.stdenv.isLinux ''
-        export PRISMA_SCHEMA_ENGINE_BINARY="${pkgs.prisma-engines}/bin/schema-engine"
-        export PRISMA_QUERY_ENGINE_LIBRARY="${pkgs.prisma-engines}/lib/libquery_engine.node"
-        export PRISMA_QUERY_ENGINE_BINARY="${pkgs.prisma-engines}/bin/query-engine"
-        export PRISMA_FMT_BINARY="${pkgs.prisma-engines}/bin/prisma-fmt"
-      ''}
 
       # Source secrets file if it exists
       [ -f ~/.secrets ] && source ~/.secrets

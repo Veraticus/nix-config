@@ -107,6 +107,7 @@ in
       };
     };
 
+    systemd.network.wait-online.anyInterface = true;
     systemd.network.networks."10-lan" = {
       matchConfig.Name = "en*";
       address = ["${self.ip}/${toString subnet.prefixLength}"];

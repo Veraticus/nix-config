@@ -206,6 +206,13 @@
           ./hosts/stygianlibrary/installer.nix
         ];
       };
+
+      ultraviolet-installer = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/ultraviolet/installer.nix
+        ];
+      };
     };
   in {
     packages = let
@@ -229,6 +236,7 @@
           // {
             egoengine = self.nixosConfigurations.egoengine.config.system.build.egoengineDockerImage;
             stygianlibraryInstallerIso = self.nixosConfigurations.stygianlibrary-installer.config.system.build.isoImage;
+            ultravioletInstallerIso = self.nixosConfigurations.ultraviolet-installer.config.system.build.isoImage;
           };
       };
 

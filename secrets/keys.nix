@@ -16,7 +16,7 @@
     "age10kwzaeajuyvfuyuh03tk6ywand899699rdxlrskh2f6x6ru9t56s02d6pg"
   ];
   "ultraviolet" = [
-    "age196jc6pzxuy5hg89yezjpv8wy3jt2s3fs0r7ntfe0vrqwq80mr5jq9rdpsz"
+    "age1l48gfpefgh5p4phelwc760pg24pm6qwxju2zlxcgvcamw6pzjgrqq8r3g3"
     "age10kwzaeajuyvfuyuh03tk6ywand899699rdxlrskh2f6x6ru9t56s02d6pg"
     "age1yyrhr0zpg3xnxtstq6g3u0zrxglfhnur6387f5znwmehg36rh4cs39apxy"
   ];

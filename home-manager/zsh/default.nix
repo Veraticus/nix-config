@@ -46,13 +46,6 @@ in {
     };
 
     envExtra = ''
-      # Source home-manager session variables (path differs between NixOS and macOS)
-      if [ -f "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh" ]; then
-        . "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh"
-      elif [ -f "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" ]; then
-        . "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh"
-      fi
-
       # Only set LS_COLORS if vivid is available
       if command -v vivid &>/dev/null; then
         export LS_COLORS="$(vivid generate catppuccin-mocha)"

@@ -94,12 +94,10 @@ in {
       rm -f "$HOME/.local/bin/claude"
       ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
 
-      # Ensure vim mode is enabled in Claude Code preferences
+      # Remove vim mode if previously set in Claude Code preferences
       CLAUDE_PREFS="$HOME/.claude.json"
-      if [ -f "$CLAUDE_PREFS" ]; then
-        ${pkgs.jq}/bin/jq '.editorMode = "vim"' "$CLAUDE_PREFS" > "$CLAUDE_PREFS.tmp" && mv "$CLAUDE_PREFS.tmp" "$CLAUDE_PREFS"
-      else
-        echo '{"editorMode":"vim"}' > "$CLAUDE_PREFS"
+      if [ -f "$CLAUDE_PREFS" ] && ${pkgs.jq}/bin/jq -e '.editorMode == "vim"' "$CLAUDE_PREFS" >/dev/null 2>&1; then
+        ${pkgs.jq}/bin/jq 'del(.editorMode)' "$CLAUDE_PREFS" > "$CLAUDE_PREFS.tmp" && mv "$CLAUDE_PREFS.tmp" "$CLAUDE_PREFS"
       fi
     '';
 

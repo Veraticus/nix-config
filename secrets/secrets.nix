@@ -7,9 +7,6 @@ in {
   "secrets/shared/coder-db-password.age".publicKeys = keys.vermissian;
   "secrets/shared/coder-env.age".publicKeys = keys.vermissian;
 
-  # User secrets (home-manager agenix, all machines)
-  "secrets/user/ntfy-token.age".publicKeys = keys.joshsymonds;
-
   # Host-specific secrets
   "secrets/hosts/ultraviolet/cloudflare-api-token.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/cloudflared-token.age".publicKeys = keys.ultraviolet;

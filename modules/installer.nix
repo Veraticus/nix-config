@@ -242,6 +242,31 @@
       ${bootloaderFixup}
     '';
 
+  postInstallFixup = ''
+    echo "Fixing up installed system..."
+    targetHome="/mnt/home/${cfg.targetUser}"
+
+    # Copy baked-in SSH key to target user's ~/.ssh/
+    if [[ -d "$targetHome" ]]; then
+      mkdir -p "$targetHome/.ssh"
+      cp ${installerSshKey}/id_ed25519 "$targetHome/.ssh/github"
+      cp ${installerSshKey}/id_ed25519.pub "$targetHome/.ssh/github.pub"
+      cat > "$targetHome/.ssh/config" <<SSHEOF
+    Host github.com
+      IdentityFile ~/.ssh/github
+    SSHEOF
+      chmod 700 "$targetHome/.ssh"
+      chmod 600 "$targetHome/.ssh/github" "$targetHome/.ssh/config"
+      chmod 644 "$targetHome/.ssh/github.pub"
+
+      # Chown entire home directory (was created as root during install)
+      chown -R 1000:100 "$targetHome"
+      echo "SSH key deployed and home directory ownership fixed."
+    else
+      echo "WARNING: $targetHome does not exist, skipping SSH key deployment."
+    fi
+  '';
+
   cleanupScript =
     ''
       echo "Syncing and ${
@@ -368,6 +393,12 @@ in {
       description = "Text shown on the getty help line";
     };
 
+    targetUser = lib.mkOption {
+      type = lib.types.str;
+      default = "joshsymonds";
+      description = "Primary user account on the target system. Used for SSH key deployment and home directory ownership.";
+    };
+
     powerOff = lib.mkOption {
       type = lib.types.bool;
       default = true;
@@ -471,6 +502,7 @@ in {
         ${postMountScript}
         ${cloneScript}
         ${installScript}
+        ${postInstallFixup}
         ${cleanupScript}
       '';
     };

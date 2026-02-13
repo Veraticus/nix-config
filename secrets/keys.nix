@@ -18,8 +18,9 @@ let
   # Verify with: sudo age-keygen -y /etc/age/<host>.agekey
   hosts = {
     ultraviolet = "age1l48gfpefgh5p4phelwc760pg24pm6qwxju2zlxcgvcamw6pzjgrqq8r3g3";
+    vermissian = "age1gk07t276expcprxg4el8rsmap4ry3vq9ungmhs9ap3rtwljge9qsqdvnkw";
     # TODO: audit and add
-    # cloudbank — macOS, no host key (or check /etc/ssh/)
+    # cloudbank — macOS, check /etc/ssh/
     # bluedesert = "...";
     # echelon = "...";
   };
@@ -27,8 +28,9 @@ let
   # User keys (from ~/.ssh/<key>.pub, converted via ssh-to-age)
   users = {
     "joshsymonds@ultraviolet" = "age1yyrhr0zpg3xnxtstq6g3u0zrxglfhnur6387f5znwmehg36rh4cs39apxy";
+    "joshsymonds@cloudbank" = "age18pgprsxnz72add3jxdxzhcl6ruwg9l8xaaq0d20mpyhwscmwkuyq3vj9ex";
+    "joshsymonds@vermissian" = "age10kwzaeajuyvfuyuh03tk6ywand899699rdxlrskh2f6x6ru9t56s02d6pg";
     # TODO: audit and add
-    # "joshsymonds@cloudbank" = "...";
     # "joshsymonds@bluedesert" = "...";
     # "joshsymonds@echelon" = "...";
   };
@@ -41,9 +43,5 @@ in {
   # All user keys across machines (home-manager agenix)
   joshsymonds = allUserKeys;
 
-  # Unaudited — keep as-is until keys are verified on those machines
-  vermissian = [
-    "age1gk07t276expcprxg4el8rsmap4ry3vq9ungmhs9ap3rtwljge9qsqdvnkw"
-    "age10kwzaeajuyvfuyuh03tk6ywand899699rdxlrskh2f6x6ru9t56s02d6pg"
-  ];
+  vermissian = [hosts.vermissian users."joshsymonds@vermissian"];
 }

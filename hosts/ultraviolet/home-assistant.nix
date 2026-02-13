@@ -1003,7 +1003,6 @@ in {
       "d /var/lib/hass/custom_components 0755 hass hass -"
       "d /var/lib/hass/www 0755 hass hass -"
       "d /var/lib/hass/dashboards 0755 hass hass -"
-      "d /etc/homepage/keys 0755 root root -"
       "d /var/lib/hass/packages 0755 hass hass -"
     ];
 
@@ -1350,12 +1349,9 @@ in {
   #    - Philips Hue: Will auto-discover or add manually
   #    - Ecobee: Use the cloud integration with OAuth
   #    - Jellyfin: Server at http://localhost:8096
-  # 7. Generate Long-Lived Access Token for Homepage:
-  #    - Profile -> Security -> Long-Lived Access Tokens
-  #    - Save to /etc/homepage/keys/homeassistant-api-key
-  # 8. Install the companion app on your phone
-  # 9. Set up ntfy in automations for push notifications
-  # 10. Install additional HACS components as needed:
+  # 7. Install the companion app on your phone
+  # 8. Set up ntfy in automations for push notifications
+  # 9. Install additional HACS components as needed:
   #     - Mushroom Cards (mobile-optimized UI)
   #     - Button Card (advanced customization)
   #     - Card-mod (styling)

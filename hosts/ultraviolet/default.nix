@@ -26,7 +26,6 @@ in
 
       # Service-specific configuration
       ./services/caddy-base.nix
-      ./services/homepage.nix
       ./services/jellyfin.nix
       ./services/radarr-sonarr.nix
       ./services/arr-extras.nix

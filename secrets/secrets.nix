@@ -20,6 +20,8 @@ in {
   "secrets/hosts/ultraviolet/n8n-anthropic-api-key.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/n8n-ntfy-auth.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/ultraviolet/n8n-user-bio.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/mullvad-privatekey.age".publicKeys = keys.ultraviolet;
+  "secrets/hosts/ultraviolet/mullvad-addresses.age".publicKeys = keys.ultraviolet;
   "secrets/hosts/vermissian/cloudflared-token.age".publicKeys = keys.vermissian;
   "secrets/hosts/vermissian/coder-ghcr-cache-auth.age".publicKeys = keys.vermissian;
 }

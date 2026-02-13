@@ -1,4 +1,14 @@
-{pkgs, ...}: {
+{pkgs, config, ...}: {
+  age.secrets."mullvad-privatekey" = {
+    file = ../../secrets/hosts/ultraviolet/mullvad-privatekey.age;
+    owner = "root";
+    mode = "0600";
+  };
+  age.secrets."mullvad-addresses" = {
+    file = ../../secrets/hosts/ultraviolet/mullvad-addresses.age;
+    owner = "root";
+    mode = "0600";
+  };
   # SABnzbd with Mullvad VPN using Gluetun container
   # Gluetun provides VPN with built-in killswitch
 
@@ -34,7 +44,9 @@
         };
 
         volumes = [
-          "/etc/mullvad/gluetun:/gluetun" # Mount directory with WireGuard config
+          "/var/lib/gluetun:/gluetun"
+          "${config.age.secrets."mullvad-privatekey".path}:/gluetun/wireguard/privatekey:ro"
+          "${config.age.secrets."mullvad-addresses".path}:/gluetun/wireguard/addresses:ro"
         ];
 
         extraOptions = [
@@ -91,6 +103,9 @@
   # Ensure directories exist with proper permissions
   systemd = {
     tmpfiles.rules = [
+      # Gluetun data directory (server list cache, etc.)
+      "d /var/lib/gluetun 0700 root root -"
+
       # SABnzbd directories
       "d /var/lib/sabnzbd 0755 1000 1000 -"
       "d /var/lib/sabnzbd/admin 0755 1000 1000 -"
@@ -98,11 +113,6 @@
       "d /var/lib/sabnzbd/scripts 0755 1000 1000 -"
       "d /var/cache/sabnzbd 0755 1000 1000 -"
       "d /var/cache/sabnzbd/incomplete 0755 1000 1000 -"
-
-      # Mullvad config directory (only private key needed)
-      "d /etc/mullvad 0700 root root -"
-      "d /etc/mullvad/gluetun 0700 root root -"
-      "d /etc/mullvad/gluetun/wireguard 0700 root root -"
 
       # Completed downloads on NFS
       "d /mnt/video/sabnzbd 0755 1000 1000 -"
@@ -192,38 +202,6 @@
       };
     };
   };
-
-  # Setup script to prepare Mullvad configuration
-  environment.systemPackages = [
-    (pkgs.writeScriptBin "setup-mullvad-sabnzbd" ''
-      #!${pkgs.bash}/bin/bash
-      set -e
-
-      echo "=== Mullvad WireGuard Setup for SABnzbd ==="
-      echo ""
-      echo "Option 1: Get from Mullvad website:"
-      echo "   1. Go to: https://mullvad.net/en/account#/wireguard-config"
-      echo "   2. Generate a new WireGuard configuration"
-      echo "   3. Copy the PrivateKey value"
-      echo ""
-      echo "Option 2: Or if you have mullvad CLI installed:"
-      echo "   mullvad account login"
-      echo "   mullvad relay set location us lax"
-      echo "   mullvad tunnel wireguard key regenerate"
-      echo ""
-      read -sp "Enter your WireGuard Private Key: " private_key
-      echo ""
-
-      # Save to file that Gluetun will read (only private key needed for Mullvad)
-      echo "$private_key" | sudo tee /etc/mullvad/gluetun/wireguard/privatekey > /dev/null
-
-      sudo chmod 600 /etc/mullvad/gluetun/wireguard/privatekey
-
-      echo ""
-      echo "✅ Configuration saved!"
-      echo "   Run 'systemctl restart podman-gluetun' to apply"
-    '')
-  ];
 
   # Aggressive cleanup service for SABnzbd temp files
   systemd.services.sabnzbd-temp-cleanup = {

@@ -119,7 +119,7 @@ in {
     };
 
     # Agenix identity for home-manager secret decryption
-    age.identityPaths = ["${config.home.homeDirectory}/.age/identity.txt"];
+    age.identityPaths = ["${config.home.homeDirectory}/.config/agenix/keys.txt"];
 
     xdg.enable = true;
 

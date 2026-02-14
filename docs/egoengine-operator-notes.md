@@ -83,3 +83,54 @@ Point project devcontainers at the published base image to inherit the Home Mana
 ```
 
 For reproducibility, use the immutable `<git-sha>` tag produced by the CI workflow rather than `latest`.
+
+## Layering Child Images
+
+egoengine can serve as a `fromImage` base for specialized containers (e.g., GPU/ML workloads) using `dockerTools.buildLayeredImage`. The child image inherits the full shell environment — home-manager dotfiles, zsh, neovim, PATH, etc.
+
+### Key Constraints
+
+- **`config` replaces, not merges.** If the child image specifies `config`, it completely overrides egoengine's `config.Env`, `User`, `Cmd`, etc. To inherit egoengine's environment, **do not set `config`** in the child image.
+- **`fakeRootCommands`** runs independently per layer. The child can create directories, set permissions, and install files on top of the base filesystem.
+- **`enableFakechroot`** is per-build — set it in the child if needed, no conflict with the base.
+
+### Extending PATH and Environment Variables
+
+egoengine's PATH includes `~/.local/bin` and the Nix profile. For additional binaries (CUDA, Python venvs), the child image has two options:
+
+1. **`~/.env.local`** — zsh sources this file on login if it exists. Create it in `fakeRootCommands` to extend PATH, set LD_LIBRARY_PATH, CUDA_HOME, etc:
+   ```bash
+   cat > ./home/joshsymonds/.env.local <<'EOF'
+   export PATH=$PATH:/opt/my-env/bin
+   export LD_LIBRARY_PATH=/opt/my-env/lib:$LD_LIBRARY_PATH
+   EOF
+   ```
+
+2. **Symlink into `~/.local/bin`** — for a small number of binaries, symlink them into a directory already on PATH.
+
+### Example Child Image Structure
+
+```nix
+pkgs.dockerTools.buildLayeredImage {
+  name = "creative-lab";
+  tag = "latest";
+  fromImage = egoengineImage;  # packages.x86_64-linux.egoengine
+
+  enableFakechroot = true;
+  fakeRootCommands = ''
+    # Create env overrides
+    cat > ./home/joshsymonds/.env.local <<'EOF'
+    export PATH=$PATH:${cudaEnv}/bin:${pythonEnv}/bin
+    export LD_LIBRARY_PATH=${cudaEnv}/lib:$LD_LIBRARY_PATH
+    EOF
+    chown 1000:1000 ./home/joshsymonds/.env.local
+  '';
+
+  # Do NOT set config — inherit egoengine's User, Env, Cmd
+  contents = [ cudaEnv pythonEnv ];
+}
+```
+
+### CI/CD
+
+Child images should get their own GitHub Actions workflow (e.g., `build-creative-lab.yml`) that builds and pushes to GHCR alongside egoengine. The child workflow should trigger on changes to both its own files and egoengine's, since a base image rebuild may require a child rebuild.

@@ -53,6 +53,9 @@ in {
 
       # Source secrets file if it exists
       [ -f ~/.secrets ] && source ~/.secrets
+
+      # Source local environment overrides (used by child container images)
+      [ -f ~/.env.local ] && source ~/.env.local
     '';
 
     history = {

@@ -62,7 +62,6 @@ in {
           ".claude/CLAUDE.md".source = ./CLAUDE.md;
           ".claude/agents".source = ./agents;
           ".claude/skills".source = ./skills;
-          ".claude/bin/cc-tools-validate".source = "${cc-tools}/bin/cc-tools-validate";
           ".claude/bin/cc-tools-statusline".source = "${cc-tools}/bin/cc-tools-statusline";
           ".claude/hooks/ntfy-notifier.sh" = {
             source = ./hooks/ntfy-notifier.sh;

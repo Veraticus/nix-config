@@ -213,6 +213,23 @@
           ./hosts/ultraviolet/installer.nix
         ];
       };
+
+      vermissian-old = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/vermissian-old
+          ./hosts/common.nix
+          inputs.agenix.nixosModules.default
+        ];
+        homeModule = ./home-manager/hosts/vermissian-old.nix;
+      };
+
+      vermissian-installer = {
+        system = "x86_64-linux";
+        modules = [
+          ./hosts/vermissian/installer.nix
+        ];
+      };
     };
   in {
     packages = let
@@ -237,6 +254,7 @@
             egoengine = self.nixosConfigurations.egoengine.config.system.build.egoengineDockerImage;
             stygianlibraryInstallerIso = self.nixosConfigurations.stygianlibrary-installer.config.system.build.isoImage;
             ultravioletInstallerIso = self.nixosConfigurations.ultraviolet-installer.config.system.build.isoImage;
+            vermissianInstallerIso = self.nixosConfigurations.vermissian-installer.config.system.build.isoImage;
           };
       };
 

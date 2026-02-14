@@ -1,7 +1,7 @@
 let
   user = "joshsymonds";
   network = import ../../lib/network.nix;
-  self = network.hosts.vermissian;
+  self = network.hosts.vermissian-old;
   subnet = network.subnets.${self.subnet};
 in
   {
@@ -11,7 +11,6 @@ in
     pkgs,
     ...
   }: {
-    # You can import other NixOS modules here
     imports = [
       ../../modules/services/cloudflare-tunnel.nix
       ./hardware-configuration.nix
@@ -19,32 +18,34 @@ in
 
     # Performance tuning
     performance.profile = "dev";
-    performance.cpuVendor = "amd";
+    performance.cpuVendor = "intel";
 
     # Hardware setup
     hardware = {
       cpu = {
-        amd.updateMicrocode = true;
+        intel.updateMicrocode = true;
       };
       graphics = {
         enable = true;
         extraPackages = with pkgs; [
+          intel-media-driver
+          intel-vaapi-driver
           libva-vdpau-driver
+          intel-compute-runtime
+          vpl-gpu-rt
         ];
       };
       enableAllFirmware = true;
     };
 
-    # Host-specific nix settings (common.nix provides defaults)
-
     networking = {
       useDHCP = false;
-      useNetworkd = true;
-      hostName = "vermissian";
+      hostName = "vermissian-old";
       extraHosts = ''
         ${network.hosts.ultraviolet.ip} ultraviolet
         ${network.hosts.bluedesert.ip} bluedesert
         ${network.hosts.echelon.ip} echelon
+        ${network.hosts.vermissian.ip} vermissian
       '';
       firewall = {
         enable = true;
@@ -62,20 +63,21 @@ in
           9437
         ];
       };
-    };
-
-    systemd.network.wait-online.anyInterface = true;
-    systemd.network.networks."10-lan" = {
-      matchConfig.Name = "en*";
-      address = ["${self.ip}/${toString subnet.prefixLength}"];
-      gateway = [subnet.gateway];
-      dns = subnet.nameservers;
+      defaultGateway = subnet.gateway;
+      nameservers = subnet.nameservers;
+      interfaces.${self.interface}.ipv4.addresses = [
+        {
+          address = self.ip;
+          prefixLength = subnet.prefixLength;
+        }
+      ];
     };
 
     boot = {
       kernelModules = [
-        "kvm-amd"
-        "amdgpu"
+        "coretemp"
+        "kvm-intel"
+        "i915"
       ];
       supportedFilesystems = [
         "ntfs"
@@ -83,7 +85,8 @@ in
         "nfs4"
       ];
       kernelParams = [
-        # amd_pstate=active is provided by performance module
+        "i915.enable_fbc=1"
+        "i915.enable_psr=2"
       ];
       kernelPackages = pkgs.linuxPackages_latest;
       loader = {
@@ -100,7 +103,6 @@ in
 
     users.users.joshsymonds.extraGroups = ["podman" "docker"];
 
-    # Directories and system services
     systemd = {
       tmpfiles.rules = [];
 
@@ -195,11 +197,9 @@ in
               #!${pkgs.bash}/bin/bash
               set -euo pipefail
 
-              # Get timeout from environment or use default (1 hour)
               MAX_AGE_SECONDS=''${CLUSTER_MAX_AGE_SECONDS:-3600}
               echo "Using cluster max age: $MAX_AGE_SECONDS seconds"
 
-              # Function to get cluster age in seconds
               get_cluster_age() {
                 local cluster=$1
                 local created_time=$(${pkgs.docker}/bin/docker inspect "$cluster-control-plane" 2>/dev/null | ${pkgs.jq}/bin/jq -r '.[0].Created // empty')
@@ -214,7 +214,6 @@ in
                 echo $((current_epoch - created_epoch))
               }
 
-              # Clean up kind clusters older than configured timeout
               if ${pkgs.kind}/bin/kind version &> /dev/null; then
                 echo "Checking kind clusters..."
                 for cluster in $(${pkgs.kind}/bin/kind get clusters 2>/dev/null); do
@@ -230,15 +229,11 @@ in
                 echo "Kind not available, skipping kind cluster cleanup"
               fi
 
-              # Clean up ctlptl registries
               if ${pkgs.ctlptl}/bin/ctlptl version &> /dev/null; then
                 echo "Checking ctlptl registries..."
-                # Get all ctlptl registries and delete those associated with deleted clusters
                 for registry in $(${pkgs.ctlptl}/bin/ctlptl get registries -o json 2>/dev/null | ${pkgs.jq}/bin/jq -r '.items[].metadata.name // empty'); do
-                  # Check if registry starts with "kind-" (associated with a kind cluster)
                   if [[ "$registry" == kind-* ]]; then
                     cluster_name=''${registry#kind-}
-                    # Check if the associated cluster still exists
                     if ! ${pkgs.kind}/bin/kind get clusters 2>/dev/null | grep -q "^$cluster_name$"; then
                       echo "Removing orphaned ctlptl registry: $registry"
                       ${pkgs.ctlptl}/bin/ctlptl delete registry "$registry" || true
@@ -257,24 +252,20 @@ in
     };
 
     virtualisation = {
-      # Podman for containers
       podman = {
         enable = true;
-        dockerCompat = false; # Disable compat since we have real Docker
+        dockerCompat = false;
         defaultNetwork.settings.dns_enabled = true;
-        # Enable cgroup v2 for better container resource management
-        enableNvidia = false; # Set to true if you have NVIDIA GPU
+        enableNvidia = false;
         extraPackages = [
           pkgs.podman-compose
           pkgs.podman-tui
         ];
       };
 
-      # Docker for development tools (Kind, ctlptl, etc)
       docker = {
         enable = true;
         enableOnBoot = true;
-        # Use a separate storage driver to avoid conflicts
         storageDriver = "overlay2";
       };
 
@@ -313,7 +304,6 @@ in
       };
     };
 
-    # Clean up Docker and Nix store regularly
     systemd.services.cleanup-docker-and-nix = {
       description = "Clean up Docker and Nix store";
       after = ["docker.service"];
@@ -325,7 +315,6 @@ in
 
           echo "=== Starting cleanup at $(date) ==="
 
-          # Clean Docker if it's running
           if systemctl is-active --quiet docker; then
             echo "Cleaning Docker system..."
             ${pkgs.docker}/bin/docker system prune -a --volumes -f || true
@@ -334,19 +323,16 @@ in
             echo "Docker is not running, skipping Docker cleanup"
           fi
 
-          # Clean Podman
           if command -v podman &> /dev/null; then
             echo "Cleaning Podman system..."
             ${pkgs.podman}/bin/podman system prune -a --volumes -f || true
             echo "Podman cleanup completed"
           fi
 
-          # Clean old Nix generations (keep last 5)
           echo "Cleaning old Nix generations..."
           ${pkgs.nix}/bin/nix-env --delete-generations +5 || true
           ${pkgs.nix}/bin/nix-collect-garbage || true
 
-          # Clean Nix store of unreferenced packages
           echo "Running Nix garbage collection..."
           ${pkgs.nix}/bin/nix-store --gc || true
 
@@ -365,13 +351,11 @@ in
       };
     };
 
-    # Host-specific SSH settings
     services.openssh.settings = {
       X11Forwarding = true;
       StreamLocalBindUnlink = true;
     };
 
-    # Environment
     environment = {
       systemPackages = with pkgs; [
         polkit
@@ -403,9 +387,7 @@ in
         OPENSSL_LIB_DIR = "${pkgs.openssl.out}/lib";
         OPENSSL_INCLUDE_DIR = "${pkgs.openssl.dev}/include";
       };
+    };
 
-};
-
-    # https://nixos.wiki/wiki/FAQ/When_do_I_update_stateVersion
     system.stateVersion = "25.05";
   }

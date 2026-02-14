@@ -88,12 +88,6 @@ in {
         chmod 755 "$HOME/.claude/debug"
       fi
 
-      # Symlink ~/.local/bin/claude to the Nix binary so native installMethod check passes
-      mkdir -p "$HOME/.local/bin"
-      ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
-      # Remove redundant native binary copies (Nix manages the real one)
-      rm -rf "$HOME/.local/share/claude/versions"
-
       # Remove vim mode if previously set in Claude Code preferences
       CLAUDE_PREFS="$HOME/.claude.json"
       if [ -f "$CLAUDE_PREFS" ] && ${pkgs.jq}/bin/jq -e '.editorMode == "vim"' "$CLAUDE_PREFS" >/dev/null 2>&1; then
@@ -118,6 +112,20 @@ in {
           ${pkgs.claudeCodeCli}/bin/claude plugin install "$plugin" || echo "Warning: Failed to install $plugin (may need manual install)"
         fi
       done
+    '';
+
+    # Place a wrapper script at ~/.local/bin/claude that execs the Nix-patched binary.
+    # This satisfies Claude's native installMethod check (file exists at expected path)
+    # while ensuring the patchelf'd binary always runs. A regular file can't be silently
+    # replaced by Claude's auto-updater (which uses ln -sf for symlinks).
+    # Runs after plugin install since that step can trigger Claude's self-installer.
+    activation.claudeNativeWrapper = lib.hm.dag.entryAfter ["claudePluginInstall"] ''
+      set -euo pipefail
+      rm -rf "$HOME/.local/share/claude/versions"
+      rm -f "$HOME/.local/bin/claude"
+      mkdir -p "$HOME/.local/bin"
+      printf '#!/bin/sh\nexec %s "$@"\n' "${pkgs.claudeCodeCli}/bin/claude" > "$HOME/.local/bin/claude"
+      chmod +x "$HOME/.local/bin/claude"
     '';
   };
 }

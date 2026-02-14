@@ -227,9 +227,18 @@
     else ''
       echo "Running nixos-install from flake (building on target)..."
 
-      eval "$(${pkgs.openssh}/bin/ssh-agent -s)"
-      ${pkgs.openssh}/bin/ssh-add ${installerSshKey}/id_ed25519
-      export GIT_SSH_COMMAND="${pkgs.openssh}/bin/ssh -o StrictHostKeyChecking=accept-new"
+      # Configure root's SSH so the nix daemon can fetch git+ssh:// inputs.
+      # The daemon runs as root; when it spawns git→ssh, ssh reads /root/.ssh/.
+      # An ssh-agent won't work here because the daemon has its own environment.
+      mkdir -p /root/.ssh
+      cp ${installerSshKey}/id_ed25519 /root/.ssh/id_ed25519
+      chmod 600 /root/.ssh/id_ed25519
+      printf '%s\n' "Host github.com" "  IdentityFile /root/.ssh/id_ed25519" "  StrictHostKeyChecking accept-new" > /root/.ssh/config
+      chmod 600 /root/.ssh/config
+
+      # Restart the nix daemon so it inherits a clean environment
+      ${pkgs.systemd}/bin/systemctl restart nix-daemon.service
+      sleep 2
 
       ${config.system.build.nixos-install}/bin/nixos-install \
         --flake ${cfg.repoClonePath}#${cfg.targetHost} \
@@ -472,6 +481,7 @@ in {
           e2fsprogs
           dosfstools
           pkgs.coreutils
+          pkgs.gawk
           pkgs.mount
           pkgs.systemd
           pkgs.gitMinimal

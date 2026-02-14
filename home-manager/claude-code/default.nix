@@ -88,10 +88,9 @@ in {
         chmod 755 "$HOME/.claude/debug"
       fi
 
-      # Create ~/.local/bin/claude symlink for native binary detection
-      mkdir -p "$HOME/.local/bin"
+      # Clean up any npm-installed claude binary that shadows the Nix one
       rm -f "$HOME/.local/bin/claude"
-      ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
+      rm -rf "$HOME/.local/share/claude/versions"
 
       # Remove vim mode if previously set in Claude Code preferences
       CLAUDE_PREFS="$HOME/.claude.json"

@@ -88,8 +88,10 @@ in {
         chmod 755 "$HOME/.claude/debug"
       fi
 
-      # Clean up any npm-installed claude binary that shadows the Nix one
-      rm -f "$HOME/.local/bin/claude"
+      # Symlink ~/.local/bin/claude to the Nix binary so native installMethod check passes
+      mkdir -p "$HOME/.local/bin"
+      ln -sf "${pkgs.claudeCodeCli}/bin/claude" "$HOME/.local/bin/claude"
+      # Remove redundant native binary copies (Nix manages the real one)
       rm -rf "$HOME/.local/share/claude/versions"
 
       # Remove vim mode if previously set in Claude Code preferences

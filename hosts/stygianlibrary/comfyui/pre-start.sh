@@ -87,6 +87,15 @@ install_node "comfyui_controlnet_aux" "https://github.com/Fannovel16/comfyui_con
 # Must be installed as a top-level custom node to be discovered
 install_node "ComfyUI-Impact-Subpack" "https://github.com/ltdrdata/ComfyUI-Impact-Subpack"
 
+# SAM3 (text-grounded segmentation for face+hair masking)
+install_node "ComfyUI-SAM3" "https://github.com/PozzettiAndrea/ComfyUI-SAM3"
+
+# Inpaint CropAndStitch (crop face region to 1024x1024, inpaint, stitch back)
+install_node "ComfyUI-Inpaint-CropAndStitch" "https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch"
+
+# WAS Node Suite (text concatenation, mask combine for headswap pipeline)
+install_node "was-node-suite-comfyui" "https://github.com/WASasquatch/was-node-suite-comfyui"
+
 # ============================================
 # 3. NODE DEPENDENCIES
 # ============================================
@@ -170,6 +179,13 @@ download_model "ultralytics/bbox/face_yolov8m.pt" \
 download_model "sams/sam_vit_b_01ec64.pth" \
     "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth" \
     "SAM ViT-B Model"
+
+# SAM3 model auto-downloads from 1038lab/sam3 on first use via huggingface_hub
+
+# Fine-tuned Qwen 3 4B CLIP for Z-Image Turbo (BennyDaBall Engineer V4)
+download_model "text_encoders/Qwen3-4b-Z-Image-Engineer-V4-F16.gguf" \
+    "https://huggingface.co/BennyDaBall/Qwen3-4b-Z-Image-Engineer-V4/resolve/main/Qwen3-4b-Z-Image-Engineer-V4-F16.gguf" \
+    "Qwen3 4B Z-Image Engineer V4 GGUF"
 
 # SeedVR2 upscaler model (FP8 version - smaller, fits in VRAM better)
 download_model "diffusion_models/seedvr2_ema_7b_fp8_e4m3fn.safetensors" \

@@ -121,27 +121,7 @@
 
     virtualisation.docker.enable = true;
 
-    virtualisation.oci-containers = {
-      backend = "docker";
-      containers.comfyui = {
-        image = "yanwk/comfyui-boot:cu128-slim";
-        ports = ["8188:8188"];
-        volumes = [
-          "/var/lib/comfyui/storage:/root"
-          "/var/lib/comfyui/output:/root/ComfyUI/output"
-        ];
-        extraOptions = [
-          "--device=nvidia.com/gpu=all"
-        ];
-      };
-    };
-
-    # Deploy ComfyUI pre-start script (installs SageAttention, FlashAttention, etc.)
-    system.activationScripts.comfyui-config = ''
-      mkdir -p /var/lib/comfyui/storage/user-scripts
-      cp ${./comfyui/pre-start.sh} /var/lib/comfyui/storage/user-scripts/pre-start.sh
-      chmod +x /var/lib/comfyui/storage/user-scripts/pre-start.sh
-    '';
+    # ComfyUI is managed by creative-lab/devenv.nix (devenv up)
 
     services = {
       xserver.videoDrivers = ["nvidia"];

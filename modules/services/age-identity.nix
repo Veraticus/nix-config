@@ -30,6 +30,19 @@ in {
         chmod 600 ${hostAgeKey}
       fi
 
+      # Warn if SSH host key and agekey have diverged (e.g. SSH key was
+      # regenerated after the agekey was created). agenix uses the agekey,
+      # NOT the SSH key — so keys.nix must reference the agekey's public
+      # key. This drift is harmless but causes confusion when re-keying.
+      SSH_PUB=$($SSH_TO_AGE < ${hostKey}.pub 2>/dev/null || true)
+      AGE_PUB=$(${pkgs.age}/bin/age-keygen -y ${hostAgeKey} 2>/dev/null || true)
+      if [ -n "$SSH_PUB" ] && [ -n "$AGE_PUB" ] && [ "$SSH_PUB" != "$AGE_PUB" ]; then
+        echo "WARNING: SSH host key and age identity have diverged!"
+        echo "  agekey (/etc/age): $AGE_PUB  <-- agenix uses this, keys.nix must match"
+        echo "  SSH host key:      $SSH_PUB  <-- NOT used by agenix"
+        echo "  To sync: delete ${hostAgeKey} and rebuild (then re-key all secrets)"
+      fi
+
       cat ${hostAgeKey} > ${keysFile}
       chmod 600 ${keysFile}
 

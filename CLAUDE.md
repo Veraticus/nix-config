@@ -47,6 +47,31 @@ hass-cli service call <service>        # Call service
 
 Token location: `~/.config/home-assistant/token`
 
+## Agenix Secrets
+
+Secrets are encrypted with [agenix](https://github.com/ryantm/agenix). Key files:
+
+- `secrets/keys.nix` — age public keys per host/user
+- `secrets/secrets.nix` — maps `.age` files to their recipient keys
+- `modules/services/age-identity.nix` — generates `/etc/age/<host>.agekey` from SSH host key
+
+**Critical: agekey vs SSH host key divergence.** `age.identityPaths` points to `/etc/age/<host>.agekey`, which is generated once from the SSH host key and never regenerated. If the SSH host key rotates, the agekey stays — so `ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub` will return a DIFFERENT public key than what's in `keys.nix`. The activation script warns about this drift.
+
+- `keys.nix` must reference the **agekey's** public key (check with `sudo age-keygen -y /etc/age/<host>.agekey`)
+- Do NOT use `ssh-to-age -i /etc/ssh/...pub` to determine the key for `keys.nix` — it may be wrong
+- `agenix -r` is unsafe when secrets span multiple hosts — it processes in-place with no rollback, and a failure partway through corrupts already-rewritten files. Re-key secrets individually instead.
+
+```bash
+# Find the correct public key for keys.nix:
+sudo age-keygen -y /etc/age/ultraviolet.agekey
+
+# Re-key a single secret (after updating keys.nix):
+agenix -e secrets/hosts/ultraviolet/<name>.age -i <identity>
+
+# Verify a secret decrypts with the host agekey:
+sudo age -d -i /etc/age/<host>.agekey secrets/hosts/<host>/<name>.age
+```
+
 ## Adding Things
 
 **New system**: Create `hosts/<name>/default.nix`, add to `flake.nix`

@@ -145,7 +145,7 @@
         enable = true;
         virtualHosts.":8888".extraConfig = ''
           handle /output/* {
-            root * /var/lib/comfyui
+            root * /var/lib/comfyui/storage
             file_server browse
           }
           handle {

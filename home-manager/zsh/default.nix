@@ -41,8 +41,6 @@ in {
     shellAliases = {
       ll = "eza -a -F -l -B --git";
       ls = "ls --color=auto";
-      vim = "nvim";
-      vimdiff = "nvim -d";
       agenix = "agenix -i ~/.config/agenix/keys.txt";
     };
 

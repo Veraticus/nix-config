@@ -72,7 +72,7 @@ in
         "/share/zsh"
       ];
       variables = {
-        EDITOR = "nvim";
+        EDITOR = "hx";
       };
     };
 

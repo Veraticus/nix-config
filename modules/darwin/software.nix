@@ -3,7 +3,6 @@
   environment.systemPackages = with pkgs; [
     aerospace
     kitty
-    slidev
   ];
 
   homebrew = {

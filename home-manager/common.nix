@@ -13,7 +13,6 @@ in {
     ./claude-code
     # ./gemini-cli  # Disabled - overrides don't work properly
     ./mcp
-    ./codex
     ./egoengine
     ./helix
     ./kitty
@@ -40,7 +39,6 @@ in {
           bat
           claudeCodeCli
           coder
-          codex
           coreutils-full
           curl
           devenv

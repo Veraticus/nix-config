@@ -5,11 +5,6 @@
   moarVersionString = "${moarVersion}+g${builtins.substring 0 7 moarRev}";
 in {
   default = final: prev: let
-    codexTui = inputs.codex-src.packages.${final.stdenv.hostPlatform.system}.codex-tui;
-    codexCli = inputs.codex-src.packages.${final.stdenv.hostPlatform.system}.codex-cli;
-    codexWrapper = final.writeShellScriptBin "codex" ''
-      exec ${codexCli}/bin/codex "$@"
-    '';
     shimmerPkg = inputs.shimmer.packages.${final.stdenv.hostPlatform.system}.default;
   in {
     shimmer = shimmerPkg;
@@ -23,7 +18,6 @@ in {
     golangciLintBin = final.callPackage ../pkgs/golangci-lint-bin {};
     heretic = final.callPackage ../pkgs/heretic {python3Packages = final.python312Packages;};
     coder = final.callPackage ../pkgs/coder-cli {inherit (final) unzip;};
-    slidev = final.callPackage ../pkgs/slidev {};
     invidious-companion = final.callPackage ../pkgs/invidious-companion {};
     redlib-veraticus = final.callPackage ../pkgs/redlib-veraticus {
       inherit (inputs) crane;
@@ -31,11 +25,6 @@ in {
       redlibRev = inputs.redlib-fork.sourceInfo.rev;
       rustOverlay = inputs.rust-overlay;
     };
-
-    # Codex packages from local checkout
-    codex-tui = codexTui;
-    codex-cli = codexCli;
-    codex = codexWrapper;
 
     # gocover-cobertura 1.3.0 fails to build with Go 1.24; rebuild with Go 1.23
     gocover-cobertura =

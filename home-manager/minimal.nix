@@ -48,9 +48,6 @@
     };
 
     # Disable heavy services
-    neovim = {
-      enable = false;
-    };
     direnv = {
       enable = false;
     };

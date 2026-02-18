@@ -44,10 +44,9 @@
     gcc
     docker-client
     kubectl
-    neovim
+    helix
 
     # Custom packages
-    codex
     claudeCodeCli
     _1password-cli
 
@@ -243,7 +242,7 @@ in
         "SHELL=${pkgs.zsh}/bin/zsh"
         "LANG=en_US.UTF-8"
         "LC_ALL=en_US.UTF-8"
-        "EDITOR=nvim"
+        "EDITOR=hx"
         "PATH=${containerPath}"
         "NIX_CONFIG=experimental-features = nix-command flakes"
         "NIX_USER_PROFILE_DIR=/nix/var/nix/profiles/per-user/${user}"

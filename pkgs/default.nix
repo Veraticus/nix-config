@@ -18,7 +18,6 @@ in
     deadcode = pkgs.callPackage ./deadcode {};
     golangciLintBin = pkgs.callPackage ./golangci-lint-bin {};
     coder = pkgs.callPackage ./coder-cli {inherit (pkgs) unzip;};
-    slidev = pkgs.callPackage ./slidev {};
     invidious-companion = pkgs.callPackage ./invidious-companion {};
   }
   // darwinOnly

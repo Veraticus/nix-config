@@ -23,18 +23,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    neovim-nightly = {
-      url = "github:nix-community/neovim-nightly-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # Hardware-specific optimizations
     hardware.url = "github:nixos/nixos-hardware/master";
-
-    disko = {
-      url = "github:nix-community/disko";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
 
     # Linkpearl - clipboard sync
     linkpearl.url = "github:Veraticus/linkpearl";
@@ -47,9 +37,6 @@
 
     # Shimmer - Unified MCP server (Reddit, Monarch Money, GitHub)
     shimmer.url = "git+ssh://git@github.com/Veraticus/shimmer.git";
-
-    # Codex checkout (Rust implementation) - track GitHub fork
-    codex-src.url = "github:Veraticus/codex";
 
     # Redlib fork for customizations
     redlib-fork = {
@@ -78,13 +65,11 @@
   nixConfig = {
     extra-substituters = [
       "https://nix-community.cachix.org"
-      "https://neovim-nightly.cachix.org"
       "https://joshsymonds.cachix.org"
       "https://cuda-maintainers.cachix.org"
     ];
     extra-trusted-public-keys = [
       "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
-      "neovim-nightly.cachix.org-1:fLrV5fy41LFKwyLAxJ0H13o6FOVGc4k6gXB5Y1dqtWw="
       "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
       "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
     ];
@@ -242,7 +227,7 @@
           pkgs = import nixpkgs {
             inherit system;
             config.allowUnfree = true;
-            overlays = [inputs.neovim-nightly.overlays.default];
+            overlays = [];
           };
         in
           import ./pkgs {
@@ -326,7 +311,6 @@
           pkgs = import nixpkgs {
             inherit system;
             overlays = [
-              inputs.neovim-nightly.overlays.default
               outputs.overlays.default
               outputs.overlays.darwin
             ];

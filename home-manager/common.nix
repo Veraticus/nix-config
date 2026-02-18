@@ -121,6 +121,29 @@ in {
     # Agenix identity for home-manager secret decryption
     age.identityPaths = ["${config.home.homeDirectory}/.config/agenix/keys.txt"];
 
+    # Auto-derive agenix age key from SSH key so `agenix -e` works on all machines
+    home.activation.deriveAgenixKey = lib.hm.dag.entryAfter ["writeBoundary"] ''
+      key_dir="$HOME/.config/agenix"
+      key_file="$key_dir/keys.txt"
+
+      # Find the first usable ed25519 SSH key
+      ssh_key=""
+      for candidate in "$HOME/.ssh/github" "$HOME/.ssh/id_ed25519"; do
+        if [ -f "$candidate" ]; then
+          ssh_key="$candidate"
+          break
+        fi
+      done
+
+      if [ -z "$ssh_key" ]; then
+        run echo "agenix: no ed25519 SSH key found, skipping age key derivation"
+      else
+        run mkdir -p "$key_dir"
+        run ${pkgs.ssh-to-age}/bin/ssh-to-age -private-key -i "$ssh_key" -o "$key_file"
+        run chmod 600 "$key_file"
+      fi
+    '';
+
     xdg.enable = true;
 
     home.stateVersion = "25.05";

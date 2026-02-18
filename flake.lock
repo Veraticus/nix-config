@@ -860,11 +860,11 @@
         "nixpkgs": "nixpkgs_6"
       },
       "locked": {
-        "lastModified": 1771288884,
-        "narHash": "sha256-aJjnoQWJ1+xAc947JACr+qw911BVWscrkjoENnkcA8I=",
+        "lastModified": 1771442603,
+        "narHash": "sha256-SctDKN3wFPnW0F32hHXeG+AjkCJMe6rqJCQr51BeAaU=",
         "ref": "refs/heads/main",
-        "rev": "a95e24d58c00c4d80aa9859576de9eb9cc87f628",
-        "revCount": 12,
+        "rev": "d1f5d58b57b8b39f2a5cd69c8ce1b42b1f13ec37",
+        "revCount": 13,
         "type": "git",
         "url": "ssh://git@github.com/Veraticus/shimmer.git"
       },

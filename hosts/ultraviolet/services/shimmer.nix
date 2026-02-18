@@ -50,6 +50,13 @@
       MCP_SERVER_PORT = "8000";
     };
 
+    restartTriggers = [
+      config.age.secrets."shimmer-env".file
+      config.age.secrets."shimmer-access-client-id".file
+      config.age.secrets."shimmer-access-client-secret".file
+      config.age.secrets."shimmer-jwt-secret".file
+    ];
+
     serviceConfig = {
       Type = "simple";
       User = "shimmer";

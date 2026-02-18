@@ -19,15 +19,12 @@ in
 
     determinateNix.enable = true;
 
+    # Determinate Nix manages the daemon, so nix.gc and nix.optimise
+    # must be disabled (they assert nix.enable which Determinate disables).
+    # Nix settings/registry/nixPath still work for CLI configuration.
     nix = {
-      gc = {
-        automatic = true;
-        interval = {
-          Hour = 3;
-          Minute = 30;
-        };
-        options = "--delete-older-than 3d";
-      };
+      gc.automatic = false;
+      optimise.automatic = false;
 
       # Configure the nix registry
       registry = {

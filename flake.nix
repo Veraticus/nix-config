@@ -69,6 +69,10 @@
       url = "github:cachix/devenv";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Determinate Nix - consistent Nix with parallel eval, flake stability
+    # No nixpkgs.follows — keeps FlakeHub Cache hits
+    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/3";
   };
 
   nixConfig = {

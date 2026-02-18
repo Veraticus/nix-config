@@ -40,7 +40,7 @@ in
         };
 
         # Always use HTTPS for GitHub operations inside the container
-        programs.git.extraConfig.url = lib.mkForce {
+        programs.git.settings.url = lib.mkForce {
           "https://github.com/".insteadOf = [
             "git@github.com:"
             "ssh://git@github.com/"

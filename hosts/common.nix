@@ -13,11 +13,11 @@ in {
     ../modules/services/age-identity.nix
     ../modules/services/cleanup-stale-processes.nix
     ../modules/performance/profiles.nix
+    inputs.determinate.nixosModules.default
   ];
 
   nix = {
-    # Use latest Nix version available in nixpkgs
-    package = pkgs.nixVersions.latest;
+    # Nix package is managed by Determinate Nix module
 
     # Make nix3 commands consistent with flake
     registry = lib.mapAttrs (_: value: {flake = value;}) inputs;

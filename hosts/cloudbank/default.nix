@@ -14,11 +14,12 @@ in
       ../../modules/darwin/applications.nix
       ../../modules/darwin/defaults.nix
       ../../modules/darwin/software.nix
+      inputs.determinate.darwinModules.default
     ];
 
-    nix = {
-      package = pkgs.nix;
+    determinateNix.enable = true;
 
+    nix = {
       gc = {
         automatic = true;
         interval = {

@@ -28,4 +28,6 @@
   ];
 
   programs.go.enable = true;
+
+  programs.git.settings.user.signingkey = "0x7DD8F05131AEEC3A";
 }

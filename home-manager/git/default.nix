@@ -7,7 +7,6 @@ _: {
       user = {
         name = "Josh Symonds";
         email = "josh@joshsymonds.com";
-        signingkey = "0xDEC6244B590433E7";
       };
       commit.gpgsign = true;
       tag.gpgsign = true;

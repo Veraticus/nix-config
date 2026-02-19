@@ -25,6 +25,7 @@
     prisma-engines
     nodePackages.prisma
     rustup
+    glab
   ];
 
   programs.go.enable = true;

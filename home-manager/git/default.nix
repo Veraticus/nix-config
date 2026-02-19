@@ -22,6 +22,7 @@ _: {
         whitespace = "fix,-indent-with-non-tab,trailing-space,cr-at-eol";
       };
       url."ssh://git@github.com/".insteadOf = "https://github.com/";
+      url."ssh://git@gitlab.com/".insteadOf = "https://gitlab.com/";
       pull = {rebase = true;};
       web = {browser = "firefox";};
       rerere = {

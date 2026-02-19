@@ -28,6 +28,6 @@
     enable = true;
     defaultCacheTtl = 86400; # 24 hours
     maxCacheTtl = 604800; # 7 days
-    pinentryPackage = pkgs.pinentry-curses;
+    pinentry.package = pkgs.pinentry-curses;
   };
 }

@@ -33,7 +33,7 @@ Environment:
   EE_SERVICE_ITEM    Name of the service account note (default: service-account)
   EE_WORK_ITEM       Name of the work env note (default: work)
   EE_PERSONAL_ITEM   Name of the personal env note (default: personal)
-  EE_CACHE_REPO      Optional cache registry (e.g. ghcr.io/Veraticus/envbuilder-cache)
+  EE_CACHE_REPO      Optional cache registry (e.g. ghcr.io/joshsymonds/envbuilder-cache)
   EE_CACHE_REPO_DOCKER_CONFIG_PATH
                      Path on the Coder host/container to a docker config.json with registry creds
   EE_VERBOSE         Set to 1 to enable verbose logging (or pass --verbose)
@@ -435,9 +435,9 @@ workspace_go() {
   local target_dir=${1:-$PWD}
   local override_name=${2:-}
   log "workspace_go: target_dir=$target_dir override_name=$override_name"
-  local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/veraticus/nix-config/egoengine:latest}"
+  local fallback_image="${EE_FALLBACK_IMAGE:-ghcr.io/joshsymonds/nix-config/egoengine:latest}"
   local devcontainer_builder="${EE_DEVCONTAINER_BUILDER:-ghcr.io/coder/envbuilder:latest}"
-  local cache_repo="${EE_CACHE_REPO:-ghcr.io/Veraticus/envbuilder-cache}"
+  local cache_repo="${EE_CACHE_REPO:-ghcr.io/joshsymonds/envbuilder-cache}"
   local cache_repo_config="${EE_CACHE_REPO_DOCKER_CONFIG_PATH:-/var/lib/coder/ghcr-cache/config.json}"
 
   if [ -z "$cache_repo_config" ]; then

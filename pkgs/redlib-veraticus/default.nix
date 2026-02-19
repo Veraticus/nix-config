@@ -31,8 +31,8 @@ in
     CARGO_BUILD_RUSTFLAGS = "-C target-feature=+crt-static";
 
     meta = {
-      description = "Private Reddit front-end (Veraticus fork)";
-      homepage = "https://github.com/Veraticus/redlib";
+      description = "Private Reddit front-end (joshsymonds fork)";
+      homepage = "https://github.com/joshsymonds/redlib";
       license = lib.licenses.agpl3Only;
       mainProgram = "redlib";
       platforms = ["x86_64-linux"];

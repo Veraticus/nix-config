@@ -4,7 +4,7 @@ The Claude Code hooks have been migrated to the cc-tools project.
 
 ## Repository
 
-See https://github.com/Veraticus/cc-tools for the current implementation.
+See https://github.com/joshsymonds/cc-tools for the current implementation.
 
 ## Usage
 

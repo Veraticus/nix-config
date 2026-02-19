@@ -17,11 +17,27 @@ in
       inputs.determinate.darwinModules.default
     ];
 
-    determinateNix.enable = true;
+    determinateNix = {
+      enable = true;
+      customSettings = {
+        trusted-users = ["root" user];
+        extra-substituters = [
+          "https://nix-community.cachix.org"
+          "https://joshsymonds.cachix.org"
+          "https://devenv.cachix.org"
+        ];
+        extra-trusted-public-keys = [
+          "nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs="
+          "joshsymonds.cachix.org-1:DajO7Bjk/Q8eQVZQZC/AWOzdUst2TGp8fHS/B1pua2c="
+          "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw="
+        ];
+        accept-flake-config = true;
+      };
+    };
 
-    # Determinate Nix manages the daemon, so nix.gc and nix.optimise
-    # must be disabled (they assert nix.enable which Determinate disables).
-    # Nix settings/registry/nixPath still work for CLI configuration.
+    # Determinate Nix manages the daemon, so nix.gc, nix.optimise, and
+    # nix.settings are disabled. Use determinateNix.customSettings above.
+    # nix.registry and nix.nixPath still work for CLI configuration.
     nix = {
       gc.automatic = false;
       optimise.automatic = false;
@@ -36,8 +52,6 @@ in
       nixPath = [
         "nixpkgs=${inputs.nixpkgs}"
       ];
-
-      settings.trusted-users = ["root" user];
     };
 
     networking.hostName = "cloudbank";

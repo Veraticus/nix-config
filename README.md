@@ -70,7 +70,7 @@ docker load < result
 ```
 
 The image loads into Docker as `egoengine:<nix-hash>`. Tag and push it to
-`ghcr.io/veraticus/nix-config/egoengine` or run it locally for validation.
+`ghcr.io/joshsymonds/nix-config/egoengine` or run it locally for validation.
 
 ## Structure
 

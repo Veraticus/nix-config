@@ -27,20 +27,20 @@
     hardware.url = "github:nixos/nixos-hardware/master";
 
     # Linkpearl - clipboard sync
-    linkpearl.url = "github:Veraticus/linkpearl";
+    linkpearl.url = "github:joshsymonds/linkpearl";
 
     # CC-Tools - Claude Code smart hooks
-    cc-tools.url = "github:Veraticus/cc-tools";
+    cc-tools.url = "github:joshsymonds/cc-tools";
 
     # Target Process MCP - Target Process API integration
-    targetprocess-mcp.url = "github:Veraticus/targetprocess-mcp";
+    targetprocess-mcp.url = "github:joshsymonds/targetprocess-mcp";
 
     # Shimmer - Unified MCP server (Reddit, Monarch Money, GitHub)
-    shimmer.url = "git+ssh://git@github.com/Veraticus/shimmer.git";
+    shimmer.url = "git+ssh://git@github.com/joshsymonds/shimmer.git";
 
     # Redlib fork for customizations
     redlib-fork = {
-      url = "github:Veraticus/redlib";
+      url = "github:joshsymonds/redlib";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

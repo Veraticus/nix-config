@@ -40,7 +40,7 @@ High‑Level Architecture
 Repository Impact
 
 - docs/: This design file.
-- Nix: Add a flake package output `egoengine` that builds the base OCI image tagged ghcr.io/veraticus/nix-config/egoengine:<tag>.
+- Nix: Add a flake package output `egoengine` that builds the base OCI image tagged ghcr.io/joshsymonds/nix-config/egoengine:<tag>.
 - Coder templates: Add Docker Envbuilder template configured for joshsymonds and GHCR cache.
 - CI: GitHub Actions job to build and push base image on push to main; optional signing (cosign).
 
@@ -59,13 +59,13 @@ Components and Design Details
   - Local validation: `nix build .#egoengine` followed by `docker load < result`.
 
 - Tagging and publishing
-  - Tag scheme: ghcr.io/veraticus/nix-config/egoengine:<flakeRev> (and a moving ghcr.io/veraticus/nix-config/egoengine:latest for convenience).
+  - Tag scheme: ghcr.io/joshsymonds/nix-config/egoengine:<flakeRev> (and a moving ghcr.io/joshsymonds/nix-config/egoengine:latest for convenience).
   - Push via CI; optionally sign via cosign.
 
 - CI outline
   - `nix build .#egoengine`
   - `docker load < result`
-  - `docker tag` the loaded image as ghcr.io/veraticus/nix-config/egoengine:<rev> and ghcr.io/veraticus/nix-config/egoengine:latest
+  - `docker tag` the loaded image as ghcr.io/joshsymonds/nix-config/egoengine:<rev> and ghcr.io/joshsymonds/nix-config/egoengine:latest
   - `docker push` both tags using the repository’s built-in `GITHUB_TOKEN`
 
 2) Coder Deployment (egoengine)
@@ -103,7 +103,7 @@ Components and Design Details
     - Based on reference/coder/examples/templates/docker-envbuilder/main.tf:123
     - Parameters:
       - repo (Git URL)
-      - fallback_image (ghcr.io/veraticus/nix-config/egoengine:<tag> recommended)
+      - fallback_image (ghcr.io/joshsymonds/nix-config/egoengine:<tag> recommended)
       - cache_repo (GHCR path), optional dockerconfig for auth
     - Host gateway mapping for 127.0.0.1 edge cases already included in examples.
 

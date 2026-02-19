@@ -8,7 +8,7 @@
   installShellFiles,
 }: let
   dist = fetchFromGitHub {
-    owner = "Veraticus";
+    owner = "joshsymonds";
     repo = "caddy-dist";
     rev = "v2.7.6";
     hash = "sha256-5DRkWQmH2s5QkZL/YPqGfy343B6W5SRd8z1zMs675gs=";
@@ -19,7 +19,7 @@ in
     version = "2.7.5";
 
     src = fetchFromGitHub {
-      owner = "Veraticus";
+      owner = "joshsymonds";
       repo = "caddy";
       rev = "v2.7.5";
       hash = "sha256-b3M/xO3HnDmTUm+cVrAkkdHXnJv3858G78v6JDaF+SA=";

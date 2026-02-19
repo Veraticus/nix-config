@@ -374,7 +374,7 @@ in {
 
     repoRemote = lib.mkOption {
       type = lib.types.str;
-      default = "https://github.com/Veraticus/nix-config";
+      default = "https://github.com/joshsymonds/nix-config";
       description = "Git remote URL for nix-config";
     };
 

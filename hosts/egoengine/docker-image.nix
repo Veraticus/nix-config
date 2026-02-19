@@ -254,7 +254,7 @@ in
       Labels = {
         "org.opencontainers.image.title" = "egoengine";
         "org.opencontainers.image.description" = "Nix-based development environment";
-        "org.opencontainers.image.source" = "https://github.com/Veraticus/nix-config";
+        "org.opencontainers.image.source" = "https://github.com/joshsymonds/nix-config";
         "org.opencontainers.image.licenses" = "MIT";
       };
     };

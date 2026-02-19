@@ -17,7 +17,7 @@ Environment overrides:
   LUKS_LABEL       Label written to the LUKS partition (default: STYGIAN-LUKS)
   ROOT_LABEL       Label for the decrypted ext4 filesystem (default: STYGIAN-SYSTEM)
   REPO_CLONE_PATH  Extra destination inside the target (default: /opt/nix-config)
-  REPO_REMOTE      Git URL to clone (default: https://github.com/Veraticus/nix-config)
+  REPO_REMOTE      Git URL to clone (default: https://github.com/joshsymonds/nix-config)
   SYSTEM_SPEC      Flake reference to build when SYSTEM_PATH is unset
                    (default: .#nixosConfigurations.stygianlibrary.config.system.build.toplevel)
   SYSTEM_PATH      Prebuilt closure; skips building SYSTEM_SPEC
@@ -108,7 +108,7 @@ CRYPT_NAME="${CRYPT_NAME:-stygiancrypt}"
 LUKS_LABEL="${LUKS_LABEL:-STYGIAN-LUKS}"
 ROOT_LABEL="${ROOT_LABEL:-STYGIAN-ROOT}"
 REPO_CLONE_PATH="${REPO_CLONE_PATH:-/home/joshsymonds/nix-config}"
-REPO_REMOTE="${REPO_REMOTE:-https://github.com/Veraticus/nix-config}"
+REPO_REMOTE="${REPO_REMOTE:-https://github.com/joshsymonds/nix-config}"
 
 case "$DEVICE" in
   *[0-9]) part_prefix="${DEVICE}p" ;;

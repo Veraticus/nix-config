@@ -68,7 +68,7 @@ Add after line 49 (after `redlib-mcp.url`):
 
 ```nix
     # Calendar MCP - unified email/calendar for Claude
-    calendar-mcp.url = "github:Veraticus/calendar-mcp";
+    calendar-mcp.url = "github:joshsymonds/calendar-mcp";
 ```
 
 **Step 2: Verify flake parses**

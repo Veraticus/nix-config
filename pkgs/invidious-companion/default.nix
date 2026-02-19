@@ -10,7 +10,7 @@ stdenv.mkDerivation rec {
   # Using fork with OAuth fix until upstream PR is merged:
   # https://github.com/iv-org/invidious-companion/pull/263
   src = fetchurl {
-    url = "https://github.com/Veraticus/invidious-companion/releases/download/oauth-fix/invidious_companion-x86_64-unknown-linux-gnu.tar.gz";
+    url = "https://github.com/joshsymonds/invidious-companion/releases/download/oauth-fix/invidious_companion-x86_64-unknown-linux-gnu.tar.gz";
     hash = "sha256-5JTsTnRGWzytO+elJ0S9pq3d7/9Ix7cRh5Hn0P+To8U=";
   };
 

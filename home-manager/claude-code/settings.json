@@ -35,7 +35,7 @@
     "gambit": {
       "source": {
         "source": "github",
-        "repo": "Veraticus/gambit"
+        "repo": "joshsymonds/gambit"
       }
     }
   },

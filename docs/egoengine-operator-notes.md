@@ -77,7 +77,7 @@ Point project devcontainers at the published base image to inherit the Home Mana
 
 ```json
 {
-  "image": "ghcr.io/veraticus/nix-config/egoengine:<rev>",
+  "image": "ghcr.io/joshsymonds/nix-config/egoengine:<rev>",
   "runArgs": ["--user", "joshsymonds"]
 }
 ```

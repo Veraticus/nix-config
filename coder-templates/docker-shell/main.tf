@@ -39,7 +39,7 @@ data "coder_parameter" "workspace_image" {
   name         = "workspace_image"
   order        = 1
   type         = "string"
-  default      = "ghcr.io/veraticus/nix-config/egoengine:latest"
+  default      = "ghcr.io/joshsymonds/nix-config/egoengine:latest"
   validation {
     regex = "[^\\s]"
     error = "Provide an image reference."

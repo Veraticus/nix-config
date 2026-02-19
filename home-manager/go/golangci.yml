@@ -513,20 +513,20 @@ linters:
         - http.ResponseWriter
         - http.Handler
         # Project interfaces for dependency injection
-        - github.com/Veraticus/mentat/internal/agent.Handler
-        - github.com/Veraticus/mentat/internal/agent.ValidationStrategy
-        - github.com/Veraticus/mentat/internal/claude.LLM
-        - github.com/Veraticus/mentat/internal/conversation.SessionManager
-        - github.com/Veraticus/mentat/internal/queue.MessageQueue
-        - github.com/Veraticus/mentat/internal/queue.RateLimiter
-        - github.com/Veraticus/mentat/internal/queue.StateMachine
-        - github.com/Veraticus/mentat/internal/queue.StateValidator
-        - github.com/Veraticus/mentat/internal/queue.Worker
-        - github.com/Veraticus/mentat/internal/signal.Client
-        - github.com/Veraticus/mentat/internal/signal.Messenger
-        - github.com/Veraticus/mentat/internal/signal.MessageHandler
-        - github.com/Veraticus/mentat/internal/signal.TypingIndicatorManager
-        - github.com/Veraticus/mentat/internal/storage.Storage
+        - github.com/joshsymonds/mentat/internal/agent.Handler
+        - github.com/joshsymonds/mentat/internal/agent.ValidationStrategy
+        - github.com/joshsymonds/mentat/internal/claude.LLM
+        - github.com/joshsymonds/mentat/internal/conversation.SessionManager
+        - github.com/joshsymonds/mentat/internal/queue.MessageQueue
+        - github.com/joshsymonds/mentat/internal/queue.RateLimiter
+        - github.com/joshsymonds/mentat/internal/queue.StateMachine
+        - github.com/joshsymonds/mentat/internal/queue.StateValidator
+        - github.com/joshsymonds/mentat/internal/queue.Worker
+        - github.com/joshsymonds/mentat/internal/signal.Client
+        - github.com/joshsymonds/mentat/internal/signal.Messenger
+        - github.com/joshsymonds/mentat/internal/signal.MessageHandler
+        - github.com/joshsymonds/mentat/internal/signal.TypingIndicatorManager
+        - github.com/joshsymonds/mentat/internal/storage.Storage
         
     # Error wrapping
     wrapcheck:

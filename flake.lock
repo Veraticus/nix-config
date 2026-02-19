@@ -64,13 +64,13 @@
       "locked": {
         "lastModified": 1769041035,
         "narHash": "sha256-ibZcxKaOrM4m3Lkxh1gweADY55t0JMmU24nefRIO4gI=",
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "cc-tools",
         "rev": "4c5de7c97e90738d41535d4fd653cb768aeaede4",
         "type": "github"
       },
       "original": {
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "cc-tools",
         "type": "github"
       }
@@ -548,13 +548,13 @@
       "locked": {
         "lastModified": 1756404505,
         "narHash": "sha256-OO+4LKKs6ZMXlp7uLR9BbOAdKvFTeN3XYHjsIFuYCHs=",
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "linkpearl",
         "rev": "3c95e561f556488f853a24169a29009627e727f2",
         "type": "github"
       },
       "original": {
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "linkpearl",
         "type": "github"
       }
@@ -815,13 +815,13 @@
       "locked": {
         "lastModified": 1768860788,
         "narHash": "sha256-2FoamrnvqmPix6ZBxbaADsk6cY7rzp3O9wVE6z4NJBs=",
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "redlib",
         "rev": "f6fa80dad7bc992fdf465f8bc10d0163f1179531",
         "type": "github"
       },
       "original": {
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "redlib",
         "type": "github"
       }
@@ -898,11 +898,11 @@
         "rev": "d1f5d58b57b8b39f2a5cd69c8ce1b42b1f13ec37",
         "revCount": 13,
         "type": "git",
-        "url": "ssh://git@github.com/Veraticus/shimmer.git"
+        "url": "ssh://git@github.com/joshsymonds/shimmer.git"
       },
       "original": {
         "type": "git",
-        "url": "ssh://git@github.com/Veraticus/shimmer.git"
+        "url": "ssh://git@github.com/joshsymonds/shimmer.git"
       }
     },
     "systems": {
@@ -1003,13 +1003,13 @@
       "locked": {
         "lastModified": 1757010622,
         "narHash": "sha256-5OFY5WeruR0wwegNEw6n1h61RAcY/C+agwWnk8/Fk84=",
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "targetprocess-mcp",
         "rev": "55486ffcb74fa1080814f6cdeb3d64075ffe01a0",
         "type": "github"
       },
       "original": {
-        "owner": "Veraticus",
+        "owner": "joshsymonds",
         "repo": "targetprocess-mcp",
         "type": "github"
       }

@@ -38,7 +38,7 @@ data "coder_parameter" "repo" {
   name         = "repo"
   order        = 1
   type         = "string"
-  default      = "https://github.com/veraticus/nix-config"
+  default      = "https://github.com/joshsymonds/nix-config"
   validation {
     regex = "[^\\s]"
     error = "Provide a repository URL."
@@ -52,7 +52,7 @@ data "coder_parameter" "fallback_image" {
   name         = "fallback_image"
   order        = 2
   type         = "string"
-  default      = "ghcr.io/veraticus/nix-config/egoengine:latest"
+  default      = "ghcr.io/joshsymonds/nix-config/egoengine:latest"
   validation {
     regex = "[^\\s]"
     error = "Provide a fallback image name."
@@ -73,7 +73,7 @@ EOF
 }
 
 data "coder_parameter" "cache_repo" {
-  default      = "ghcr.io/Veraticus/envbuilder-cache"
+  default      = "ghcr.io/joshsymonds/envbuilder-cache"
   description  = "Optional container registry cache (e.g. ghcr.io/OWNER/envbuilder-cache)."
   display_name = "Cache Registry"
   mutable      = true

@@ -18,6 +18,7 @@ in {
     ./kitty
     ./tmux
     ./git
+    ./gpg
     ./k9s
     ./ssh-agent
     ./zsh

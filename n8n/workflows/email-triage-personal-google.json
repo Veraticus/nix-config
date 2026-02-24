@@ -200,14 +200,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "Urgent email received" },
             { "name": "Priority", "value": "high" },
             { "name": "Tags", "value": "rotating_light" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "raw",
+        "rawContentType": "text/plain",
         "body": "Check your email app for details",
         "options": {}
       },
@@ -252,14 +252,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "Calendar invite received" },
             { "name": "Priority", "value": "default" },
             { "name": "Tags", "value": "calendar" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "raw",
+        "rawContentType": "text/plain",
         "body": "Check your email app for details",
         "options": {}
       },
@@ -315,14 +315,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "Email triage error" },
             { "name": "Priority", "value": "high" },
             { "name": "Tags", "value": "warning" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "raw",
+        "rawContentType": "text/plain",
         "body": "=Failed to categorize an email. Check n8n for details.\nError: {{ $json.reasoning }}",
         "options": {}
       },

@@ -185,13 +185,13 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "={{ $('Build New Content').first().json.fileName }}" },
             { "name": "Tags", "value": "file_folder" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "raw",
+        "rawContentType": "text/plain",
         "body": "=Filed to {{ $('Build New Content').first().json.destination.replace('/home/joshsymonds/obsidian-vault/chancel/', '') }}\n{{ $('Build New Content').first().json.reasoning }}",
         "options": {}
       },
@@ -239,14 +239,14 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "text/plain" },
             { "name": "Title", "value": "={{ $('Build Error Content').first().json.fileName }}" },
             { "name": "Priority", "value": "high" },
             { "name": "Tags", "value": "warning" }
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
+        "contentType": "raw",
+        "rawContentType": "text/plain",
         "body": "=Moved to Dead Letters\n{{ $('Build Error Content').first().json.error || $('Build Error Content').first().json.reasoning }}",
         "options": {}
       },

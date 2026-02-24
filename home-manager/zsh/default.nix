@@ -45,6 +45,9 @@ in {
     };
 
     envExtra = ''
+      # GPG agent needs this to find the terminal for pinentry
+      export GPG_TTY=$(tty)
+
       # Only set LS_COLORS if vivid is available
       if command -v vivid &>/dev/null; then
         export LS_COLORS="$(vivid generate catppuccin-mocha)"

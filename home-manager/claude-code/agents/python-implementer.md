@@ -1,6 +1,6 @@
 ---
 name: python-implementer
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-4-6-20250514
 description: Python implementation specialist. Use for implementing Python code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

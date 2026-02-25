@@ -1,6 +1,6 @@
 ---
 name: go-implementer
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-4-6-20250514
 description: Go implementation specialist. Use for implementing Go code.
 tools: Read, Write, MultiEdit, Bash, Grep
 ---

@@ -1,6 +1,6 @@
 ---
 name: home-assistant-configurator
-model: claude-sonnet-4-5-20250929
+model: claude-sonnet-4-6-20250514
 description: Home Assistant configuration specialist for YAML, dashboards, automations, and HACS. Use for HA setup and optimization.
 tools: Read, Write, MultiEdit, Bash, Grep, Glob
 ---

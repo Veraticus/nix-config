@@ -770,16 +770,6 @@ in {
 
       # Lovelace configuration
       lovelace = {
-        dashboards = {
-          "bubble-overview" = {
-            filename = "ui-lovelace.yaml";
-            icon = "mdi:view-dashboard";
-            mode = "yaml";
-            require_admin = false;
-            show_in_sidebar = true;
-            title = "Bubble Overview";
-          };
-        };
         mode = "yaml";
         resources = [
           {

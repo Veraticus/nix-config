@@ -42,6 +42,7 @@ in
       ./services/flaresolverr.nix
       ./services/n8n.nix
       ./services/obsidian.nix
+      ./services/nextdns-linkip.nix
 
       # Import your generated (nixos-generate-config) hardware configuration
       ./hardware-configuration.nix

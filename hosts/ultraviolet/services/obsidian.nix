@@ -35,7 +35,7 @@ in {
     serviceConfig = {
       Type = "simple";
       User = "joshsymonds";
-      ExecStart = "${pkgs.xorg.xorgserver}/bin/Xvfb ${display} -screen 0 ${resolution} -nolisten tcp";
+      ExecStart = "${pkgs.xorg-server}/bin/Xvfb ${display} -screen 0 ${resolution} -nolisten tcp";
       Restart = "always";
       RestartSec = 5;
     };

@@ -105,6 +105,7 @@ in {
     postgresqlPackage = mkOption {
       type = types.package;
       default = pkgs.postgresql_15;
+      defaultText = lib.literalExpression "pkgs.postgresql_15";
       description = "PostgreSQL package used for the database service.";
     };
 

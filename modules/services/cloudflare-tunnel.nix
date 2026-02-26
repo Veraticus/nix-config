@@ -17,6 +17,7 @@ in {
     package = lib.mkOption {
       type = lib.types.package;
       default = pkgs.cloudflared;
+      defaultText = lib.literalExpression "pkgs.cloudflared";
       description = "cloudflared package to use.";
     };
   };

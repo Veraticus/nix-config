@@ -143,6 +143,10 @@ in {
       fi
     '';
 
+    # Disable HM manpages to avoid Determinate Nix options.json context warning
+    # https://github.com/nix-community/home-manager/issues/7935
+    manual.manpages.enable = false;
+
     xdg.enable = true;
 
     home.stateVersion = "25.05";

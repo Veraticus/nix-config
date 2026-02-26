@@ -395,6 +395,7 @@ in
         pkg-config
         openssl
         openssl.dev
+        (google-cloud-sdk.withExtraComponents [google-cloud-sdk.components.gke-gcloud-auth-plugin])
       ];
 
       variables = {

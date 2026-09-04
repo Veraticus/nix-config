@@ -8,24 +8,14 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
+  # Filesystems and swap are declared by ./disko.nix (btrfs-impermanence
+  # module), not here.
   boot = {
-    initrd.availableKernelModules = ["xhci_pci" "nvme" "ahci" "usbhid" "sd_mod"];
+    initrd.availableKernelModules = ["xhci_pci" "nvme" "ahci" "usbhid" "usb_storage" "sd_mod"];
     initrd.kernelModules = [];
     kernelModules = ["kvm-amd"];
     extraModulePackages = [];
   };
-
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/VM-ROOT";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/VM-EFI";
-    fsType = "vfat";
-  };
-
-  swapDevices = [{device = "/dev/disk/by-label/VM-SWAP";}];
 
   networking.useDHCP = lib.mkDefault false;
 

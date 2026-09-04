@@ -55,7 +55,7 @@
     - AMD Ryzen 9 9955HX — 16 cores / 32 threads (Zen 5)
     - 64 GB RAM
     - AMD integrated graphics (Granite Ridge); no discrete GPU
-    - ~880 GB NVMe root, headless
+    - 4 TB NVMe root: LUKS (TPM2 auto-unlock) + btrfs impermanence, lanzaboote Secure Boot; headless
 
     ## Role
     Primary headless dev box. Josh remotes in via SSH/mosh and does most dev

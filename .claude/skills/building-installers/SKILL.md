@@ -5,6 +5,15 @@ description: Builds NixOS installer ISOs for hosts using the autoInstaller modul
 
 # Building NixOS Installer ISOs
 
+> **Scope.** This skill covers the legacy `autoInstaller` flow (label-based
+> ext4, no LUKS, no impermanence, no lanzaboote) — today only ultraviolet
+> uses it. Hosts on the btrfs-impermanence + lanzaboote stack install a
+> different way: gnomon via the kit-partition ISO (`modules/installer-iso/`,
+> `.#installerIso`), vermissian from its own running system
+> (`scripts/flash-vermissian.sh`), stygianlibrary from gnomon
+> (`scripts/flash-stygianlibrary.sh`). The option table and the agekey
+> step below do not apply to those hosts.
+
 ## Overview
 
 The `modules/installer.nix` module creates bootable USB ISOs that auto-partition, format, and install a NixOS host. Each host has a thin wrapper in `hosts/<name>/installer.nix` setting `autoInstaller.*` options.

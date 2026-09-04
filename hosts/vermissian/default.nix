@@ -16,9 +16,11 @@ in
       ../../modules/services/cleanup-services.nix
       ../../modules/services/cloudflare-tunnel.nix
       ../../modules/services/cloudflare-warp-dns.nix
+      ./disko.nix
       ./hardware-configuration.nix
       ./mullvad-proxy.nix
       ./services/marvin-blackbox-reap.nix
+      inputs.lanzaboote.nixosModules.lanzaboote
 
       # Headless-server hardening (BT module blacklist on top of fleet-wide)
       ../../modules/linux-base/server-hardening.nix
@@ -124,6 +126,29 @@ in
       address = ["${self.ip}/${toString subnet.prefixLength}"];
       gateway = [subnet.gateway];
       dns = subnet.nameservers;
+    };
+
+    # ── Boot: lanzaboote-signed UKI on the LUKS + btrfs-impermanence disk ──
+    # Same stack as gnomon. linux-base turns systemd-boot on, so it needs
+    # mkForce off here. Signing keys live in /var/lib/sbctl, which
+    # ./disko.nix persists; they are staged there by
+    # scripts/flash-vermissian.sh before nixos-install runs.
+    #
+    # LUKS unlock is TPM2 (PCR 7, Secure Boot policy) with the passphrase as
+    # fallback — enrolled post-install with systemd-cryptenroll, nothing
+    # declarative. Deliberately no FIDO2: this is a headless box that has to
+    # come back from `update` reboots unattended, and it sits in Josh's line
+    # of sight, so a touch-to-unlock token buys nothing over TPM2 + SB.
+    boot.loader.systemd-boot.enable = lib.mkForce false;
+    boot.loader.efi.canTouchEfiVariables = true;
+    boot.loader.timeout = 5;
+    boot.lanzaboote = {
+      enable = true;
+      pkiBundle = "/var/lib/sbctl";
+      # Kernel + initrd here is ~40 MiB per generation (no GPU blobs), so 8
+      # fits the module's 1 GiB ESP with room; gnomon's 4 was an NVIDIA
+      # initramfs problem this host doesn't have.
+      configurationLimit = 8;
     };
 
     boot = {
@@ -314,6 +339,8 @@ in
         hwdata
         cachix
         tailscale
+        # Secure Boot key management for lanzaboote (sbctl status / verify).
+        sbctl
         unar
         podman-tui
         chromium

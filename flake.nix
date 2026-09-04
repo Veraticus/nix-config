@@ -548,10 +548,6 @@
         modules = [./hosts/ultraviolet/installer.nix];
       };
 
-      vermissian-installer = {
-        system = "x86_64-linux";
-        modules = [./hosts/vermissian/installer.nix];
-      };
     };
 
     mkHome = {
@@ -625,7 +621,6 @@
           // lib.optionalAttrs (system == "x86_64-linux") {
             installerIso = self.nixosConfigurations.installer.config.system.build.isoImage;
             ultravioletInstallerIso = self.nixosConfigurations.ultraviolet-installer.config.system.build.isoImage;
-            vermissianInstallerIso = self.nixosConfigurations.vermissian-installer.config.system.build.isoImage;
 
             # End-to-end installer VM test. Boots a qemu VM, runs install.sh,
             # asserts post-install state. Slow (minutes) — exposed as a

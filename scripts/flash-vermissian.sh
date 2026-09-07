@@ -12,7 +12,8 @@
 #   1. Preflight: tools present, target disk exists at the serial-locked
 #      by-id path from hosts/vermissian/disko.nix, target is NOT the disk
 #      the running system booted from, no leftover cryptroot mapping.
-#   2. disko --mode disko: partition, LUKS (prompts for passphrase),
+#   2. disko --mode disko: partition, LUKS (passphrase read from
+#      /tmp/secret.key, the btrfs-impermanence module's passwordFile),
 #      btrfs subvolumes, mount under /mnt.
 #   3. @root-blank snapshot (impermanence rollback target; never created
 #      by Nix, first boot fails in initrd without it).
@@ -54,6 +55,8 @@ DISKO_FILE="hosts/${HOSTNAME_TARGET}/disko.nix"
 MNT="/mnt"
 CRYPTROOT="/dev/mapper/cryptroot"
 PLACEHOLDER="FILL-IN-4TB-SERIAL"
+# btrfs-impermanence sets luks.passwordFile to this; disko does NOT prompt.
+SECRET_KEY="/tmp/secret.key"
 # Everything the persist list in disko.nix needs copied from the running
 # system. /var/lib/sbctl is generated fresh (step 5), /var/lib/nixos and
 # /var/lib/systemd are copied so uid/gid maps and timer stamps carry over.
@@ -131,6 +134,8 @@ fi
 
 if [ "$COPY_ONLY" = 0 ] && [ "$DRY_RUN" = 0 ]; then
   [ "$(id -u)" = 0 ] || abort "run with sudo (preserving env): sudo -E $0"
+  [ -s "$SECRET_KEY" ] || abort "$SECRET_KEY is missing or empty. disko reads the LUKS passphrase from it (no prompt). Create it first:
+    (umask 077; read -rs 'PW?LUKS passphrase: '; printf '%s' \"\$PW\" > $SECRET_KEY; unset PW)"
 fi
 
 echo "Target:  $EXPECTED_DISK"
@@ -198,9 +203,10 @@ read -rp "Type '$HOSTNAME_TARGET' to proceed: " CONFIRM
 [ "$CONFIRM" = "$HOSTNAME_TARGET" ] || abort "not confirmed (got '$CONFIRM')"
 
 # ── 2. disko ────────────────────────────────────────────────────────────
-log "disko (will prompt for the LUKS passphrase)"
+log "disko (LUKS passphrase from $SECRET_KEY)"
 disko --mode disko --flake "$FLAKE_REF"
 mountpoint -q "$MNT" || abort "disko finished but $MNT is not mounted"
+rm -f "$SECRET_KEY"
 
 # ── 3. @root-blank ──────────────────────────────────────────────────────
 log "@root-blank snapshot"

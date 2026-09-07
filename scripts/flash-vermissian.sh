@@ -53,6 +53,12 @@ done
 HOSTNAME_TARGET="vermissian"
 FLAKE_REF=".#${HOSTNAME_TARGET}"
 DISKO_FILE="hosts/${HOSTNAME_TARGET}/disko.nix"
+# NOTE: on vermissian ~/.claude/{projects,sessions,tasks,todos} symlink
+# into /mnt/claude (NFS automount from blackbox). Mounting the target
+# here shadows that mount for the whole install, and every running
+# Claude session on the box loses its transcript/memory dir until /mnt
+# is unmounted again. A future run should pass disko --root-mountpoint
+# (and nixos-install --root) somewhere outside /mnt.
 MNT="/mnt"
 CRYPTROOT="/dev/mapper/cryptroot"
 PLACEHOLDER="FILL-IN-4TB-SERIAL"

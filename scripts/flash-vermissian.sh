@@ -18,8 +18,8 @@
 #   3. @root-blank snapshot (impermanence rollback target; never created
 #      by Nix, first boot fails in initrd without it).
 #   4. Identity: copy THIS host's SSH host keypair and agekey into
-#      /mnt/etc (for the install-time chroot activation) and /mnt/persist
-#      (for the running system) so the new install keeps the same agenix
+#      /mnt/persist (agekey also into /mnt/etc/age for the install-time
+#      chroot activation) so the new install keeps the same agenix
 #      identity — no re-keying of any secret.
 #   5. sbctl create-keys, staged to BOTH /mnt/var/lib/sbctl (nixos-install
 #      signs the first UKI) and /mnt/persist/var/lib/sbctl (survives the
@@ -217,20 +217,21 @@ btrfs subvolume snapshot -r "$TOP/@root" "$TOP/@root-blank"
 umount "$TOP"; rmdir "$TOP"
 
 # ── 4. Identity: same host keys, same agekey, no re-keying ─────────────
-# Staged to BOTH $MNT/etc and $MNT/persist/etc (the stygianlibrary
-# pattern): nixos-install activates the system inside a chroot where the
-# impermanence binds do not exist yet, and activation needs the host key
-# and agekey at /etc/ssh and /etc/age to decrypt agenix secrets. Without
-# the /etc copies activation aborts and the boot loader never gets
-# installed. The @root copies are discarded by the first rollback; the
-# /persist copies are what the running system sees.
-log "Identity -> $MNT/etc and $MNT/persist/etc"
-for base in "$MNT" "$MNT/persist"; do
-  install -d -m 755 "$base/etc/ssh" "$base/etc/age"
-  install -m 600 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key     "$base/etc/ssh/"
-  install -m 644 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key.pub "$base/etc/ssh/"
-  install -m 600 -o 0 -g 0 "/etc/age/${HOSTNAME_TARGET}.agekey" "$base/etc/age/"
-done
+# SSH host keys go to /persist only: they are impermanence persistFiles,
+# and its file mounter refuses ("A file already exists") if a real file
+# sits at /etc/ssh/... when it wants to bind there. The agekey goes to
+# /persist AND to $MNT/etc/age: nixos-install activates the system in a
+# chroot with none of the impermanence binds in place, and agenix needs
+# /etc/age/<host>.agekey there to decrypt secrets. /etc/age is a
+# persistDirectory (bind-mounted at boot), so a file under it on @root
+# is simply shadowed, never a conflict. The @root copy is gone after the
+# first rollback anyway.
+log "Identity -> $MNT/persist/etc (host key + agekey) and $MNT/etc/age (agekey)"
+install -d -m 755 "$MNT/persist/etc/ssh" "$MNT/persist/etc/age" "$MNT/etc/age"
+install -m 600 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key     "$MNT/persist/etc/ssh/"
+install -m 644 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key.pub "$MNT/persist/etc/ssh/"
+install -m 600 -o 0 -g 0 "/etc/age/${HOSTNAME_TARGET}.agekey" "$MNT/persist/etc/age/"
+install -m 600 -o 0 -g 0 "/etc/age/${HOSTNAME_TARGET}.agekey" "$MNT/etc/age/"
 
 # ── 5. Secure Boot signing keys ────────────────────────────────────────
 log "sbctl create-keys -> staged to $MNT/var/lib/sbctl and $MNT/persist/var/lib/sbctl"

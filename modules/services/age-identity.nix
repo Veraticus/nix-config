@@ -12,9 +12,13 @@
 in {
   age.identityPaths = [hostAgeKey];
 
+  # No `set -e` here: activation snippets are concatenated into ONE bash
+  # script, so a `set -euo pipefail` in this (early) snippet turns every
+  # later snippet's failure into a hard exit before /run/current-system is
+  # linked. That is how a single failed agenix decrypt or impermanence
+  # bind aborted nixos-install for vermissian (Sep 2026). NixOS already
+  # traps errors per snippet and reports them; rely on that.
   system.activationScripts.ageHostKey = ''
-    set -euo pipefail
-
     mkdir -p ${ageDir}
     chmod 700 ${ageDir}
 
@@ -25,9 +29,14 @@ in {
 
       if [ ! -f ${hostAgeKey} ]; then
         echo "Generating age identity from ${hostKey}"
-        $SSH_TO_AGE --private-key < ${hostKey} > ${hostAgeKey}.tmp
-        mv ${hostAgeKey}.tmp ${hostAgeKey}
-        chmod 600 ${hostAgeKey}
+        if $SSH_TO_AGE --private-key < ${hostKey} > ${hostAgeKey}.tmp; then
+          mv ${hostAgeKey}.tmp ${hostAgeKey}
+          chmod 600 ${hostAgeKey}
+        else
+          rm -f ${hostAgeKey}.tmp
+          echo "ERROR: ssh-to-age failed; ${hostAgeKey} not generated" >&2
+          false
+        fi
       fi
 
       # Warn if SSH host key and agekey have diverged (e.g. SSH key was
@@ -46,9 +55,12 @@ in {
       cat ${hostAgeKey} > ${keysFile}
       chmod 600 ${keysFile}
 
-      $SSH_TO_AGE < ${hostKey}.pub > ${recipientsFile}.tmp
-      mv ${recipientsFile}.tmp ${recipientsFile}
-      chmod 644 ${recipientsFile}
+      if $SSH_TO_AGE < ${hostKey}.pub > ${recipientsFile}.tmp; then
+        mv ${recipientsFile}.tmp ${recipientsFile}
+        chmod 644 ${recipientsFile}
+      else
+        rm -f ${recipientsFile}.tmp
+      fi
     fi
   '';
 }

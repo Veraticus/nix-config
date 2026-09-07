@@ -97,7 +97,7 @@ in {
     # I/O scheduler: 'none' is optimal for NVMe (parallel queue hardware)
     # and SSDs (no rotational latency to optimize for)
     services.udev.extraRules = ''
-      ACTION=="add|change", KERNEL=="nvme[0-9]*", ATTR{queue/scheduler}="none"
+      ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ENV{DEVTYPE}=="disk", ATTR{queue/scheduler}="none"
       ACTION=="add|change", KERNEL=="sd[a-z]", ATTR{queue/rotational}=="0", ATTR{queue/scheduler}="none"
     '';
   };

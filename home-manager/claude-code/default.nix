@@ -22,6 +22,11 @@
   # (ninuan), echelon — evaluating.
   codexUpstream = config.services.patchbay.codexUpstream.enable or false;
 
+  # The chatgpt/* selectors patchbay publishes on those hosts. Same file the
+  # gambit rungs and their check import, so a selector named here, in
+  # modelRegistry, or in settings.json has exactly one place it can be spelled.
+  chatgptModels = import ../patchbay/chatgpt-models.nix;
+
   # Generate settings.json with gambit's marketplace entry injected at build
   # time, pointing at the Nix store path. Keeps a single source of truth
   # between settings.json's extraKnownMarketplaces and the runtime
@@ -60,11 +65,48 @@
   # that bills elsewhere selects its context with a /ctx/<name> base URL in
   # its own .claude/settings.json — activation.claudeAttainContext below
   # stamps the Attain repos.
-  settingsJson = mkSettingsJson "base" (
-    lib.optionalAttrs (patchbayBaseUrl != null) {
-      env.ANTHROPIC_BASE_URL = patchbayBaseUrl;
-    }
-  );
+  #
+  # settings.json is deployed fleet-wide, but a chatgpt/* default model is
+  # only served where the Codex upstream runs. Elsewhere it would 404 on
+  # every request — patchbay forwards an unclaimed model to Anthropic, and a
+  # host with no patchbay sends it straight there — so those hosts fall back
+  # to the registry's Claude default. cmswitch stays the one switch: it edits
+  # settings.json, and this overlay decides per host whether the choice can
+  # be honored.
+  defaultModelIsChatgpt = lib.hasPrefix "chatgpt/" settingsJsonBase.model;
+  chatgptDefaultKnown =
+    !defaultModelIsChatgpt
+    || chatgptModels ? ${settingsJsonBase.model}
+    || throw "claude-code: settings.json model '${settingsJsonBase.model}' is not a route home-manager/patchbay/chatgpt-models.nix publishes";
+  claudeFallback = modelRegistry."fable-5-1";
+
+  settingsJson = assert chatgptDefaultKnown;
+    mkSettingsJson "base" (
+      lib.optionalAttrs (patchbayBaseUrl != null) {
+        env.ANTHROPIC_BASE_URL = patchbayBaseUrl;
+      }
+      // lib.optionalAttrs (defaultModelIsChatgpt && !codexUpstream) {
+        model = claudeFallback.model;
+        effortLevel = claudeFallback.defaultEffort;
+      }
+      # CC 2.1.257 refuses to start a session on a model id its catalog does
+      # not describe. A /model picker row with behavesAs adopts a known
+      # model's client-side profile for the foreign id (probed 2026-09-05:
+      # opus-5 gives the 64k output ceiling and xhigh default; the assumed
+      # context window stays 200k regardless). One row per published route,
+      # generated here rather than written into settings.json so hosts
+      # without the routes never offer them.
+      // lib.optionalAttrs codexUpstream {
+        modelPicker.options =
+          lib.mapAttrsToList (selector: upstreamModel: {
+            model = selector;
+            label = upstreamModel;
+            description = "ChatGPT subscription via patchbay";
+            behavesAs = "claude-opus-5";
+          })
+          chatgptModels;
+      }
+    );
 
   # ccrender — render the real ~/.claude/settings.json from the HM-deployed
   # settings.base.json, merging in the patchbay caller-key header.
@@ -127,7 +169,20 @@
   # activation.claudeEffortUnpin (further down). Adding a model here is the
   # only step needed for cmswitch to recognise it and — if unpinKey is
   # non-null — for activation to clear its launch-default effort pin.
+  #
+  # Foreign models enter as their patchbay selector: the model string is a
+  # chatgpt/* route key, served only on Codex-upstream hosts (the settings
+  # overlay above falls back to fable-5-1 everywhere else).
   modelRegistry = {
+    "astra" = {
+      # GPT-6 Astra over the ChatGPT subscription. Effort reaches Codex as
+      # the Responses reasoning effort, so the four levels mean what they
+      # mean for Claude.
+      model = "chatgpt/astra";
+      defaultEffort = "xhigh";
+      unpinKey = null;
+      aliases = ["gpt-6-astra"];
+    };
     "fable-5-1" = {
       # No unpinKey: CC 2.1.257 pins launch effort only for opus-4-7/4-8 and
       # fable-5 (see unpin<Model>LaunchEffort in the binary); fable-5-1 honors

@@ -16,7 +16,7 @@
 
   btrfs-impermanence = {
     enable = true;
-    device = "/dev/disk/by-id/nvme-FILL-IN-4TB-SERIAL";
+    device = "/dev/disk/by-id/nvme-TEAM_TM8FPW004T_TPBF2503130090100831";
     luks.enable = true;
     # Matches the 32G VM-SWAP partition the ext4 install had. zram from
     # the dev performance profile sits in front of it.

@@ -125,7 +125,8 @@ ROOT_SRC="$(findmnt -no SOURCE /)"
 ROOT_DISK="$(lsblk -no PKNAME "$ROOT_SRC" 2>/dev/null | head -1)"
 [ -n "$ROOT_DISK" ] || abort "could not determine the running root's parent disk"
 [ "/dev/$ROOT_DISK" != "$ACTUAL_DEV" ] || abort "target $ACTUAL_DEV IS the running system's boot disk"
-if lsblk -no MOUNTPOINTS "$ACTUAL_DEV" | grep -q .; then
+# --copy-only runs against the target already mounted under $MNT.
+if [ "$COPY_ONLY" = 0 ] && lsblk -no MOUNTPOINTS "$ACTUAL_DEV" | grep -q .; then
   abort "$ACTUAL_DEV has mounted partitions; it is in use"
 fi
 

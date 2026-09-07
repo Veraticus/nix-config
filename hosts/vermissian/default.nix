@@ -38,9 +38,10 @@ in
       # Docker on this host accumulates (Coder stack images, ad-hoc builds)
       # now that the nightly global prune is gone.
       dockerPrune = false;
-      # 25G x 5 project caches was ~105G of regenerable Go objects on a 884G
-      # disk (Sep 2026); 10G per project keeps the warm set, bounds the total.
-      homeBuildCacheMaxGB = 10;
+      # Was 10G on the 884G disk (Sep 2026). On the 4TB drive, 50G per
+      # project keeps months of warm objects and still bounds the total
+      # (~250G across the usual five projects).
+      homeBuildCacheMaxGB = 50;
     };
 
     # Docker hygiene stopgap for everything OTHER than marvin-blackbox (see

@@ -151,6 +151,12 @@ in
       # initramfs problem this host doesn't have.
       configurationLimit = 8;
     };
+    # The systemd initrd tries the enrolled systemd-tpm2 token on its own;
+    # tpm2-device=auto makes that explicit so a future systemd change can't
+    # quietly drop it (same reasoning as gnomon's fido2-device=auto). If the
+    # unseal fails (PCR 7 moved: SB keys changed or SB turned off) it falls
+    # through to the passphrase prompt.
+    boot.initrd.luks.devices.cryptroot.crypttabExtraOpts = ["tpm2-device=auto"];
 
     boot = {
       # aarch64 user-mode emulation (qemu binfmt), same as gnomon: lets this

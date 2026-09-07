@@ -722,9 +722,11 @@ in {
         echo "claudeUnifiedState: ${hostname} out of scope; skipping." >&2
       ''
       else ''
-        # Subshell: ensures any `exit` inside this activation phase only
-        # terminates the phase, not the entire HM activation script
-        # (which would skip linkGeneration / reloadSystemd / etc.).
+        # Subshell + trailing `||`: the outer HM activation script runs
+        # under `set -e`, so a bare `exit 1` (or any failing command) in
+        # here would abort the entire activation and skip linkGeneration /
+        # reloadSystemd / etc. The `|| echo` after the closing paren turns
+        # a phase failure into a logged skip instead.
         (
         set -euo pipefail
 
@@ -735,9 +737,14 @@ in {
 
         # NAS reachability — try to trigger automount, then verify. Refuse
         # to touch symlinks if the NAS is unreachable so we don't leave
-        # the user with dangling targets.
+        # the user with dangling targets. `mountpoint -q` is the wrong test:
+        # the systemd automount leaves an autofs placeholder at /mnt/claude
+        # that counts as a mountpoint even when the NFS behind it failed
+        # (vermissian at boot: the mount raced network-online, the guard
+        # passed, and the next mkdir into the bucket died with "No such
+        # device"). Ask for the NFS mount specifically.
         ${pkgs.coreutils}/bin/ls /mnt/claude >/dev/null 2>&1 || true
-        if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/claude; then
+        if ! ${pkgs.util-linux}/bin/findmnt -n -t nfs,nfs4 /mnt/claude >/dev/null 2>&1; then
           echo "claudeUnifiedState: /mnt/claude not mounted (NAS down?). Refusing to touch ~/.claude symlinks." >&2
           exit 1
         fi
@@ -859,7 +866,7 @@ in {
         done
         ensure_linked "$HOME/.claude/file-history" "$LOCAL/file-history" local
         ensure_linked "$HOME/.claude/shell-snapshots" "$LOCAL/shell-snapshots" local
-        )
+        ) || echo "claudeUnifiedState: phase aborted (see above); the rest of the activation continues." >&2
       '');
 
     # Render the real settings.json from settings.base.json. Must run after

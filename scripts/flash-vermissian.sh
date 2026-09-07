@@ -18,8 +18,9 @@
 #   3. @root-blank snapshot (impermanence rollback target; never created
 #      by Nix, first boot fails in initrd without it).
 #   4. Identity: copy THIS host's SSH host keypair and agekey into
-#      /mnt/persist so the new install keeps the same agenix identity —
-#      no re-keying of any secret.
+#      /mnt/etc (for the install-time chroot activation) and /mnt/persist
+#      (for the running system) so the new install keeps the same agenix
+#      identity — no re-keying of any secret.
 #   5. sbctl create-keys, staged to BOTH /mnt/var/lib/sbctl (nixos-install
 #      signs the first UKI) and /mnt/persist/var/lib/sbctl (survives the
 #      first rollback).
@@ -216,11 +217,20 @@ btrfs subvolume snapshot -r "$TOP/@root" "$TOP/@root-blank"
 umount "$TOP"; rmdir "$TOP"
 
 # ── 4. Identity: same host keys, same agekey, no re-keying ─────────────
-log "Identity -> $MNT/persist"
-mkdir -p "$MNT/persist/etc/ssh" "$MNT/persist/etc/age"
-install -m 600 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key     "$MNT/persist/etc/ssh/"
-install -m 644 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key.pub "$MNT/persist/etc/ssh/"
-install -m 600 -o 0 -g 0 "/etc/age/${HOSTNAME_TARGET}.agekey" "$MNT/persist/etc/age/"
+# Staged to BOTH $MNT/etc and $MNT/persist/etc (the stygianlibrary
+# pattern): nixos-install activates the system inside a chroot where the
+# impermanence binds do not exist yet, and activation needs the host key
+# and agekey at /etc/ssh and /etc/age to decrypt agenix secrets. Without
+# the /etc copies activation aborts and the boot loader never gets
+# installed. The @root copies are discarded by the first rollback; the
+# /persist copies are what the running system sees.
+log "Identity -> $MNT/etc and $MNT/persist/etc"
+for base in "$MNT" "$MNT/persist"; do
+  install -d -m 755 "$base/etc/ssh" "$base/etc/age"
+  install -m 600 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key     "$base/etc/ssh/"
+  install -m 644 -o 0 -g 0 /etc/ssh/ssh_host_ed25519_key.pub "$base/etc/ssh/"
+  install -m 600 -o 0 -g 0 "/etc/age/${HOSTNAME_TARGET}.agekey" "$base/etc/age/"
+done
 
 # ── 5. Secure Boot signing keys ────────────────────────────────────────
 log "sbctl create-keys -> staged to $MNT/var/lib/sbctl and $MNT/persist/var/lib/sbctl"

@@ -121,6 +121,14 @@ in
     systemd.network.wait-online = {
       anyInterface = true;
       timeout = 10;
+      # mullvad0 is a networkd-managed WireGuard tunnel: it is "routable"
+      # the instant its netdev exists, no carrier needed, so with --any it
+      # satisfied network-online.target 4ms after it came up while enp4s0
+      # was still waiting for link. Everything ordered after network-online
+      # that needs the LAN (the /mnt/claude NFS automount, hence the
+      # home-manager activation) then failed with "Network is unreachable".
+      # Online means the wired LAN, not the VPN.
+      ignoredInterfaces = ["mullvad0"];
     };
     systemd.network.networks."10-lan" = {
       matchConfig.Name = "en*";

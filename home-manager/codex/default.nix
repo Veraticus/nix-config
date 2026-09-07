@@ -108,14 +108,22 @@ in {
       echo "codexTranscriptState: ${hostname} out of scope; skipping." >&2
     ''
     else ''
+      # Subshell + trailing `||`: the outer HM activation script runs under
+      # `set -e`, so any failing command in here would abort the entire
+      # activation. The `|| echo` after the closing paren turns a phase
+      # failure into a logged skip instead.
       (
       set -euo pipefail
 
       BUCKET="/mnt/claude/${hostname}/codex"
 
       # Trigger the automount, then verify it before touching any local path.
+      # Not `mountpoint -q`: the systemd automount's autofs placeholder
+      # counts as a mountpoint even when the NFS behind it failed to mount,
+      # and the mkdir below would then die with "No such device" (seen at
+      # boot on vermissian). Ask for the NFS mount specifically.
       ${pkgs.coreutils}/bin/ls /mnt/claude >/dev/null 2>&1 || true
-      if ! ${pkgs.util-linux}/bin/mountpoint -q /mnt/claude; then
+      if ! ${pkgs.util-linux}/bin/findmnt -n -t nfs,nfs4 /mnt/claude >/dev/null 2>&1; then
         echo "codexTranscriptState: /mnt/claude not mounted (NAS down?). Refusing to touch ~/.codex transcript symlinks." >&2
         exit 0
       fi
@@ -181,7 +189,7 @@ in {
       for d in sessions archived_sessions; do
         ensure_linked "$HOME/.codex/$d" "$BUCKET/$d"
       done
-      )
+      ) || echo "codexTranscriptState: phase aborted (see above); the rest of the activation continues." >&2
     '');
 
   # Gambit's Codex-native bundle is exposed through the implicit personal

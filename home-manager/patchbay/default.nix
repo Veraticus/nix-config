@@ -301,9 +301,11 @@
   usageDb = "$HOME/${usageDbSubpath}";
 
   # Ship the ledger to the host's NFS bucket so spend across the fleet can
-  # be summed in one place. /mnt/claude is a lazy systemd automount; the
-  # mountpoint guard makes this a silent no-op (rather than an automount
-  # trigger and a failed unit) when the NAS isn't reachable.
+  # be summed in one place. /mnt/claude is a lazy systemd automount: the
+  # `ls` triggers it, then findmnt checks for the NFS mount itself. Not
+  # `mountpoint -q` — that passes on the autofs placeholder even when the
+  # mount behind it failed, and the mkdir then fails the unit. When the NAS
+  # isn't reachable this is a silent no-op.
   #
   # --no-owner --no-group, same as every other writer into this bucket (see
   # home-manager/claude-code/default.nix): the NAS export all_squashes to
@@ -311,14 +313,16 @@
   # theoretical, which would have failed this unit every 10 minutes.
   ledgerSync = pkgs.writeShellScript "patchbay-ledger-sync" ''
     set -eu
-    ${pkgs.util-linux}/bin/mountpoint -q /mnt/claude || exit 0
+    ${pkgs.coreutils}/bin/ls /mnt/claude >/dev/null 2>&1 || true
+    ${pkgs.util-linux}/bin/findmnt -n -t nfs,nfs4 /mnt/claude >/dev/null 2>&1 || exit 0
     ${pkgs.coreutils}/bin/mkdir -p /mnt/claude/${hostname}/patchbay
     ${pkgs.rsync}/bin/rsync -a --no-owner --no-group "${ledgerDir}/" /mnt/claude/${hostname}/patchbay/
   '';
 
   usageSnapshotSync = pkgs.writeShellScript "patchbay-usage-snapshot-sync" ''
     set -euo pipefail
-    ${pkgs.util-linux}/bin/mountpoint -q /mnt/claude || exit 0
+    ${pkgs.coreutils}/bin/ls /mnt/claude >/dev/null 2>&1 || true
+    ${pkgs.util-linux}/bin/findmnt -n -t nfs,nfs4 /mnt/claude >/dev/null 2>&1 || exit 0
     [ -e "${usageDb}" ] || exit 0
     workdir=$(${pkgs.coreutils}/bin/mktemp -d)
     trap '${pkgs.coreutils}/bin/rm -rf "$workdir"' EXIT

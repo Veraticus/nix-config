@@ -24,6 +24,7 @@ in {
   # Personal omakase gateway key (llm.kloverinfrastructure.com), read by Pi
   # through the models.json shell-command resolver (home-manager/pi).
   "secrets/user/omakase-key.age".publicKeys = keys.joshsymonds;
+  "secrets/user/tavily-key.age".publicKeys = keys.joshsymonds;
 
   # Host-specific secrets
   "secrets/hosts/ultraviolet/cloudflare-api-token.age".publicKeys = keys.ultraviolet;

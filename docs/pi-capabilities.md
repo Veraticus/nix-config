@@ -56,11 +56,13 @@ and Nix Chromium; no npm browser installer, Playwright download, or Pi fork.
   Only global/in-memory process settings are allowed; the integration test supplies
   an invalid untrusted local shell override and verifies the global shell runs.
   Config version 0.10.6 is stamped to avoid migrations writing to the Nix store.
-- Search defaults to **keyless Exa**, with `workflow: "none"`. No automatic Codex
-  provider selection, curator, or additional answer-model summary. Search queries
-  still go to Exa; do not send private transcripts/work material. The public MCP
-  endpoint can rate-limit. DuckDuckGo's HTML endpoint challenged this host during
-  research, so it was not chosen as the default.
+- Search defaults to **Tavily** (changed 2026-09-08), with `workflow: "none"`.
+  The API key is encrypted in `secrets/user/tavily-key.age` and resolved at request
+  time from `$XDG_RUNTIME_DIR/agenix/tavily-key`; plaintext never enters the Nix
+  store. The integration uses basic search (one API credit per query). No
+  automatic Codex provider selection, curator, or additional Pi answer-model
+  summary. Search queries go to Tavily; do not send private transcripts/work
+  material. This replaces the rate-limited anonymous Exa MCP endpoint.
 - Fetching defaults to **direct HTTP**, with hosted fallback providers and browser
   cookies disabled. PDFs use local Unpdf extraction and return a saved Markdown
   artifact. Automatic GitHub cloning/`gh` auth reuse and video/image model routes

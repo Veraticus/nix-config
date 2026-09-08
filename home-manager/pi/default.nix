@@ -113,6 +113,8 @@ in {
   # this provider is decided by the `pi` shell function (home-manager/zsh)
   # and a per-tree .pi-args file, not here.
   age.secrets."omakase-key".file = ../../secrets/user/omakase-key.age;
+  # Web search resolves this at request time; only its path enters the store.
+  age.secrets."tavily-key".file = ../../secrets/user/tavily-key.age;
 
   programs.pi-coding-agent = {
     enable = true;

@@ -157,7 +157,7 @@
     };
 
     # Steward - shared coding-agent runtime, statusline, and notifications
-    steward.url = "github:joshsymonds/steward/5beb3021f67b5051df515c4ce579d5f708c1063c";
+    steward.url = "github:joshsymonds/steward/34a5531ec3a495d89739a0ca72b3fb14832eb35b";
     steward.inputs.nixpkgs.follows = "nixpkgs";
 
     # dms-claudecode — DMS plugin showing Claude Code subscription usage

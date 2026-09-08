@@ -95,7 +95,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
   const lock = JSON.parse(readFileSync(resolve(repository, "flake.lock"), "utf8"));
   assert.match(
     flake,
-    /steward\.url = "github:joshsymonds\/steward\/5beb3021f67b5051df515c4ce579d5f708c1063c";/,
+    /steward\.url = "github:joshsymonds\/steward\/34a5531ec3a495d89739a0ca72b3fb14832eb35b";/,
   );
   assert.equal(lock.nodes.root.inputs.steward, "steward");
   assert.deepEqual(
@@ -108,7 +108,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
     {
       owner: "joshsymonds",
       repo: "steward",
-      rev: "5beb3021f67b5051df515c4ce579d5f708c1063c",
+      rev: "34a5531ec3a495d89739a0ca72b3fb14832eb35b",
       type: "github",
     },
   );

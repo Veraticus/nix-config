@@ -39,7 +39,20 @@
       route = "chatgpt/sol";
       effort = "xhigh";
     };
+    # GPT-6 Astra at the effort the Pi orchestrator runs it: a rung for
+    # steelman/review dispatch and for exercising the production orchestrator
+    # model from Claude Code over patchbay's HTTPS path (cli-proxy-api) rather
+    # than Pi's Codex WebSocket, which is a second transport when one stalls.
+    "astra-high" = {
+      route = "chatgpt/astra";
+      effort = "high";
+    };
   };
+
+  # Route key -> upstream model id, owned by the patchbay module. Used for the
+  # human-readable label on the Claude Code agent and for the Pi twin's
+  # provider model id, so a rung never hardcodes a model generation.
+  chatgptModels = import ../patchbay/chatgpt-models.nix;
 
   # The naming contract models.json depends on: a rung's writing agent is the
   # rung name, its advisory agent is the rung name plus "-ro".
@@ -83,7 +96,7 @@
       [
         "---"
         "name: ${agentName}"
-        ''description: "Gambit rung: GPT-5.6 ${route} at ${effort} effort via patchbay${lib.optionalString readonly ", read-only advisory variant"}"''
+        ''description: "Gambit rung: ${chatgptModels.${route}} (${route}) at ${effort} effort via patchbay${lib.optionalString readonly ", read-only advisory variant"}"''
         "model: ${route}"
         "effort: ${effort}"
       ]
@@ -116,7 +129,7 @@
   mkPiRungAgent = rung: readonly: let
     inherit (gambitRungs.${rung}) route effort;
     agentName = rungAgentName rung readonly;
-    model = "openai-codex/gpt-5.6-${lib.removePrefix "chatgpt/" route}";
+    model = "openai-codex/${chatgptModels.${route}}";
   in
     pkgs.writeText "gambit-pi-rung-${agentName}.md" (lib.concatStringsSep "\n" (
       [

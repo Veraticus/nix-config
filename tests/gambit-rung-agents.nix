@@ -26,8 +26,12 @@
   # (shimmer alone reaches Jira, GitLab, Todoist and Monarch write APIs).
   expectedDenylist = "disallowedTools: Edit, Write, NotebookEdit, Agent, mcp__*";
 
-  # The route keys patchbay actually publishes under codexUpstream.
-  chatgptRoutes = lib.attrNames (import ../home-manager/patchbay/chatgpt-models.nix);
+  # The route keys patchbay actually publishes under codexUpstream, and the
+  # upstream model id each one maps to (the Pi twin dispatches that id
+  # directly on its Codex provider).
+  chatgptModels = import ../home-manager/patchbay/chatgpt-models.nix;
+  chatgptRoutes = lib.attrNames chatgptModels;
+  routeModelsJson = pkgs.writeText "patchbay-chatgpt-route-models.json" (builtins.toJSON chatgptModels);
 
   rungsJson = pkgs.writeText "gambit-rungs.json" (builtins.toJSON gambitRungs);
   fullJson = pkgs.writeText "gambit-models-full.json" (builtins.toJSON gambitModelsFull);
@@ -120,7 +124,7 @@ in
       # Pi gets the same named rungs rendered in pi-subagents frontmatter.
       # Its direct Codex provider replaces Claude's patchbay route, `thinking`
       # replaces `effort`, and read-only variants expose inspection tools only.
-      pi_model="openai-codex/gpt-5.6-''${route#chatgpt/}"
+      pi_model="openai-codex/$(jq -r --arg r "$route" '.[$r]' ${routeModelsJson})"
       pi_plain="${piAgentsDir}/$rung.md"
       pi_ro="${piAgentsDir}/$rung-ro.md"
       for f in "$pi_plain" "$pi_ro"; do

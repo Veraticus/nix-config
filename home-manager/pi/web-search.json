@@ -1,5 +1,6 @@
 {
-  "searchProvider": "exa",
+  "searchProvider": "tavily",
+  "tavilyApiKey": "!cat \"$XDG_RUNTIME_DIR/agenix/tavily-key\"",
   "workflow": "none",
   "openaiSearchProviders": [],
   "autoOpenBrowser": false,

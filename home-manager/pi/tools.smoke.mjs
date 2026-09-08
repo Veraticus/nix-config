@@ -1,6 +1,7 @@
 // node tools.smoke.mjs <Pi SDK root> <built settings.json> <web config> <process config>
-// Real tools and subprocesses; local fixtures plus public Exa/example.com requests.
-// No model prompts or credentials. All test state is temporary.
+// Real tools and subprocesses; local fixtures plus public Tavily/example.com requests.
+// Search uses the agenix Tavily key; no model prompts or model-provider credentials.
+// All test state is temporary.
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, existsSync } from 'node:fs';
@@ -35,7 +36,10 @@ function waitNotification(predicate) {
 try {
   for (const dir of [agentDir, join(agentDir, 'extensions'), join(root, '.pi/extensions')]) mkdirSync(dir, { recursive: true });
   const webConfig = JSON.parse(readFileSync(webFile, 'utf8'));
-  assert.equal(webConfig.searchProvider, 'exa');
+  assert.equal(webConfig.searchProvider, 'tavily');
+  assert.equal(webConfig.tavilyApiKey, '!cat "$XDG_RUNTIME_DIR/agenix/tavily-key"');
+  const runtimeDir = process.env.XDG_RUNTIME_DIR;
+  assert.ok(runtimeDir, 'XDG_RUNTIME_DIR is required for the agenix search credential');
   assert.equal(webConfig.workflow, 'none');
   assert.deepEqual(webConfig.fetchRouting.providers, ['http']);
   assert.deepEqual(webConfig.ssrf.allowRanges, []);
@@ -50,7 +54,7 @@ try {
     if (/^(PI_|AGENT_BROWSER_|XDG_)/.test(key) || /(_API_KEY|_TOKEN|_SECRET)$/.test(key)
       || /^(HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY)$/i.test(key)) delete process.env[key];
   }
-  Object.assign(process.env, { HOME: root, TMPDIR: root, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: '1' });
+  Object.assign(process.env, { HOME: root, TMPDIR: root, XDG_RUNTIME_DIR: runtimeDir, PI_CODING_AGENT_DIR: agentDir, PI_OFFLINE: '1' });
   process.chdir(root);
   const { DefaultResourceLoader, SettingsManager, SessionManager } = await import(pathToFileURL(join(sdkRoot, 'dist/index.js')).href);
   const loader = new DefaultResourceLoader({ cwd: root, agentDir,
@@ -145,7 +149,7 @@ try {
     const missing = await run('fetch_content', { url: url + '/missing', mode: 'readable' });
     assert.match(JSON.stringify(missing), /404/);
   });
-  await test('public keyless Exa search returns actual source URLs without credential lookup or curator', async () => {
+  await test('public Tavily search resolves its agenix credential and returns source URLs without model lookup or curator', async () => {
     const before = notifications.length;
     const result = await run('web_search', { query: 'NixOS manual', numResults: 2, includeContent: false });
     const text = JSON.stringify(result);

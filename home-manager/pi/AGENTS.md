@@ -87,7 +87,7 @@ Keep the user informed while doing the work, not only after everything is done.
   polling. For routine server exits use notify.onSuccess=context; reserve turn
   attention for results or failures that need action. These processes end with
   the Pi session; use tmux/systemd for longer lifetimes.
-- Web tools default to Exa search, direct HTTP fetching and local PDF extraction.
+- Web tools default to Tavily search, direct HTTP fetching and local PDF extraction.
   Keep workflow=none and the configured provider; do not enable curator,
   answer-mode model calls, credentialed providers, browser cookies or
   authenticated fetching unless requested. Send public queries only; never

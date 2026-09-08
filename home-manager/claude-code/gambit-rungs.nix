@@ -47,6 +47,12 @@
       route = "chatgpt/astra";
       effort = "high";
     };
+    # The steelman rung: Astra at its highest effort, read-only, for the one
+    # discovery pass brainstorming runs on an agreed design.
+    "astra-xhigh" = {
+      route = "chatgpt/astra";
+      effort = "xhigh";
+    };
   };
 
   # Route key -> upstream model id, owned by the patchbay module. Used for the
@@ -259,7 +265,7 @@
         readonly = true;
       };
       steelman = {
-        entry = "sol-xhigh";
+        entry = "astra-xhigh";
         readonly = true;
       };
       finder = {

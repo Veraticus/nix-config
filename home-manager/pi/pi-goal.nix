@@ -1,4 +1,7 @@
-{pkgs}: let
+{
+  pkgs,
+  nodeModules,
+}: let
   piGoalSource = pkgs.fetchzip {
     url = "https://registry.npmjs.org/@narumitw/pi-goal/-/pi-goal-0.54.3.tgz";
     hash = "sha256-Zw+7QW0g4Xk5EXhCwkB+fBXxe5+3nsfNLAyVuzP6v78=";
@@ -27,5 +30,5 @@ in
     ln -s ${piTuiKit} $out/node_modules/@narumitw/pi-tui-kit
     ln -s ${grokMermaid} $out/node_modules/grok-mermaid
     ln -s ${highlightJs} $out/node_modules/highlight.js
-    ln -s ${pkgs.pi-coding-agent}/lib/node_modules/pi-monorepo/node_modules/typebox $out/node_modules/typebox
+    ln -s ${nodeModules}/typebox $out/node_modules/typebox
   ''

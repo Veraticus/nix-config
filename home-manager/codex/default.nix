@@ -5,32 +5,9 @@
   pkgs,
   ...
 }: let
-<<<<<<< e2382f46bb9c2a8bfc04ea215269966e38065897
-  gambitPackages = inputs.gambit.packages.${pkgs.stdenv.hostPlatform.system};
-  gambitHasCodex = gambitPackages ? codex && inputs.gambit ? lib && inputs.gambit.lib ? version;
-  gambitCodex =
-    if gambitHasCodex
-    then gambitPackages.codex
-    else null;
-  gambitVersion =
-    if gambitHasCodex
-    then inputs.gambit.lib.version
-    else "unavailable";
-  gambitCodexCache =
-    if gambitHasCodex
-    then
-      pkgs.runCommand "gambit-codex-cache-${gambitVersion}" {} ''
-        mkdir -p "$out/${gambitVersion}"
-        cp -R ${gambitCodex}/. "$out/${gambitVersion}/"
-      ''
-    else null;
   stewardPackage = inputs.steward.packages.${pkgs.stdenv.hostPlatform.system}.default;
   codexConfig = import ./managed-config.nix {
-    inherit gambitHasCodex lib pkgs stewardPackage;
-=======
-  codexConfig = import ./managed-config.nix {
-    inherit lib pkgs;
->>>>>>> 2b1a0eeb85461bccbc42808c94a666eef07aa127
+    inherit lib pkgs stewardPackage;
   };
   subagentIsolation = import ./subagent-isolation.nix;
   codexAgentRoles = import ./agent-roles.nix;

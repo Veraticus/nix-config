@@ -47,6 +47,7 @@ let
     git = fake "@GIT@" {};
     bash = fake "/nix/store/fixture-bash" {};
     chromium = fake "/nix/store/fixture-chromium" {meta = {mainProgram = "chromium"; platforms = [system];};};
+    pi-coding-agent = fake "@STANDALONE_PI@" {};
     typescript = fake "/nix/store/fixture-typescript" {};
   };
   inputs = {
@@ -122,13 +123,13 @@ let
     STEWARD_MODEL_ID = "model \"$HOME\"; false";
     STEWARD_MODEL_THINKING = "";
   };
+  piGoal = import ../pi/pi-goal.nix {inherit pkgs; nodeModules = stewardRuntime.nodeModules;};
   pi = import ../pi/default.nix {inherit inputs lib pkgs;};
   codex = import ../codex/default.nix {
     hostname = "fixture";
     inherit inputs lib pkgs;
   };
   managedCodex = import ../codex/managed-config.nix {
-    gambitHasCodex = false;
     inherit lib pkgs stewardPackage;
   };
   common = import ../common.nix {
@@ -170,6 +171,7 @@ in {
     homeFileNames = builtins.attrNames pi.home.file;
     browserCli = toString pi.home.file.".local/bin/agent-browser".source;
     agents = toString pi.home.file.".pi/agent/agents".source;
+    goalTypebox = piGoal.script;
   };
   codex = {
     managed = managedCodex.text;

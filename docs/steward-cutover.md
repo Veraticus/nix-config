@@ -1,9 +1,11 @@
 # Steward consumer cutover
 
-This configuration consumes `joshsymonds/steward` at
-`0ada10343386a984d7ed8c330798d1860c59eb6b`, which includes native URL
-elicitation policy support. It is a branch pin for the
-coordinated consumer cutover, not a release claim.
+This configuration preserves the deployed user configuration from deployed user commit
+2b1a0eeb85461bccbc42808c94a666eef07aa127 (published from
+`worktree-astra-xhigh-steelman`), which is newer than local main
+`8d8c473`. It consumes the intended Steward source
+`joshsymonds/steward` at `0ada10343386a984d7ed8c330798d1860c59eb6b` for
+Vermissian; neither pin is a release claim.
 
 ## Shared ownership
 
@@ -25,7 +27,7 @@ its physical `node_modules` graph. Pi runs from the same default Steward
 package and loads the owned subagents wrapper before the owned extension. The
 tasks, goal, and LSP packages all link `typebox` from that paired graph rather
 than from a second Pi installation. LSP and all four server mappings are part
-of the committed current-main configuration.
+of the merged deployed-user-preserving configuration.
 
 ## Native consumers
 
@@ -55,7 +57,7 @@ not hashed and no global trust bypass is configured.
 
 ## Verification boundary
 
-Run the lightweight gate against the committed current-main configuration. It
+Run the lightweight gate against the merged deployed-user-preserving configuration. It
 verifies the consumer obligations unconditionally, including Pi's tasks, goal,
 LSP, browser/web/process tools and context, plus Claude and Pi Astra defaults.
 Use the published package selected by the pinned Steward input:
@@ -94,7 +96,7 @@ specified evidence exists. Do not infer live success from the synthetic gates.
 - [ ] Record the implementation revision, consumer revision, installed package
   paths, and target system generation. Archive target checkout changes before
   integrating; do not replay historical user overlays because their Pi LSP/tool
-  and Claude Astra changes are already committed on main.
+  and Claude Astra changes are preserved from deployed user commit 2b1a0eeb85461bccbc42808c94a666eef07aa127.
 - [ ] On Vermissian, pull the intended published branch, run the package-backed
   gate above, then build and switch that exact source locally on Vermissian. Do
   not use an `update` command pointing at a different checkout. Gnomon's target

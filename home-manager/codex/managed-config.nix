@@ -73,7 +73,6 @@ in
     sandbox_mode = "danger-full-access"
     suppress_unstable_features_warning = true
 
-<<<<<<< e2382f46bb9c2a8bfc04ea215269966e38065897
     # Native root completion hook. Activation merges this one handler into
     # mutable user hooks without replacing unrelated groups or trust state.
     [[hooks.Stop]]
@@ -83,15 +82,7 @@ in
     timeout = 90
     async = false
 
-    ${lib.optionalString gambitHasCodex ''
-        # Home Manager also materializes the matching cache entry below, so
-        # Gambit is installed and enabled without mutable `codex plugin add` state.
-      [plugins."gambit@personal"]
-      enabled = true
-    ''}
 
-=======
->>>>>>> 2b1a0eeb85461bccbc42808c94a666eef07aa127
     [projects."/home/joshsymonds/nix-config"]
     trust_level = "trusted"
 

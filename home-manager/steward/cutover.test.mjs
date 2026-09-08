@@ -301,7 +301,8 @@ test("evaluated current Pi config preserves tools and uses one paired Steward gr
   );
   assert.equal(pi.models.providers["openai-codex"].models[0].id, "gpt-6-astra");
   assert.deepEqual(pi.tasks, { taskScope: "session-global", autoCascade: false, autoClearCompleted: "never" });
-  assert.deepEqual(pi.goal, { rpc: { enabled: false }, continuationLimits: { automaticTurns: null, noProgressTurns: 3 } });
+  assert.deepEqual(pi.goal, { rpc: { enabled: false }, continuationLimits: { automaticTurns: null, noProgressTurns: null } });
+  assert.match(pi.goalTypebox, /@STEWARD_NODE_MODULES@\/typebox/);
   assert.deepEqual(pi.subagents, {
     backgroundByDefault: true,
     widgetMode: "all",
@@ -616,7 +617,7 @@ test("cutover documentation gives current-main validation and the deployment ret
   const documentation = readFileSync(resolve(repository, "docs/steward-cutover.md"), "utf8");
   assert.match(documentation, /STEWARD_TEST_BIN=.*node --test home-manager\/steward\/cutover\.test\.mjs/);
   assert.doesNotMatch(documentation, /STEWARD_TEST_USER_OVERLAY|overlay replay|separate user deployment overlay/i);
-  assert.match(documentation, /committed current-main configuration/i);
+  assert.match(documentation, /deployed user commit 2b1a0eeb85461bccbc42808c94a666eef07aa127/i);
   assert.match(documentation, /sd-switch/);
   assert.match(documentation, /cc-tools-notifyd.*inactive/is);
   assert.match(documentation, /steward-notifyd.*active/is);
@@ -638,6 +639,7 @@ test("active consumer files contain no old package, service, socket, env, or run
   const active = paths.map((path) => readFileSync(resolve(repository, path), "utf8")).join("\n");
   assert.doesNotMatch(active, /inputs\.cc-tools|CC_TOOLS_|\.claude\/bin\/cc-tools|systemd\.user\.services\.cc-tools-notifyd/);
   assert.doesNotMatch(active, /SubagentStop|STEWARD_SOCKET/);
+  assert.doesNotMatch(active, /gambitHasCodex|plugins\/gambit|gambit@personal/);
   assert.match(readFileSync(resolve(repository, "home-manager/statusline-aliases/default.nix"), "utf8"), /steward resolve/);
   assert.match(readFileSync(resolve(repository, "home-manager/starship/default.nix"), "utf8"), /steward render-clouds/);
   assert.match(readFileSync(resolve(repository, "home-manager/hosts/shrike.nix"), "utf8"), /inputs\.steward\.packages/);

@@ -1,8 +1,9 @@
 {
   pkgs,
   piGoalSettings,
+  nodeModules,
 }: let
-  piGoal = import ../home-manager/pi/pi-goal.nix {inherit pkgs;};
+  piGoal = import ../home-manager/pi/pi-goal.nix {inherit pkgs nodeModules;};
   settings = pkgs.writeText "pi-goal-settings.json" piGoalSettings;
 in
   pkgs.runCommand "pi-goal-goal-end-check" {} ''

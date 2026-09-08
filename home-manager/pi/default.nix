@@ -290,7 +290,18 @@ in {
       };
     };
     ".pi/agent/subagents.json".text = builtins.toJSON {
-      backgroundByDefault = false;
+      # Dispatch detached unless the call says otherwise (pi-subagents' own
+      # default, matching Claude Code's Agent tool): the call returns an id,
+      # the parent's turn ends, and the completion notification wakes it. The
+      # 2026-09-06 gpt-6-astra savecraft session ran with `false`: its 85
+      # unqualified Agent calls held the parent's turn for 9.6 hours in total
+      # (avg 6.8 min, max 79 min on one sol-xhigh), and the four longest
+      # text-free stretches (69-85 min each) were exactly those waits.
+      backgroundByDefault = true;
+      # Show every running child in the above-editor widget, including any
+      # explicit foreground run (the default hides those), with its live tool
+      # activity and token counts.
+      widgetMode = "all";
       strictAgentFiles = true;
       fallbackSubagent = "none";
       workflowsEnabled = false;

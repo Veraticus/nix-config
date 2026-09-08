@@ -649,8 +649,11 @@
             codexConfig = import ./home-manager/codex/managed-config.nix {
               pkgs = checkPkgs;
               lib = checkPkgs.lib;
+<<<<<<< e2382f46bb9c2a8bfc04ea215269966e38065897
               gambitHasCodex = true;
               stewardPackage = inputs.steward.packages.${system}.default;
+=======
+>>>>>>> 2b1a0eeb85461bccbc42808c94a666eef07aa127
             };
           };
           chatgpt-desktop = import ./tests/chatgpt-desktop.nix {
@@ -680,6 +683,7 @@
               fi
               touch $out
             '';
+          pi-goal-goal-end = import ./tests/pi-goal-goal-end.nix {pkgs = checkPkgs; piGoalSettings = self.nixosConfigurations.vermissian.config.home-manager.users.joshsymonds.home.file.".pi/agent/pi-goal.json".text;};
         });
 
         # mkShellNoCC + a tiny package set keeps the direnv shell closure

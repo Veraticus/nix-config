@@ -124,8 +124,9 @@ exists, escalate to code-level diagnosis:
 3. Form a hypothesis WITH EVIDENCE from logs
 4. Verify the hypothesis in the source before patching
 
-If you reach this phase, hand off to `gambit:debugging` for the
-systematic root-cause process.
+If you reach this phase, hand off to `gambit:brainstorming` with the bug
+report and research notes attached. Its research step dispatches the scout for
+the reproduction command and root cause.
 
 ## Critical Rules
 
@@ -182,7 +183,7 @@ Before reporting a "fix" or making any code change to the Wine/Proton stack:
 - [ ] All six sources checked (or time-box elapsed)
 - [ ] Documented fix from community: APPLIED + VERIFIED, or NONE FOUND
 - [ ] If applying a documented fix: minimal change, commit references the source
-- [ ] If no documented fix: handed off to `gambit:debugging` with research notes attached
+- [ ] If no documented fix: handed off to `gambit:brainstorming` with the bug report and research notes attached, for its research step to dispatch the scout for the reproduction command and root cause
 
 **Can't check all boxes?** Return to Phase 2.
 
@@ -190,7 +191,7 @@ Before reporting a "fix" or making any code change to the Wine/Proton stack:
 
 **This skill calls:**
 - Two parallel `general-purpose` research agents (Phase 2)
-- `gambit:debugging` (Phase 4, only if research is empty)
+- `gambit:brainstorming` (Phase 4, only if research is empty; pass the bug report and research notes so its research step can dispatch the scout for the reproduction command and root cause)
 
 **Called by:**
 - User reports a Steam game on Linux broken

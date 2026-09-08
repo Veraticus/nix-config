@@ -5,6 +5,8 @@ let
       entryAfter = _: value: value;
       entryBefore = _: value: value;
     };
+    meta = nixpkgsLib.meta // {availableOn = _: _: true;};
+    getExe = package: "${package}/bin/chromium";
   };
   system = "x86_64-linux";
   fake = path: extra:
@@ -24,11 +26,18 @@ let
       fake "/nix/store/fixture-${name}" {inherit script;};
   pkgs = rec {
     inherit lib;
-    stdenv.hostPlatform.system = system;
-    fetchzip = args: fake "/nix/store/fixture-source" {inherit args;};
+    stdenv.hostPlatform = {
+      inherit system;
+      isDarwin = false;
+    };
+    stdenvNoCC.mkDerivation = args: fake "/nix/store/fixture-${args.pname}" {inherit args;};
+    fetchzip = args: fake "/nix/store/fixture-${args.name or "source"}" {inherit args;};
+    fetchurl = args: fake "/nix/store/fixture-source" {inherit args;};
     runCommand = checkedRunCommand;
+    buildNpmPackage = args: fake "/nix/store/fixture-${args.pname}" {inherit args;};
     linkFarm = name: _: fake "/nix/store/fixture-${name}" {};
     writeShellScript = name: text: fake "@SCRIPT_${name}@" {inherit text;};
+    writeShellScriptBin = name: text: fake "/nix/store/fixture-${name}" {inherit text;};
     writeText = name: text: fake "@BASE@" {inherit text;};
     coreutils = fake "@COREUTILS@" {};
     jq = fake "@JQ@" {};
@@ -36,6 +45,8 @@ let
     python3 = fake "@PYTHON@" {};
     tmux = fake "@TMUX@" {};
     git = fake "@GIT@" {};
+    bash = fake "/nix/store/fixture-bash" {};
+    chromium = fake "/nix/store/fixture-chromium" {meta = {mainProgram = "chromium"; platforms = [system];};};
     typescript = fake "/nix/store/fixture-typescript" {};
   };
   inputs = {
@@ -142,10 +153,13 @@ in {
   pi = {
     package = toString pi.programs.pi-coding-agent.package;
     packages = pi.programs.pi-coding-agent.settings.packages;
+    context = pi.programs.pi-coding-agent.context;
     defaultProvider = pi.programs.pi-coding-agent.settings.defaultProvider;
     defaultModel = pi.programs.pi-coding-agent.settings.defaultModel;
     defaultThinkingLevel = pi.programs.pi-coding-agent.settings.defaultThinkingLevel;
     models = builtins.fromJSON pi.home.file.".pi/agent/models.json".text;
+    browser = builtins.fromJSON pi.home.file.".pi/config/pi-agent-browser-native/config.json".text;
+    processes = builtins.fromJSON pi.home.file.".pi/agent/extensions/processes.json".text;
     lsp =
       if pi.home.file ? ".pi/agent/pi-lsp.json"
       then builtins.fromJSON pi.home.file.".pi/agent/pi-lsp.json".text
@@ -154,6 +168,8 @@ in {
     goal = builtins.fromJSON pi.home.file.".pi/agent/pi-goal.json".text;
     subagents = builtins.fromJSON pi.home.file.".pi/agent/subagents.json".text;
     homeFileNames = builtins.attrNames pi.home.file;
+    browserCli = toString pi.home.file.".local/bin/agent-browser".source;
+    agents = toString pi.home.file.".pi/agent/agents".source;
   };
   codex = {
     managed = managedCodex.text;

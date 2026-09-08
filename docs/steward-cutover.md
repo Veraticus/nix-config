@@ -23,10 +23,9 @@ delete historical state.
 The paired `steward-pi-runtime` output supplies both Pi's extension root and
 its physical `node_modules` graph. Pi runs from the same default Steward
 package and loads the owned subagents wrapper before the owned extension. The
-tasks and goal packages link `typebox` from that paired graph rather than from
-a second Pi installation. When the separate user deployment overlay adds LSP,
-its package uses the same graph and its configuration must publish all four
-server mappings.
+tasks, goal, and LSP packages all link `typebox` from that paired graph rather
+than from a second Pi installation. LSP and all four server mappings are part
+of the committed current-main configuration.
 
 ## Native consumers
 
@@ -56,33 +55,17 @@ not hashed and no global trust bypass is configured.
 
 ## Verification boundary
 
-Run the normal lightweight gate on the clean owned commit. It verifies the
-committed consumer obligations, including Pi's tasks, Steward, goal, and Astra
-behavior. It also validates LSP package/map consistency if an LSP overlay is
-present, but does not require that user-owned overlay:
-
-```sh
-node --test home-manager/steward/cutover.test.mjs
-```
-
-The package-dependent delivery fallback regression builds the published
-implementation from this consumer's pinned Steward input:
+Run the lightweight gate against the committed current-main configuration. It
+verifies the consumer obligations unconditionally, including Pi's tasks, goal,
+LSP, browser/web/process tools and context, plus Claude and Pi Astra defaults.
+Use the published package selected by the pinned Steward input:
 
 ```sh
 steward_package="$(nix build --no-link --print-out-paths --impure --expr 'let f = builtins.getFlake (toString ./.); in f.inputs.steward.packages.${builtins.currentSystem}.default')"
 STEWARD_TEST_BIN="$steward_package/bin/steward" node --test home-manager/steward/cutover.test.mjs
 ```
 
-Run the explicit overlay gate on the retained user deployment overlay. This
-mode requires the actual Pi LSP package and all four server mappings, Claude's
-`chatgpt/astra` model with `xhigh` effort, and the committed Pi Astra behavior;
-absence is a failure:
-
-```sh
-STEWARD_TEST_USER_OVERLAY=1 node --test home-manager/steward/cutover.test.mjs
-```
-
-Both modes parse the checked source directly and require no checkout-local Git
+The gate parses the checked source directly and requires no checkout-local Git
 tree object or path. The opt-in native metadata smoke uses only Codex app-server
 `initialize`/`initialized`/`hooks/list` in a network namespace. It performs no
 model or hook execution:
@@ -108,15 +91,14 @@ specified evidence exists. Do not infer live success from the synthetic gates.
 
 ### Before spending the live budget
 
-- [ ] Record the implementation revision, consumer revision, exact retained
-  user-overlay hash, installed package paths, and target system generation.
-  Archive target checkout changes before integrating. A bare consumer commit
-  deliberately excludes the protected user overlay and is not the intended
-  deployment configuration.
-- [ ] On Vermissian, integrate the intended published branch with the preserved
-  overlay and pass the explicit overlay gate above. Build and switch that exact
-  source locally on Vermissian. Do not use an `update` command pointing at a
-  different checkout. Gnomon's target closure must only be built on Gnomon.
+- [ ] Record the implementation revision, consumer revision, installed package
+  paths, and target system generation. Archive target checkout changes before
+  integrating; do not replay historical user overlays because their Pi LSP/tool
+  and Claude Astra changes are already committed on main.
+- [ ] On Vermissian, pull the intended published branch, run the package-backed
+  gate above, then build and switch that exact source locally on Vermissian. Do
+  not use an `update` command pointing at a different checkout. Gnomon's target
+  closure must only be built on Gnomon.
 - [ ] Verify the old service is inactive and the canonical service active.
   Check the installed CLI/helper paths, paired Pi extension root and physical
   SDK/AI/TUI/subagents graph, Claude Stop plus usage refresh, and absence of

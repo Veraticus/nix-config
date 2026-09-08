@@ -11,7 +11,6 @@ const stewardDirectory = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(stewardDirectory, "../..");
 const helper = resolve(repository, "home-manager/codex/merge-config.py");
 const canonicalCommand = "/nix/store/new-steward/bin/steward notify --harness codex";
-const requireUserOverlay = process.env.STEWARD_TEST_USER_OVERLAY === "1";
 
 function commandRoot(command) {
   const executable = realpathSync(execFileSync("sh", ["-c", `command -v ${command}`], { encoding: "utf8" }).trim());
@@ -247,10 +246,8 @@ test("Claude has direct native root Stop, input, cleanup, and statusline wiring"
   }]);
   assert.ok(!("SubagentStop" in actual.hooks));
 
-  if (requireUserOverlay) {
-    assert.equal(actual.model, "chatgpt/astra");
-    assert.equal(actual.effortLevel, "xhigh");
-  }
+  assert.equal(actual.model, "chatgpt/astra");
+  assert.equal(actual.effortLevel, "xhigh");
 });
 
 test("AWS profile mirror follows Steward's canonical state-file contract atomically", () => {
@@ -268,29 +265,36 @@ test("AWS profile mirror follows Steward's canonical state-file contract atomica
   });
 });
 
-test("evaluated Pi config uses one paired Steward graph and validates optional LSP as a consistent overlay", () => {
+test("evaluated current Pi config preserves tools and uses one paired Steward graph", () => {
   const pi = evaluateCutover().pi;
-  const committedPackages = [
+  assert.equal(pi.package, "@STEWARD_PACKAGE@");
+  assert.deepEqual(pi.packages, [
     "/nix/store/fixture-pi-tasks-0.9.0",
     "@STEWARD_EXTENSION_ROOT@",
     "/nix/store/fixture-pi-goal-0.54.3",
-  ];
-  const lspPackage = "/nix/store/fixture-pi-lsp-0.49.7";
-  const hasLspPackage = pi.packages.includes(lspPackage);
-  const hasLspMap = pi.lsp !== null;
-
-  assert.equal(pi.package, "@STEWARD_PACKAGE@");
-  assert.deepEqual(pi.packages, hasLspPackage ? [...committedPackages, lspPackage] : committedPackages);
-  assert.equal(hasLspPackage, hasLspMap, "Pi LSP package and server map must appear together");
-  if (hasLspMap) {
-    assert.deepEqual(Object.keys(pi.lsp.servers).sort(), ["gopls", "nixd", "pyright", "typescript"]);
-  }
-  if (requireUserOverlay) {
-    assert.equal(hasLspPackage, true, "STEWARD_TEST_USER_OVERLAY=1 requires the Pi LSP package");
-    assert.equal(hasLspMap, true, "STEWARD_TEST_USER_OVERLAY=1 requires the Pi LSP server map");
-  }
-
+    "/nix/store/fixture-pi-lsp-0.49.7",
+    { source: "/nix/store/fixture-pi-workflow-tools/node_modules/@aliou/pi-processes", prompts: [], themes: [] },
+    { source: "/nix/store/fixture-pi-workflow-tools/node_modules/pi-web-access", skills: [], prompts: [], themes: [] },
+    { source: "/nix/store/fixture-pi-agent-browser-native-0.6.6", skills: [], prompts: [], themes: [] },
+  ]);
+  assert.deepEqual(Object.keys(pi.lsp.servers).sort(), ["gopls", "nixd", "pyright", "typescript"]);
+  assert.equal(pi.lsp.servers.typescript.initialization.tsserver.path, "/nix/store/fixture-typescript/lib/node_modules/typescript/lib/tsserver.js");
   assert.equal(pi.homeFileNames.includes(".pi/agent/extensions/cc-tools.ts"), false);
+  assert.ok(pi.homeFileNames.includes(".pi/agent/extensions/processes.json"));
+  assert.equal(pi.browserCli, "/nix/store/fixture-agent-browser/bin/agent-browser");
+  assert.equal(pi.agents, "/nix/store/fixture-pi-gambit-rung-agents");
+  assert.equal(pi.context, readFileSync(resolve(repository, "home-manager/pi/AGENTS.md"), "utf8"));
+  assert.deepEqual(pi.browser, {
+    version: 1,
+    webSearch: { enabled: false },
+    browser: { executablePath: "/nix/store/fixture-chromium/bin/chromium" },
+  });
+  assert.deepEqual(pi.processes, {
+    version: "0.10.6",
+    execution: { shellPath: "/nix/store/fixture-bash/bin/bash" },
+    interception: { blockBackgroundCommands: false },
+    widget: { showStatusWidget: false, dockDefaultState: "closed" },
+  });
   assert.deepEqual(
     [pi.defaultProvider, pi.defaultModel, pi.defaultThinkingLevel],
     ["openai-codex", "gpt-6-astra", "high"],
@@ -299,7 +303,8 @@ test("evaluated Pi config uses one paired Steward graph and validates optional L
   assert.deepEqual(pi.tasks, { taskScope: "session-global", autoCascade: false, autoClearCompleted: "never" });
   assert.deepEqual(pi.goal, { rpc: { enabled: false }, continuationLimits: { automaticTurns: null, noProgressTurns: 3 } });
   assert.deepEqual(pi.subagents, {
-    backgroundByDefault: false,
+    backgroundByDefault: true,
+    widgetMode: "all",
     strictAgentFiles: true,
     fallbackSubagent: "none",
     workflowsEnabled: false,
@@ -607,12 +612,11 @@ test("all consumer profiles delegate removed-unit retirement to Home Manager sd-
   assert.deepEqual(evaluateCutover().steward.serviceNames, ["steward-notifyd"]);
 });
 
-test("cutover documentation separates clean and user-overlay gates and the deployment retirement check", () => {
+test("cutover documentation gives current-main validation and the deployment retirement check", () => {
   const documentation = readFileSync(resolve(repository, "docs/steward-cutover.md"), "utf8");
-  assert.match(documentation, /node --test home-manager\/steward\/cutover\.test\.mjs/);
-  assert.match(documentation, /STEWARD_TEST_USER_OVERLAY=1 node --test home-manager\/steward\/cutover\.test\.mjs/);
-  assert.match(documentation, /clean owned commit/i);
-  assert.match(documentation, /user deployment overlay/i);
+  assert.match(documentation, /STEWARD_TEST_BIN=.*node --test home-manager\/steward\/cutover\.test\.mjs/);
+  assert.doesNotMatch(documentation, /STEWARD_TEST_USER_OVERLAY|overlay replay|separate user deployment overlay/i);
+  assert.match(documentation, /committed current-main configuration/i);
   assert.match(documentation, /sd-switch/);
   assert.match(documentation, /cc-tools-notifyd.*inactive/is);
   assert.match(documentation, /steward-notifyd.*active/is);

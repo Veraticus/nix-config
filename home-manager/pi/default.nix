@@ -64,7 +64,7 @@
     cp -r ${piLspSource} $out
     chmod -R u+w $out
     mkdir -p $out/node_modules
-    ln -s ${pkgs.pi-coding-agent}/lib/node_modules/pi-monorepo/node_modules/typebox $out/node_modules/typebox
+    ln -s ${stewardRuntime.nodeModules}/typebox $out/node_modules/typebox
   '';
 
   inherit

@@ -87,7 +87,7 @@ def _desired_handler(baseline: dict[str, Any]) -> dict[str, Any]:
     normalized = {
         "type": "command",
         "command": handler.get("command"),
-        "timeout": 10,
+        "timeout": 90,
         "async": False,
     }
     if handler != normalized:
@@ -110,7 +110,7 @@ def _trusted_hash(command: str) -> str:
             {
                 "async": False,
                 "command": command,
-                "timeout": 10,
+                "timeout": 90,
                 "type": "command",
             }
         ],

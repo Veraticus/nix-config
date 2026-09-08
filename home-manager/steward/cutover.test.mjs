@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { chmodSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -118,7 +120,7 @@ function desiredBaseline(command = canonicalCommand) {
       Stop: [
         {
           hooks: [
-            { type: "command", command, timeout: 10, async: false },
+            { type: "command", command, timeout: 90, async: false },
           ],
         },
       ],
@@ -132,13 +134,13 @@ function stateKey(target, group, handler) {
 }
 
 function ownHandler(command = canonicalCommand) {
-  return { type: "command", command, timeout: 10, async: false };
+  return { type: "command", command, timeout: 90, async: false };
 }
 
 function expectedHash(command) {
   const normalized = JSON.stringify({
     event_name: "stop",
-    hooks: [{ async: false, command, timeout: 10, type: "command" }],
+    hooks: [{ async: false, command, timeout: 90, type: "command" }],
   });
   return `sha256:${execFileSync("sha256sum", { input: normalized, encoding: "utf8" }).split(" ")[0]}`;
 }
@@ -148,7 +150,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
   const lock = JSON.parse(readFileSync(resolve(repository, "flake.lock"), "utf8"));
   assert.match(
     flake,
-    /steward\.url = "github:joshsymonds\/steward\/bb73759898e69e61d993790d4ac5721ef3c2dd15";/,
+    /steward\.url = "github:joshsymonds\/steward\/0ada10343386a984d7ed8c330798d1860c59eb6b";/,
   );
   assert.equal(lock.nodes.root.inputs.steward, "steward");
   assert.deepEqual(
@@ -161,7 +163,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
     {
       owner: "joshsymonds",
       repo: "steward",
-      rev: "bb73759898e69e61d993790d4ac5721ef3c2dd15",
+      rev: "0ada10343386a984d7ed8c330798d1860c59eb6b",
       type: "github",
     },
   );
@@ -234,7 +236,7 @@ test("Claude has direct native root Stop, input, cleanup, and statusline wiring"
     ],
   }]);
   assert.deepEqual(actual.hooks.Notification, [{
-    matcher: "permission_prompt|agent_needs_input",
+    matcher: "permission_prompt|agent_needs_input|elicitation_dialog|elicitation_url_dialog",
     hooks: [
       { type: "command", command: "steward notify --harness claude-code", timeout: 90 },
     ],
@@ -326,10 +328,102 @@ test("Codex native hash matches the independently verified compact sorted JSON s
   const sample = "/nix/store/synthetic-steward/bin/steward notify --harness codex";
   assert.equal(
     expectedHash(sample),
-    "sha256:aecfc6d9b2aa324aa5999e71a25c273c1e11802e30f4733340b0155b2c1aac02",
+    "sha256:d38f1e5dd249244c227b8b58543e816d23227cb6b06dba55a60f7f473acfc5da",
   );
   const merged = invokeMerge(desiredBaseline(sample), {}, "/tmp/example/config.toml").json;
   assert.equal(merged.hooks.state["/tmp/example/config.toml:stop:0:0"].trusted_hash, expectedHash(sample));
+});
+
+test("configured Codex timeout permits bounded inline delivery retry", async (t) => {
+  const stewardBin = process.env.STEWARD_TEST_BIN;
+  if (!stewardBin) {
+    t.skip("STEWARD_TEST_BIN is required for the package-dependent fallback regression");
+    return;
+  }
+
+  const managed = evaluateCutover().codex.managed;
+  const timeoutMatch = managed.match(/command = "[^"]*steward notify --harness codex"\s+timeout = (\d+)\s+async = false/);
+  assert.ok(timeoutMatch, "evaluated managed TOML must contain the synchronous native Stop handler");
+  const hookTimeoutMs = Number(timeoutMatch[1]) * 1_000;
+  const expectedBody = "synthetic bounded retry body";
+  const payload = {
+    session_id: "synthetic-session",
+    turn_id: "synthetic-turn",
+    cwd: "/tmp/synthetic-project",
+    hook_event_name: "Stop",
+    last_assistant_message: expectedBody,
+  };
+  const requests = [];
+  const responseTimers = new Set();
+  const server = createServer((request, response) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => { body += chunk; });
+    request.on("end", () => {
+      requests.push(body);
+      const timer = setTimeout(() => {
+        responseTimers.delete(timer);
+        response.statusCode = requests.length === 1 ? 503 : 200;
+        response.end();
+      }, 4_600);
+      responseTimers.add(timer);
+    });
+  });
+  const root = mkdtempSync(join(tmpdir(), "steward-fallback-"));
+  let child;
+  let childTimer;
+  const safetyTimer = setTimeout(() => {
+    child?.kill("SIGKILL");
+    server.closeAllConnections();
+  }, 20_000);
+  try {
+    await new Promise((resolveListen, reject) => {
+      server.once("error", reject);
+      server.listen(0, "127.0.0.1", resolveListen);
+    });
+    const { port } = server.address();
+    const binDirectory = dirname(stewardBin);
+    child = spawn(stewardBin, ["notify", "--harness", "codex"], {
+      env: {
+        HOME: join(root, "home"),
+        PATH: binDirectory,
+        STEWARD_NTFY_URL: `http://127.0.0.1:${port}/synthetic-topic`,
+        XDG_CACHE_HOME: join(root, "cache"),
+        XDG_CONFIG_HOME: join(root, "config"),
+        XDG_RUNTIME_DIR: join(root, "runtime"),
+        XDG_STATE_HOME: join(root, "state"),
+      },
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    const started = Date.now();
+    child.stdin.end(`${JSON.stringify(payload)}\n`);
+    const result = await new Promise((resolveExit, reject) => {
+      child.once("error", reject);
+      child.once("exit", (code, signal) => resolveExit({ code, signal }));
+      childTimer = setTimeout(() => {
+        child.kill("SIGKILL");
+        reject(new Error(`Steward exceeded configured ${hookTimeoutMs}ms Stop timeout`));
+      }, hookTimeoutMs);
+    });
+    const elapsed = Date.now() - started;
+    assert.deepEqual(result, { code: 0, signal: null }, stderr);
+    assert.equal(requests.length, 2);
+    assert.deepEqual(requests, [expectedBody, expectedBody]);
+    assert.ok(elapsed > 10_000, `retry completed too quickly: ${elapsed}ms`);
+    assert.ok(elapsed < 11_000, `retry exceeded the Sender bound: ${elapsed}ms`);
+    assert.ok(elapsed < hookTimeoutMs, `retry exceeded configured hook timeout: ${elapsed}ms`);
+  } finally {
+    clearTimeout(childTimer);
+    clearTimeout(safetyTimer);
+    child?.kill("SIGKILL");
+    for (const timer of responseTimers) clearTimeout(timer);
+    server.closeAllConnections();
+    await new Promise((resolveClose) => server.close(resolveClose));
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("Codex merge is idempotent and updates package command/hash in place", () => {
@@ -372,21 +466,23 @@ test("Codex merge preserves unrelated Stop groups, state, projects, notification
   assert.equal(merged.approval_policy, "never");
 });
 
-test("Codex merge replaces one owned nonzero handler without moving siblings or unrelated trust", () => {
+test("Codex merge migrates an owned ten-second nonzero handler and trust without moving siblings", () => {
   const target = "/home/tester/.codex/config.toml";
-  const oldCommand = "/nix/store/legacy/bin/cc-tools notify --harness codex";
+  const oldCommand = "/nix/store/synthetic-steward/bin/steward notify --harness codex";
   const left = { type: "command", command: "/opt/user/left" };
   const right = { type: "command", command: "/opt/user/right" };
+  const oldHandler = { type: "command", command: oldCommand, timeout: 10, async: false };
+  const oldHash = "sha256:aecfc6d9b2aa324aa5999e71a25c273c1e11802e30f4733340b0155b2c1aac02";
   const ownKey = stateKey(target, 1, 1);
   const siblingKey = stateKey(target, 1, 2);
   const current = {
     hooks: {
       Stop: [
         { hooks: [{ type: "command", command: "/opt/user/first" }] },
-        { matcher: "preserve", hooks: [left, ownHandler(oldCommand), right] },
+        { matcher: "preserve", hooks: [left, oldHandler, right] },
       ],
       state: {
-        [ownKey]: { enabled: false, trusted_hash: "sha256:old", extension: "preserved" },
+        [ownKey]: { enabled: false, trusted_hash: oldHash, extension: "preserved" },
         [siblingKey]: { enabled: false, trusted_hash: "sha256:right" },
       },
     },

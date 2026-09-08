@@ -1,7 +1,8 @@
 # Steward consumer cutover
 
 This configuration consumes `joshsymonds/steward` at
-`bb73759898e69e61d993790d4ac5721ef3c2dd15`. It is a branch pin for the
+`0ada10343386a984d7ed8c330798d1860c59eb6b`, which includes native URL
+elicitation policy support. It is a branch pin for the
 coordinated consumer cutover, not a release claim.
 
 ## Shared ownership
@@ -30,11 +31,13 @@ server mappings.
 ## Native consumers
 
 - Claude keeps usage-summary refresh as its first root `Stop` command and then
-  runs `steward notify --harness claude-code`. Only `permission_prompt` and
-  `agent_needs_input` use the explicit-input notification hook. `SessionEnd`
+  runs `steward notify --harness claude-code`. `permission_prompt`,
+  `agent_needs_input`, `elicitation_dialog`, and `elicitation_url_dialog` use
+  the explicit-input notification hook. `SessionEnd`
   invokes Steward for cleanup, and no `SubagentStop` notification is present.
-- Codex declares one synchronous, ten-second native root `Stop` command. The
-  activation merge keeps its stable group/handler indices and writes only the
+- Codex declares one synchronous, 90-second native root `Stop` command. This
+  outer bound accommodates Steward's 80-second CLI budget and recovery time.
+  The activation merge keeps its stable group/handler indices and writes only the
   exact user-scoped `hooks.state` trust hash. Unrelated hooks, state, projects,
   notifications, and native approval policy are preserved according to the
   existing baseline-wins merge. Duplicate owned handlers or an owned legacy
@@ -44,7 +47,10 @@ server mappings.
   adapter or second pi-subagents package remains.
 
 The Codex hash is SHA-256 over compact recursively key-sorted JSON containing
-`event_name: "stop"` and the single normalized command handler. Its trust key
+`event_name: "stop"` and the single normalized command handler (including
+`timeout: 90` and `async: false`). The synthetic sample hash is
+`sha256:d38f1e5dd249244c227b8b58543e816d23227cb6b06dba55a60f7f473acfc5da`.
+Its trust key
 is `<absolute user config.toml>:stop:<group index>:<handler index>`; matcher is
 not hashed and no global trust bypass is configured.
 
@@ -57,6 +63,14 @@ present, but does not require that user-owned overlay:
 
 ```sh
 node --test home-manager/steward/cutover.test.mjs
+```
+
+The package-dependent delivery fallback regression builds the published
+implementation from this consumer's pinned Steward input:
+
+```sh
+steward_package="$(nix build --no-link --print-out-paths --impure --expr 'let f = builtins.getFlake (toString ./.); in f.inputs.steward.packages.${builtins.currentSystem}.default')"
+STEWARD_TEST_BIN="$steward_package/bin/steward" node --test home-manager/steward/cutover.test.mjs
 ```
 
 Run the explicit overlay gate on the retained user deployment overlay. This
@@ -78,11 +92,13 @@ STEWARD_NATIVE_HOOK_SMOKE=1 node home-manager/steward/native-hook-smoke.mjs
 ```
 
 Package integration, host deployment, authenticated ntfy/model checks, and
-controlled live acceptance remain separate root-owned steps. After deployment,
-the required target check is that `cc-tools-notifyd.service` is inactive and
+controlled live acceptance remain separate root-owned steps. The current
+deployment target is Vermissian, so its Home Manager/NixOS build and switch are
+run locally on Vermissian by the root operator. After deployment, the required
+target check is that `cc-tools-notifyd.service` is inactive and
 `steward-notifyd.service` is active (for example, inspect each with
-`systemctl --user is-active`). In particular, Gnomon's Home Manager or NixOS
-closure must only be built on Gnomon.
+`systemctl --user is-active`). Gnomon's Home Manager or NixOS closure must
+only be built on Gnomon.
 
 ## Controlled acceptance checklist
 
@@ -97,11 +113,10 @@ specified evidence exists. Do not infer live success from the synthetic gates.
   Archive target checkout changes before integrating. A bare consumer commit
   deliberately excludes the protected user overlay and is not the intended
   deployment configuration.
-- [ ] On Gnomon, pull the intended published branch into an isolated worktree,
-  apply the preserved overlay, and pass the explicit overlay gate above.
-  Build and switch that exact source **inside SSH on Gnomon**. Do not use an
-  `update` command pointing at a different checkout. Never evaluate its target
-  closure on another host, even to estimate the build.
+- [ ] On Vermissian, integrate the intended published branch with the preserved
+  overlay and pass the explicit overlay gate above. Build and switch that exact
+  source locally on Vermissian. Do not use an `update` command pointing at a
+  different checkout. Gnomon's target closure must only be built on Gnomon.
 - [ ] Verify the old service is inactive and the canonical service active.
   Check the installed CLI/helper paths, paired Pi extension root and physical
   SDK/AI/TUI/subagents graph, Claude Stop plus usage refresh, and absence of

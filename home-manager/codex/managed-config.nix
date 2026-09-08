@@ -80,7 +80,7 @@ in
     [[hooks.Stop.hooks]]
     type = "command"
     command = "${stewardPackage}/bin/steward notify --harness codex"
-    timeout = 10
+    timeout = 90
     async = false
 
     ${lib.optionalString gambitHasCodex ''

@@ -14,7 +14,7 @@ const command = "/nix/store/synthetic-steward/bin/steward notify --harness codex
 function hashFor(value) {
   const normalized = JSON.stringify({
     event_name: "stop",
-    hooks: [{ async: false, command: value, timeout: 10, type: "command" }],
+    hooks: [{ async: false, command: value, timeout: 90, type: "command" }],
   });
   return `sha256:${createHash("sha256").update(normalized).digest("hex")}`;
 }
@@ -28,9 +28,19 @@ function merge(home) {
   const current = join(home, "current.json");
   const target = join(home, "config.toml");
   writeFileSync(baseline, JSON.stringify({
-    hooks: { Stop: [{ hooks: [{ type: "command", command, timeout: 10, async: false }] }] },
+    hooks: { Stop: [{ hooks: [{ type: "command", command, timeout: 90, async: false }] }] },
   }));
-  writeFileSync(current, "{}");
+  writeFileSync(current, JSON.stringify({
+    hooks: {
+      Stop: [{ hooks: [{ type: "command", command, timeout: 10, async: false }] }],
+      state: {
+        [`${target}:stop:0:0`]: {
+          enabled: true,
+          trusted_hash: "sha256:aecfc6d9b2aa324aa5999e71a25c273c1e11802e30f4733340b0155b2c1aac02",
+        },
+      },
+    },
+  }));
   const output = execFileSync(
     "python3",
     [mergeHelper, "--baseline", baseline, "--current", current, "--target", target],

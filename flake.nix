@@ -157,7 +157,7 @@
     };
 
     # Steward - shared coding-agent runtime, statusline, and notifications
-    steward.url = "github:joshsymonds/steward/0ada10343386a984d7ed8c330798d1860c59eb6b";
+    steward.url = "github:joshsymonds/steward/5beb3021f67b5051df515c4ce579d5f708c1063c";
     steward.inputs.nixpkgs.follows = "nixpkgs";
 
     # dms-claudecode — DMS plugin showing Claude Code subscription usage
@@ -649,7 +649,6 @@
             codexConfig = import ./home-manager/codex/managed-config.nix {
               pkgs = checkPkgs;
               lib = checkPkgs.lib;
-              stewardPackage = inputs.steward.packages.${system}.default;
             };
           };
           chatgpt-desktop = import ./tests/chatgpt-desktop.nix {

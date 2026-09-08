@@ -42,7 +42,6 @@ let
     coreutils = fake "@COREUTILS@" {};
     jq = fake "@JQ@" {};
     yq-go = fake "@YQ@" {};
-    python3 = fake "@PYTHON@" {};
     tmux = fake "@TMUX@" {};
     git = fake "@GIT@" {};
     bash = fake "/nix/store/fixture-bash" {};
@@ -129,9 +128,7 @@ let
     hostname = "fixture";
     inherit inputs lib pkgs;
   };
-  managedCodex = import ../codex/managed-config.nix {
-    inherit lib pkgs stewardPackage;
-  };
+  managedCodex = import ../codex/managed-config.nix {inherit lib pkgs;};
   common = import ../common.nix {
     config = baseConfig;
     inherit inputs lib pkgs;

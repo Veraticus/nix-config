@@ -4,7 +4,7 @@ This configuration preserves the deployed user configuration from deployed user 
 2b1a0eeb85461bccbc42808c94a666eef07aa127 (published from
 `worktree-astra-xhigh-steelman`), which is newer than local main
 `8d8c473`. It consumes the intended Steward source
-`joshsymonds/steward` at `0ada10343386a984d7ed8c330798d1860c59eb6b` for
+`joshsymonds/steward` at `5beb3021f67b5051df515c4ce579d5f708c1063c` for
 Vermissian; neither pin is a release claim.
 
 ## Shared ownership
@@ -32,28 +32,19 @@ of the merged deployed-user-preserving configuration.
 ## Native consumers
 
 - Claude keeps usage-summary refresh as its first root `Stop` command and then
-  runs `steward notify --harness claude-code`. `permission_prompt`,
-  `agent_needs_input`, `elicitation_dialog`, and `elicitation_url_dialog` use
-  the explicit-input notification hook. `SessionEnd`
-  invokes Steward for cleanup, and no `SubagentStop` notification is present.
-- Codex declares one synchronous, 90-second native root `Stop` command. This
-  outer bound accommodates Steward's 80-second CLI budget and recovery time.
-  The activation merge keeps its stable group/handler indices and writes only the
-  exact user-scoped `hooks.state` trust hash. Unrelated hooks, state, projects,
-  notifications, and native approval policy are preserved according to the
-  existing baseline-wins merge. Duplicate owned handlers or an owned legacy
-  `SubagentStop` fail without replacing `config.toml`.
+  runs `steward notify --harness claude-code` with its 90-second timeout.
+  `permission_prompt`, `agent_needs_input`, `elicitation_dialog`, and
+  `elicitation_url_dialog` use the explicit-input notification hook.
+  `SessionEnd` invokes Steward for cleanup, and no `SubagentStop` notification
+  is present.
 - Pi gets root/child classification, settled notification, labels, footer, and
-  quota integration from Steward's packaged extension. No consumer-side
-  adapter or second pi-subagents package remains.
-
-The Codex hash is SHA-256 over compact recursively key-sorted JSON containing
-`event_name: "stop"` and the single normalized command handler (including
-`timeout: 90` and `async: false`). The synthetic sample hash is
-`sha256:d38f1e5dd249244c227b8b58543e816d23227cb6b06dba55a60f7f473acfc5da`.
-Its trust key
-is `<absolute user config.toml>:stop:<group index>:<handler index>`; matcher is
-not hashed and no global trust bypass is configured.
+  quota integration from Steward's packaged extension. No consumer-side adapter
+  or second pi-subagents package remains. Its `openai-codex` provider, model
+  helper, and quota behavior are unchanged.
+- Steward has no Codex CLI hook, trust, notify, or installer integration. Codex
+  itself remains installed, with its native approval policy and approval UI.
+  Its ordinary atomic baseline-wins config merge preserves unrelated mutable
+  hooks, projects, state, and custom fields.
 
 ## Verification boundary
 
@@ -68,13 +59,7 @@ STEWARD_TEST_BIN="$steward_package/bin/steward" node --test home-manager/steward
 ```
 
 The gate parses the checked source directly and requires no checkout-local Git
-tree object or path. The opt-in native metadata smoke uses only Codex app-server
-`initialize`/`initialized`/`hooks/list` in a network namespace. It performs no
-model or hook execution:
-
-```sh
-STEWARD_NATIVE_HOOK_SMOKE=1 node home-manager/steward/native-hook-smoke.mjs
-```
+tree object or path.
 
 Package integration, host deployment, authenticated ntfy/model checks, and
 controlled live acceptance remain separate root-owned steps. The current
@@ -106,8 +91,7 @@ specified evidence exists. Do not infer live success from the synthetic gates.
   SDK/AI/TUI/subagents graph, Claude Stop plus usage refresh, and absence of
   deployed legacy notify/SubagentStop commands and compatibility aliases.
 - [ ] Check installed client versions and supported flags without launching
-  inference. The prepared consumer was checked against Codex 0.153.0,
-  Claude 2.1.257, and Pi 0.85.0. Recheck on the target rather than assuming
+  inference. The prepared consumer was checked against Claude 2.1.257 and Pi 0.85.0. Recheck on the target rather than assuming
   local help output proves its installed version.
 - [ ] Confirm the effective central provider/model/thinking/helper settings
   agree between the installed daemon script and client configuration. Check
@@ -141,6 +125,11 @@ preflight. Preserve sanitized evidence, identify the failure, and reserve the
 single diagnostic pass for that named issue. Additional passes require explicit
 approval. Source fixes must pass their synthetic gates before a diagnostic.
 
+The historical full pass `p5B9555P` stopped after one configured helper success.
+It recorded no actual native completions, quota checks, or ntfy delivery; its
+focused diagnostic was unused. This paused history is not reset or a fresh
+budget allocation. Any resumption requires an updated explicit decision.
+
 ### Full pass
 
 1. **Configured sessionless generation (R4).** Invoke the configured
@@ -154,24 +143,14 @@ approval. Source fixes must pass their synthetic gates before a diagnostic.
    public model identity. Do not pass text or credentials on helper argv.
    Failure fallback is independently covered by the normal tests; fallback
    is not evidence that this live generation check succeeded.
-2. **Actual Codex trust and completion (R2–R4).** Inspect native `hooks/list`
-   against the target's effective user configuration before its completion.
-   Require exactly the installed Steward command, the native current hash
-   matching its user `trusted_hash`, `source=user`, enabled, and trusted—not a
-   managed or global bypass. Keep native approvals and quota UI unchanged.
-   In the empty synthetic project, run one root
-   `codex exec --skip-git-repo-check --json` prompt asking for a short
-   run-marked response and no tools. Preserve its native
-   session and turn IDs; do not construct a Stop payload yourself. Require
-   the corresponding daemon decision and one received notification.
-3. **Actual Claude completion (R2–R4).** In the synthetic project, use one
+2. **Actual Claude completion (R2–R4).** In the synthetic project, use one
    `claude --tools "" --print --output-format stream-json --verbose` prompt.
    Do not disable session persistence, replace installed settings, or disable
    hooks. Require the existing usage-refresh hook alongside Steward's native
    root Stop. Correlate its native session ID and terminal assistant-row UUID
    with the daemon decision and one received notification. A successful CLI
    exit alone does not prove either hook ran.
-4. **Actual Pi root TUI, naming, and quota (R2, R5–R7).** Start the installed Pi
+3. **Actual Pi root TUI, naming, and quota (R2, R5–R7).** Start the installed Pi
    in the disposable tmux server with `--session-dir` pointing at the owned
    evidence directory and `--no-tools`, then submit one short run-marked
    prompt. Do not use print, JSON, RPC, or child mode; those deliberately do
@@ -188,7 +167,7 @@ approval. Source fixes must pass their synthetic gates before a diagnostic.
    Missing windows must stay unknown. Never dump auth or raw usage responses;
    keep the nonsecret account key out of the recorded footer. Reopening can
    trigger a quota refresh and remains part of this same recorded live pass.
-5. **Attribution and delivery evidence (R2–R3).** For each controlled root
+4. **Attribution and delivery evidence (R2–R3).** For each controlled root
    completion, retain its actual native identity and the matching categorized
    decision from `notify-decisions.jsonl`, filtering only these new sessions.
    An IPC acknowledgement or a decision to notify is not delivery proof:
@@ -197,7 +176,7 @@ approval. Source fixes must pass their synthetic gates before a diagnostic.
    message count and content against the same identity. Unexpected duplicates
    in this healthy controlled pass are a failure; do not generalize the
    observation into an exactly-once or crash-durability guarantee.
-6. **Cleanup and final state (R1, R5, R8).** Close only the controlled sessions
+5. **Cleanup and final state (R1, R5, R8).** Close only the controlled sessions
    and disposable tmux server. Confirm their helpers/watchers do not keep
    them alive, canonical notifyd remains healthy, and the old daemon remains
    inactive. Preserve evidence and unrelated user state. Do not log out,
@@ -209,7 +188,7 @@ approval. Source fixes must pass their synthetic gates before a diagnostic.
 | Requirement | Evidence to retain |
 | --- | --- |
 | R1 | Canonical source/package/config inventory; target old-inactive/new-active check; user file/index preservation hashes |
-| R2 | Actual three native root completions; exact Codex user trust; retained Claude usage/input hooks and native Codex approval UI |
+| R2 | Actual Claude and Pi native root completions; retained Claude usage/input hooks and Codex native approval UI |
 | R3 | Native IDs linked to received messages; fresh same/distinct/missing-ID, send-failure, SessionEnd, restart and ambiguous-IPC tests |
 | R4 | Configured live helper result; pinned minimal-PATH helper tests proving sessionless bounds and deterministic failures |
 | R5 | Live Pi session/pane and manual-resume observations; native disk-backed cadence/ownership/lifecycle race tests |

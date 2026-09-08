@@ -1,7 +1,6 @@
 {
   lib,
   pkgs,
-  stewardPackage,
 }: let
   # Codex 0.144.4's default guidance names the default collaboration
   # namespace. Keep its complete role-specific semantics while pointing the
@@ -72,16 +71,6 @@ in
     approval_policy = "never"
     sandbox_mode = "danger-full-access"
     suppress_unstable_features_warning = true
-
-    # Native root completion hook. Activation merges this one handler into
-    # mutable user hooks without replacing unrelated groups or trust state.
-    [[hooks.Stop]]
-    [[hooks.Stop.hooks]]
-    type = "command"
-    command = "${stewardPackage}/bin/steward notify --harness codex"
-    timeout = 90
-    async = false
-
 
     [projects."/home/joshsymonds/nix-config"]
     trust_level = "trusted"

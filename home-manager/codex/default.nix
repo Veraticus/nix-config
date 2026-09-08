@@ -5,10 +5,7 @@
   pkgs,
   ...
 }: let
-  stewardPackage = inputs.steward.packages.${pkgs.stdenv.hostPlatform.system}.default;
-  codexConfig = import ./managed-config.nix {
-    inherit lib pkgs stewardPackage;
-  };
+  codexConfig = import ./managed-config.nix {inherit lib pkgs;};
   subagentIsolation = import ./subagent-isolation.nix;
   codexAgentRoles = import ./agent-roles.nix;
   # Codex 0.144.4 discovers standalone custom agent roles under
@@ -36,8 +33,7 @@ in {
   # reasserted, matching the mutable-state merge discipline used for Claude.
   #
   # yq-go provides a lossless-enough TOML <-> JSON bridge for Codex's config
-  # types. The small merge helper keeps ordinary recursive baseline-wins
-  # behavior while managing only Steward's native Stop handler and trust key.
+  # types; jq applies the ordinary recursive baseline-wins merge.
   home.activation.codexConfig = lib.hm.dag.entryAfter ["linkGeneration"] ''
     (
     set -euo pipefail
@@ -59,10 +55,7 @@ in {
       echo '{}' > "$WORK/current.json"
     fi
 
-    ${pkgs.python3}/bin/python3 ${./merge-config.py} \
-      --baseline "$WORK/base.json" \
-      --current "$WORK/current.json" \
-      --target "$TARGET" > "$WORK/merged.json"
+    ${pkgs.jq}/bin/jq -s '.[0] * .[1]' "$WORK/current.json" "$WORK/base.json" > "$WORK/merged.json"
 
     current="$(${pkgs.jq}/bin/jq -Sc . "$WORK/current.json")"
     merged="$(${pkgs.jq}/bin/jq -Sc . "$WORK/merged.json")"

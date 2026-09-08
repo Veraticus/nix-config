@@ -9,8 +9,6 @@ import { fileURLToPath } from "node:url";
 
 const stewardDirectory = dirname(fileURLToPath(import.meta.url));
 const repository = resolve(stewardDirectory, "../..");
-const helper = resolve(repository, "home-manager/codex/merge-config.py");
-const canonicalCommand = "/nix/store/new-steward/bin/steward notify --harness codex";
 
 function commandRoot(command) {
   const executable = realpathSync(execFileSync("sh", ["-c", `command -v ${command}`], { encoding: "utf8" }).trim());
@@ -92,64 +90,12 @@ printf passed > "$EXPECTED_MARKER"
   });
 }
 
-function invokeMerge(baseline, current, target = "/home/tester/.codex/config.toml") {
-  return withTemp((directory) => {
-    const baselinePath = join(directory, "baseline.json");
-    const currentPath = join(directory, "current.json");
-    writeFileSync(baselinePath, JSON.stringify(baseline));
-    writeFileSync(currentPath, JSON.stringify(current));
-    const result = spawnSync(
-      "python3",
-      [helper, "--baseline", baselinePath, "--current", currentPath, "--target", target],
-      { encoding: "utf8" },
-    );
-    return {
-      ...result,
-      json: result.status === 0 ? JSON.parse(result.stdout) : undefined,
-    };
-  });
-}
-
-function desiredBaseline(command = canonicalCommand) {
-  return {
-    model: "gpt-5.6-sol",
-    approval_policy: "never",
-    sandbox_mode: "danger-full-access",
-    hooks: {
-      Stop: [
-        {
-          hooks: [
-            { type: "command", command, timeout: 90, async: false },
-          ],
-        },
-      ],
-    },
-    tui: { notifications: ["approval-requested"] },
-  };
-}
-
-function stateKey(target, group, handler) {
-  return `${target}:stop:${group}:${handler}`;
-}
-
-function ownHandler(command = canonicalCommand) {
-  return { type: "command", command, timeout: 90, async: false };
-}
-
-function expectedHash(command) {
-  const normalized = JSON.stringify({
-    event_name: "stop",
-    hooks: [{ async: false, command, timeout: 90, type: "command" }],
-  });
-  return `sha256:${execFileSync("sha256sum", { input: normalized, encoding: "utf8" }).split(" ")[0]}`;
-}
-
 test("flake pins the canonical Steward repository and actual locked implementation SHA", () => {
   const flake = readFileSync(resolve(repository, "flake.nix"), "utf8");
   const lock = JSON.parse(readFileSync(resolve(repository, "flake.lock"), "utf8"));
   assert.match(
     flake,
-    /steward\.url = "github:joshsymonds\/steward\/0ada10343386a984d7ed8c330798d1860c59eb6b";/,
+    /steward\.url = "github:joshsymonds\/steward\/5beb3021f67b5051df515c4ce579d5f708c1063c";/,
   );
   assert.equal(lock.nodes.root.inputs.steward, "steward");
   assert.deepEqual(
@@ -162,7 +108,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
     {
       owner: "joshsymonds",
       repo: "steward",
-      rev: "0ada10343386a984d7ed8c330798d1860c59eb6b",
+      rev: "5beb3021f67b5051df515c4ce579d5f708c1063c",
       type: "github",
     },
   );
@@ -313,48 +259,29 @@ test("evaluated current Pi config preserves tools and uses one paired Steward gr
   });
 });
 
-test("fresh Codex merge installs one stable trusted root Stop while retaining native approvals", () => {
-  const target = "/home/tester/.codex/config.toml";
-  const result = invokeMerge(desiredBaseline(), {}, target);
-  assert.equal(result.status, 0, result.stderr);
-  assert.deepEqual(result.json.hooks.Stop, [{ hooks: [ownHandler()] }]);
-  const key = stateKey(target, 0, 0);
-  assert.deepEqual(result.json.hooks.state[key], {
-    enabled: true,
-    trusted_hash: expectedHash(canonicalCommand),
-  });
-  assert.equal(result.json.approval_policy, "never");
-  assert.equal(result.json.sandbox_mode, "danger-full-access");
-  assert.deepEqual(result.json.tui.notifications, ["approval-requested"]);
-  assert.equal(result.json.notify, undefined);
-  assert.equal(result.json.hooks.SubagentStop, undefined);
+test("generated Codex baseline has no Steward integration and retains native approvals", () => {
+  const managed = evaluateCutover().codex.managed;
+  assert.doesNotMatch(managed, /steward|hooks\.Stop|trusted_hash|\bnotify\s*=/i);
+  assert.match(managed, /approval_policy = "never"/);
+  assert.match(managed, /sandbox_mode = "danger-full-access"/);
+  assert.match(managed, /notifications = \["approval-requested"\]/);
 });
 
-test("Codex native hash matches the independently verified compact sorted JSON sample", () => {
-  const sample = "/nix/store/synthetic-steward/bin/steward notify --harness codex";
-  assert.equal(
-    expectedHash(sample),
-    "sha256:d38f1e5dd249244c227b8b58543e816d23227cb6b06dba55a60f7f473acfc5da",
-  );
-  const merged = invokeMerge(desiredBaseline(sample), {}, "/tmp/example/config.toml").json;
-  assert.equal(merged.hooks.state["/tmp/example/config.toml:stop:0:0"].trusted_hash, expectedHash(sample));
-});
-
-test("configured Codex timeout permits bounded inline delivery retry", async (t) => {
+test("configured Claude timeout permits bounded inline delivery retry", async (t) => {
   const stewardBin = process.env.STEWARD_TEST_BIN;
   if (!stewardBin) {
     t.skip("STEWARD_TEST_BIN is required for the package-dependent fallback regression");
     return;
   }
 
-  const managed = evaluateCutover().codex.managed;
-  const timeoutMatch = managed.match(/command = "[^"]*steward notify --harness codex"\s+timeout = (\d+)\s+async = false/);
-  assert.ok(timeoutMatch, "evaluated managed TOML must contain the synchronous native Stop handler");
-  const hookTimeoutMs = Number(timeoutMatch[1]) * 1_000;
+  const settings = JSON.parse(readFileSync(resolve(repository, "home-manager/claude-code/settings.json"), "utf8"));
+  const handler = settings.hooks.Stop[0].hooks.find((hook) => hook.command === "steward notify --harness claude-code");
+  assert.ok(handler, "Claude settings must contain the synchronous native Stop handler");
+  assert.equal(handler.timeout, 90);
+  const hookTimeoutMs = handler.timeout * 1_000;
   const expectedBody = "synthetic bounded retry body";
   const payload = {
     session_id: "synthetic-session",
-    turn_id: "synthetic-turn",
     cwd: "/tmp/synthetic-project",
     hook_event_name: "Stop",
     last_assistant_message: expectedBody,
@@ -366,7 +293,7 @@ test("configured Codex timeout permits bounded inline delivery retry", async (t)
     request.setEncoding("utf8");
     request.on("data", (chunk) => { body += chunk; });
     request.on("end", () => {
-      requests.push(body);
+      requests.push({ body, hasAuthorization: request.headers.authorization !== undefined });
       const timer = setTimeout(() => {
         responseTimers.delete(timer);
         response.statusCode = requests.length === 1 ? 503 : 200;
@@ -389,7 +316,7 @@ test("configured Codex timeout permits bounded inline delivery retry", async (t)
     });
     const { port } = server.address();
     const binDirectory = dirname(stewardBin);
-    child = spawn(stewardBin, ["notify", "--harness", "codex"], {
+    child = spawn(stewardBin, ["notify", "--harness", "claude-code"], {
       env: {
         HOME: join(root, "home"),
         PATH: binDirectory,
@@ -411,13 +338,14 @@ test("configured Codex timeout permits bounded inline delivery retry", async (t)
       child.once("exit", (code, signal) => resolveExit({ code, signal }));
       childTimer = setTimeout(() => {
         child.kill("SIGKILL");
-        reject(new Error(`Steward exceeded configured ${hookTimeoutMs}ms Stop timeout`));
+        reject(new Error(`Steward exceeded configured ${hookTimeoutMs}ms Claude Stop timeout`));
       }, hookTimeoutMs);
     });
     const elapsed = Date.now() - started;
     assert.deepEqual(result, { code: 0, signal: null }, stderr);
     assert.equal(requests.length, 2);
-    assert.deepEqual(requests, [expectedBody, expectedBody]);
+    assert.deepEqual(requests.map(({ body }) => body), [expectedBody, expectedBody]);
+    assert.deepEqual(requests.map(({ hasAuthorization }) => hasAuthorization), [false, false]);
     assert.ok(elapsed > 10_000, `retry completed too quickly: ${elapsed}ms`);
     assert.ok(elapsed < 11_000, `retry exceeded the Sender bound: ${elapsed}ms`);
     assert.ok(elapsed < hookTimeoutMs, `retry exceeded configured hook timeout: ${elapsed}ms`);
@@ -432,139 +360,53 @@ test("configured Codex timeout permits bounded inline delivery retry", async (t)
   }
 });
 
-test("Codex merge is idempotent and updates package command/hash in place", () => {
-  const target = "/home/tester/.codex/config.toml";
-  const oldCommand = "/nix/store/old-cc-tools/bin/cc-tools notify --harness codex";
-  const first = invokeMerge(desiredBaseline(oldCommand), {}, target).json;
-  const repeated = invokeMerge(desiredBaseline(oldCommand), first, target).json;
-  assert.deepEqual(repeated, first);
-  const changed = invokeMerge(desiredBaseline(), repeated, target).json;
-  assert.equal(changed.hooks.Stop.length, 1);
-  assert.deepEqual(changed.hooks.Stop[0].hooks, [ownHandler()]);
-  assert.equal(changed.hooks.state[stateKey(target, 0, 0)].trusted_hash, expectedHash(canonicalCommand));
-  assert.notEqual(changed.hooks.state[stateKey(target, 0, 0)].trusted_hash, first.hooks.state[stateKey(target, 0, 0)].trusted_hash);
-});
-
-test("Codex merge preserves unrelated Stop groups, state, projects, notifications, and appends at stable indices", () => {
-  const target = "/home/tester/.codex/config.toml";
-  const unrelatedHandler = { type: "command", command: "/opt/user/bin/backup", timeout: 3, async: true };
-  const unrelatedKey = stateKey(target, 0, 0);
-  const current = {
-    approval_policy: "on-request",
-    hooks: {
-      Stop: [{ matcher: "all", hooks: [unrelatedHandler] }],
-      state: {
-        [unrelatedKey]: { enabled: false, trusted_hash: "sha256:user", note: "keep" },
-      },
-    },
-    projects: { "/work/user": { trust_level: "trusted", marker: 7 } },
-    tui: { notifications: ["approval-requested", "user-event"] },
-    user_state: { keep: [1, 2, 3] },
-  };
-  const merged = invokeMerge(desiredBaseline(), current, target).json;
-  assert.deepEqual(merged.hooks.Stop[0], current.hooks.Stop[0]);
-  assert.deepEqual(merged.hooks.state[unrelatedKey], current.hooks.state[unrelatedKey]);
-  assert.deepEqual(merged.hooks.Stop[1], { hooks: [ownHandler()] });
-  assert.equal(merged.hooks.state[stateKey(target, 1, 0)].trusted_hash, expectedHash(canonicalCommand));
-  assert.deepEqual(merged.projects, current.projects);
-  assert.deepEqual(merged.user_state, current.user_state);
-  assert.deepEqual(merged.tui.notifications, ["approval-requested"]);
-  assert.equal(merged.approval_policy, "never");
-});
-
-test("Codex merge migrates an owned ten-second nonzero handler and trust without moving siblings", () => {
-  const target = "/home/tester/.codex/config.toml";
-  const oldCommand = "/nix/store/synthetic-steward/bin/steward notify --harness codex";
-  const left = { type: "command", command: "/opt/user/left" };
-  const right = { type: "command", command: "/opt/user/right" };
-  const oldHandler = { type: "command", command: oldCommand, timeout: 10, async: false };
-  const oldHash = "sha256:aecfc6d9b2aa324aa5999e71a25c273c1e11802e30f4733340b0155b2c1aac02";
-  const ownKey = stateKey(target, 1, 1);
-  const siblingKey = stateKey(target, 1, 2);
-  const current = {
-    hooks: {
-      Stop: [
-        { hooks: [{ type: "command", command: "/opt/user/first" }] },
-        { matcher: "preserve", hooks: [left, oldHandler, right] },
-      ],
-      state: {
-        [ownKey]: { enabled: false, trusted_hash: oldHash, extension: "preserved" },
-        [siblingKey]: { enabled: false, trusted_hash: "sha256:right" },
-      },
-    },
-  };
-  const merged = invokeMerge(desiredBaseline(), current, target).json;
-  assert.equal(merged.hooks.Stop.length, 2);
-  assert.equal(merged.hooks.Stop[1].matcher, "preserve");
-  assert.deepEqual(merged.hooks.Stop[1].hooks, [left, ownHandler(), right]);
-  assert.deepEqual(merged.hooks.state[siblingKey], current.hooks.state[siblingKey]);
-  assert.deepEqual(merged.hooks.state[ownKey], {
-    enabled: true,
-    trusted_hash: expectedHash(canonicalCommand),
-    extension: "preserved",
-  });
-});
-
-test("Codex merge removes only exact Steward legacy top-level notify", () => {
-  const owned = invokeMerge(desiredBaseline(), {
-    notify: ["/nix/store/old/bin/cc-tools", "notify"],
-    marker: true,
-  }).json;
-  assert.equal(owned.notify, undefined);
-  assert.equal(owned.marker, true);
-
-  const userNotify = ["/opt/user/cc-tools-wrapper", "notify", "--harness", "codex"];
-  const unrelated = invokeMerge(desiredBaseline(), { notify: userNotify }).json;
-  assert.deepEqual(unrelated.notify, userNotify);
-});
-
-test("Codex duplicate-owned and SubagentStop migrations fail explicitly without touching target", () => {
-  withTemp((directory) => {
-    const baselinePath = join(directory, "baseline.json");
-    const currentPath = join(directory, "current.json");
-    const target = join(directory, "config.toml");
-    const original = "# user config must survive\n";
-    writeFileSync(target, original);
-    chmodSync(target, 0o600);
-    writeFileSync(baselinePath, JSON.stringify(desiredBaseline()));
-
-    for (const [name, current, message] of [
-      ["duplicate", { hooks: { Stop: [{ hooks: [ownHandler(), ownHandler("steward notify --harness codex")] }] } }, "multiple owned Steward Stop handlers"],
-      ["subagent", { hooks: { SubagentStop: [{ hooks: [ownHandler("cc-tools notify --harness codex")] }] } }, "owned Steward SubagentStop migration is unsupported"],
-    ]) {
-      writeFileSync(currentPath, JSON.stringify(current));
-      const result = spawnSync("python3", [helper, "--baseline", baselinePath, "--current", currentPath, "--target", target], { encoding: "utf8" });
-      assert.notEqual(result.status, 0, `${name} unexpectedly succeeded`);
-      assert.match(result.stderr, new RegExp(message));
-      assert.equal(readFileSync(target, "utf8"), original);
-      assert.equal(statSync(target).mode & 0o777, 0o600);
-    }
-  });
-});
-
-test("generated Codex activation is atomic, mode 0600, idempotent, and propagates merge errors", () => {
+test("generated Codex activation preserves unrelated mutable configuration atomically", () => {
   const evaluated = evaluateCutover();
   withTemp((directory) => {
     const baseline = join(directory, "managed.toml");
-    writeFileSync(
-      baseline,
-      evaluated.codex.managed.replaceAll("@STEWARD_PACKAGE@", "/nix/store/new-steward"),
-    );
+    writeFileSync(baseline, evaluated.codex.managed);
     const replacements = new Map([
       ["@BASE@", baseline],
       ["@COREUTILS@", commandRoot("mktemp")],
       ["@JQ@", commandRoot("jq")],
       ["@YQ@", nixPackageRoot("yq-go")],
-      ["@PYTHON@", commandRoot("python3")],
     ]);
     let activation = evaluated.codex.activation;
-    for (const [marker, value] of replacements) activation = activation.replaceAll(marker, value);
-    activation = activation.replace(/\/nix\/store\/[a-z0-9]+-merge-config\.py/, helper);
+    for (const [marker, value] of replacements) {
+      activation = activation.replaceAll(marker, value);
+    }
     const home = join(directory, "home");
-    const env = { ...process.env, HOME: home };
+    const target = join(home, ".codex/config.toml");
+    mkdirSync(dirname(target), { recursive: true });
+    const current = {
+      model: "user-model",
+      approval_policy: "on-request",
+      custom: { nested: { value: "keep" } },
+      hooks: {
+        Stop: [{ matcher: "all", hooks: [{ type: "command", command: "/opt/user/hook" }] }],
+        state: { "/work/user:stop:0:0": { enabled: true, trusted_hash: "sha256:user", customvalue: "keep" } },
+      },
+      projects: { "/work/user": { trust_level: "trusted", customnested: { value: "keep" } } },
+      tui: { notifications: ["user-event"] },
+    };
+    const yq = join(nixPackageRoot("yq-go"), "bin/yq");
+    writeFileSync(target, execFileSync(yq, ["-p=json", "-o=toml", "."], {
+      input: JSON.stringify(current), encoding: "utf8",
+    }));
+    chmodSync(target, 0o600);
+    const env = { HOME: home };
     const first = spawnSync("bash", ["-c", activation], { env, encoding: "utf8" });
     assert.equal(first.status, 0, first.stderr);
-    const target = join(home, ".codex/config.toml");
+    const actual = JSON.parse(execFileSync(yq, ["-p=toml", "-o=json", ".", target], { encoding: "utf8" }));
+    assert.deepEqual(actual.hooks, current.hooks);
+    assert.deepEqual(actual.projects, {
+      ...current.projects,
+      "/home/joshsymonds/nix-config": { trust_level: "trusted" },
+    });
+    assert.deepEqual(actual.custom, current.custom);
+    assert.equal(actual.model, "gpt-5.6-sol");
+    assert.equal(actual.approval_policy, "never");
+    assert.equal(actual.tui.notifications[0], "approval-requested");
     assert.equal(statSync(target).mode & 0o777, 0o600);
     const firstContents = readFileSync(target, "utf8");
     const firstInode = statSync(target).ino;
@@ -573,20 +415,23 @@ test("generated Codex activation is atomic, mode 0600, idempotent, and propagate
     assert.equal(readFileSync(target, "utf8"), firstContents);
     assert.equal(statSync(target).ino, firstInode, "idempotent activation rewrote the target");
 
-    const duplicateJson = desiredBaseline();
-    duplicateJson.hooks.Stop[0].hooks.push(ownHandler("cc-tools notify --harness codex"));
-    const duplicateToml = execFileSync(join(nixPackageRoot("yq-go"), "bin/yq"), ["-p=json", "-o=toml", "."], {
-      input: JSON.stringify(duplicateJson),
-      encoding: "utf8",
-    });
-    writeFileSync(target, duplicateToml);
-    chmodSync(target, 0o600);
-    const beforeFailure = readFileSync(target);
+    const discardingActivation = activation.replace("'.[0] * .[1]'", "'.[1]'");
+    writeFileSync(target, execFileSync(yq, ["-p=json", "-o=toml", "."], {
+      input: JSON.stringify(current), encoding: "utf8",
+    }));
+    const discarded = spawnSync("bash", ["-c", discardingActivation], { env, encoding: "utf8" });
+    assert.equal(discarded.status, 0, discarded.stderr);
+    const discardedJson = JSON.parse(execFileSync(yq, ["-p=toml", "-o=json", ".", target], { encoding: "utf8" }));
+    assert.equal(discardedJson.hooks, undefined, "negative control must discard mutable hook state");
+    assert.equal(discardedJson.projects["/work/user"], undefined, "negative control must discard user project state");
+
+    writeFileSync(target, "invalid = [\n");
+    chmodSync(target, 0o640);
+    const before = readFileSync(target);
     const failed = spawnSync("bash", ["-c", activation], { env, encoding: "utf8" });
     assert.notEqual(failed.status, 0);
-    assert.match(failed.stderr, /multiple owned Steward Stop handlers/);
-    assert.deepEqual(readFileSync(target), beforeFailure);
-    assert.equal(statSync(target).mode & 0o777, 0o600);
+    assert.deepEqual(readFileSync(target), before);
+    assert.equal(statSync(target).mode & 0o777, 0o640);
   });
 });
 

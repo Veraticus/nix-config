@@ -651,7 +651,6 @@
             codexConfig = import ./home-manager/codex/managed-config.nix {
               pkgs = checkPkgs;
               lib = checkPkgs.lib;
-              gambitHasCodex = true;
             };
           };
           chatgpt-desktop = import ./tests/chatgpt-desktop.nix {

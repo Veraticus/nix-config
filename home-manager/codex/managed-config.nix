@@ -1,5 +1,4 @@
 {
-  gambitHasCodex,
   lib,
   pkgs,
 }: let
@@ -72,13 +71,6 @@ in
     approval_policy = "never"
     sandbox_mode = "danger-full-access"
     suppress_unstable_features_warning = true
-
-    ${lib.optionalString gambitHasCodex ''
-        # Home Manager also materializes the matching cache entry below, so
-        # Gambit is installed and enabled without mutable `codex plugin add` state.
-      [plugins."gambit@personal"]
-      enabled = true
-    ''}
 
     [projects."/home/joshsymonds/nix-config"]
     trust_level = "trusted"

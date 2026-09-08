@@ -5,26 +5,8 @@
   pkgs,
   ...
 }: let
-  gambitPackages = inputs.gambit.packages.${pkgs.stdenv.hostPlatform.system};
-  gambitHasCodex = gambitPackages ? codex && inputs.gambit ? lib && inputs.gambit.lib ? version;
-  gambitCodex =
-    if gambitHasCodex
-    then gambitPackages.codex
-    else null;
-  gambitVersion =
-    if gambitHasCodex
-    then inputs.gambit.lib.version
-    else "unavailable";
-  gambitCodexCache =
-    if gambitHasCodex
-    then
-      pkgs.runCommand "gambit-codex-cache-${gambitVersion}" {} ''
-        mkdir -p "$out/${gambitVersion}"
-        cp -R ${gambitCodex}/. "$out/${gambitVersion}/"
-      ''
-    else null;
   codexConfig = import ./managed-config.nix {
-    inherit gambitHasCodex lib pkgs;
+    inherit lib pkgs;
   };
   subagentIsolation = import ./subagent-isolation.nix;
   codexAgentRoles = import ./agent-roles.nix;
@@ -192,14 +174,6 @@ in {
       ) || echo "codexTranscriptState: phase aborted (see above); the rest of the activation continues." >&2
     '');
 
-  # Gambit's Codex-native bundle is exposed through the implicit personal
-  # marketplace. The marketplace path is rooted at $HOME, so
-  # ./plugins/gambit resolves to the Nix-managed ~/plugins/gambit symlink.
-  # Codex ignores symlinked SKILL.md files during discovery. Build the whole
-  # versioned cache as one immutable tree so its directories and files are
-  # real; Home Manager then symlinks only the cache root. The enabled config
-  # block avoids mutable `codex plugin add` state, while INSTALLED_BY_DEFAULT
-  # records the same policy in the marketplace UI.
   home.file =
     codexAgentFiles
     // {
@@ -207,28 +181,5 @@ in {
       # It lives in the OpenAI Developers plugin upstream, but does not require
       # installing that plugin's Platform connector or its unrelated skills.
       ".codex/skills/chatgpt-app-submission".source = "${inputs.openai-plugins}/plugins/openai-developers/skills/chatgpt-app-submission";
-
-      "plugins/gambit" = lib.mkIf gambitHasCodex {source = gambitCodex;};
-      ".codex/plugins/cache/personal/gambit" = lib.mkIf gambitHasCodex {source = gambitCodexCache;};
-      ".agents/plugins/marketplace.json" = lib.mkIf gambitHasCodex {
-        text = builtins.toJSON {
-          name = "personal";
-          interface.displayName = "Personal";
-          plugins = [
-            {
-              name = "gambit";
-              source = {
-                source = "local";
-                path = "./plugins/gambit";
-              };
-              policy = {
-                installation = "INSTALLED_BY_DEFAULT";
-                authentication = "ON_INSTALL";
-              };
-              category = "Coding";
-            }
-          ];
-        };
-      };
     };
 }

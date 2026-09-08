@@ -70,6 +70,7 @@ in
       --rawfile expectedSubagent ${expectedSubagentUsageHintFile} \
       '
         .suppress_unstable_features_warning == true
+        and .plugins."gambit@personal" == null
         and .features.multi_agent_v2.enabled == true
         and .features.multi_agent_v2.tool_namespace == "gambit_agents"
         and .features.multi_agent_v2.hide_spawn_agent_metadata == false

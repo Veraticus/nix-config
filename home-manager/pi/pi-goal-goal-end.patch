@@ -1,0 +1,100 @@
+--- a/dist/index.ts
++++ b/dist/index.ts
+@@ -1370,6 +1370,7 @@
+ var MAX_COMPLETION_SUMMARY_LENGTH = 4e3;
+ var MAX_BLOCKER_REASON_LENGTH = 1e3;
+ var MAX_BLOCKER_EVIDENCE_LENGTH = 4e3;
++var MAX_GOAL_END_REPORT_LENGTH = 4e3;
+ function registerGoalTools(pi, runtime) {
+   const goalCompleteTool = defineTool({
+     name: GOAL_COMPLETE_TOOL,
+@@ -1543,6 +1544,66 @@
+       };
+     }
+   });
++  const goalEndTool = defineTool({
++    name: "goal_end",
++    label: "Goal End",
++    description: "End an active /goal with a terminal Gambit outcome without claiming the goal complete. Use ended_with_gaps when the run finished with known gaps, or stopped_on_catastrophe when a catastrophe prevented a valid release.",
++    parameters: Type.Object({
++      goal_id: Type.String({
++        minLength: 1,
++        maxLength: MAX_GOAL_ID_LENGTH,
++        description: "The exact goal_id shown in the current active /goal prompt."
++      }),
++      outcome: Type.Union([Type.Literal("ended_with_gaps"), Type.Literal("stopped_on_catastrophe")]),
++      report: Type.String({
++        minLength: 1,
++        maxLength: MAX_GOAL_END_REPORT_LENGTH,
++        description: "The final Gambit report for this terminal outcome."
++      })
++    }),
++    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
++      const endingGoal = runtime.activeGoal;
++      const goal2 = endingGoal?.text ?? "unknown goal";
++      const requestedGoalId = typeof params.goal_id === "string" ? params.goal_id.trim() : "";
++      const outcome = params.outcome === "ended_with_gaps" || params.outcome === "stopped_on_catastrophe" ? params.outcome : "";
++      const report = typeof params.report === "string" ? params.report.trim() : "";
++      const reject = (rejectionReason) => {
++        const rejection = `goal_end rejected: ${rejectionReason}.`;
++        notifyTerminal(ctx.ui, rejection, "warning");
++        return {
++          content: toolContent(rejection),
++          details: goalEndDetails(goal2, requestedGoalId, outcome, report)
++        };
++      };
++      if (!endingGoal) return reject("no active goal");
++      if (!runtime.canRecordGoalUsage()) {
++        return reject("current run does not own the active goal");
++      }
++      const staleGoalRejection = goalIdRejectionReason(endingGoal, requestedGoalId);
++      if (staleGoalRejection) return reject(staleGoalRejection);
++      if (endingGoal.status !== "active") {
++        return reject(`goal is ${endingGoal.status}, not active`);
++      }
++      if (!runtime.ownsWorkflow(endingGoal))
++        return reject("active Goal no longer owns its workflow");
++      if (!outcome) return reject("outcome must be ended_with_gaps or stopped_on_catastrophe");
++      if (!report) return reject("report is empty");
++      if (report.length > MAX_GOAL_END_REPORT_LENGTH) return reject("report is too long");
++      const stoppedGoal = runtime.stopActiveGoal(ctx, {
++        kind: "blocker_report",
++        expectedGoalId: endingGoal.id,
++        reason: report
++      });
++      if (!stoppedGoal) return reject("active goal changed before terminal transition");
++      const outcomeMessage = outcome === "ended_with_gaps" ? "ended with gaps" : "stopped on catastrophe";
++      notifyTerminal(ctx.ui, `Goal ${outcomeMessage}: ${truncateNotification(report)}`, outcome === "ended_with_gaps" ? "info" : "warning");
++      return {
++        content: toolContent(`Goal ${outcomeMessage}: ${report}`),
++        details: goalEndDetails(goal2, requestedGoalId, outcome, report),
++        terminate: true
++      };
++    }
++  });
+   const goalWaitTool = defineTool({
+     name: GOAL_WAIT_TOOL,
+     label: "Goal Wait",
+@@ -1622,6 +1683,7 @@
+   });
+   pi.registerTool(goalCompleteTool);
+   pi.registerTool(goalBlockedTool);
++  pi.registerTool(goalEndTool);
+   pi.registerTool(goalWaitTool);
+ }
+ function toolContent(text) {
+@@ -1640,6 +1702,14 @@
+     goal: goal2.slice(0, MAX_GOAL_TEXT_LENGTH),
+     goal_id: goalId.slice(0, MAX_GOAL_ID_LENGTH),
+     summary: summary.slice(0, MAX_COMPLETION_SUMMARY_LENGTH)
++  };
++}
++function goalEndDetails(goal2, goalId, outcome, report) {
++  return {
++    goal: goal2.slice(0, MAX_GOAL_TEXT_LENGTH),
++    goal_id: goalId.slice(0, MAX_GOAL_ID_LENGTH),
++    outcome,
++    report: report.slice(0, MAX_GOAL_END_REPORT_LENGTH)
+   };
+ }
+ function blockerDetails(goal2, goalId, reason, evidence, repeatedTurns) {

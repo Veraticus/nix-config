@@ -18,29 +18,9 @@
     hash = "sha256-xqbnZ8IQ4dpc1Wmkmt96Nye3XoEm1ECI434nGMrXBXk=";
   };
 
-  piGoalSource = pkgs.fetchzip {
-    url = "https://registry.npmjs.org/@narumitw/pi-goal/-/pi-goal-0.54.3.tgz";
-    hash = "sha256-Zw+7QW0g4Xk5EXhCwkB+fBXxe5+3nsfNLAyVuzP6v78=";
-  };
-
   piLspSource = pkgs.fetchzip {
     url = "https://registry.npmjs.org/@narumitw/pi-lsp/-/pi-lsp-0.49.7.tgz";
     hash = "sha256-v6NQ311vtZl2x0PAEkGCIDzR3IixEd1t0Bg5h3jzM9E=";
-  };
-
-  piTuiKit = pkgs.fetchzip {
-    url = "https://registry.npmjs.org/@narumitw/pi-tui-kit/-/pi-tui-kit-0.59.0.tgz";
-    hash = "sha256-dMzOHA7jxKShvU2okzNt7qRNm/5ONa+05ZkcfVTALbI=";
-  };
-
-  grokMermaid = pkgs.fetchzip {
-    url = "https://registry.npmjs.org/grok-mermaid/-/grok-mermaid-0.2.3.tgz";
-    hash = "sha256-tT9tKcotpywP98aI4H8AJZa6cikj9adGFZpialQ0Dxk=";
-  };
-
-  highlightJs = pkgs.fetchzip {
-    url = "https://registry.npmjs.org/highlight.js/-/highlight.js-11.12.0.tgz";
-    hash = "sha256-fcEJdFLzFkMR1rlm9sPVCr6A8YhUgm6+JNlLjMIrHk0=";
   };
 
   sinclairTypebox = pkgs.fetchzip {
@@ -75,15 +55,7 @@
     ln -s ${pkgs.pi-coding-agent}/lib/node_modules/pi-monorepo/node_modules/typebox $out/node_modules/typebox
   '';
 
-  piGoal = pkgs.runCommand "pi-goal-0.54.3" {} ''
-    cp -r ${piGoalSource} $out
-    chmod -R u+w $out
-    mkdir -p $out/node_modules/@narumitw
-    ln -s ${piTuiKit} $out/node_modules/@narumitw/pi-tui-kit
-    ln -s ${grokMermaid} $out/node_modules/grok-mermaid
-    ln -s ${highlightJs} $out/node_modules/highlight.js
-    ln -s ${pkgs.pi-coding-agent}/lib/node_modules/pi-monorepo/node_modules/typebox $out/node_modules/typebox
-  '';
+  piGoal = import ./pi-goal.nix {inherit pkgs;};
 
   piLsp = pkgs.runCommand "pi-lsp-0.49.7" {} ''
     cp -r ${piLspSource} $out
@@ -286,7 +258,7 @@ in {
       rpc.enabled = false;
       continuationLimits = {
         automaticTurns = null;
-        noProgressTurns = 3;
+        noProgressTurns = null;
       };
     };
     ".pi/agent/subagents.json".text = builtins.toJSON {

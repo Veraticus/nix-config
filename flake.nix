@@ -680,6 +680,7 @@
               fi
               touch $out
             '';
+          pi-goal-goal-end = import ./tests/pi-goal-goal-end.nix {pkgs = checkPkgs; piGoalSettings = self.nixosConfigurations.vermissian.config.home-manager.users.joshsymonds.home.file.".pi/agent/pi-goal.json".text;};
         });
 
         # mkShellNoCC + a tiny package set keeps the direnv shell closure

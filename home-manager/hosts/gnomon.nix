@@ -8,7 +8,6 @@
     ../desktop-x86_64-linux.nix
     ../vesktop
     ../spicetify
-    ../qbittorrent
     ../calendar
     ../claude-code/transcripts.nix
     ../claude-code/aggregator.nix
@@ -16,6 +15,9 @@
     ../savecraftd
     ../patchbay
   ];
+
+  # Do not install the standalone qBittorrent app here: it bypasses the VPN.
+  # Use the system's VPN-isolated instance at http://localhost:8080 instead.
 
   # Per-host Anthropic API gateway. The personal Claude Code profile points
   # ANTHROPIC_BASE_URL here; gnomon mounts /mnt/claude, so it also ships its

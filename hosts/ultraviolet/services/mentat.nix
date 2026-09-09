@@ -50,6 +50,17 @@
     mode = "0400";
   };
 
+  # Who the voice knows: a TOML of about/keyterms/pronunciations. The mentat
+  # repo is public, so this is the only place it exists; the module hands it
+  # to the DynamicUser unit as a systemd credential (LoadCredential reads it
+  # as root, same as the env file above).
+  age.secrets."mentat-voice-private" = {
+    file = ../../../secrets/hosts/ultraviolet/mentat-voice-private.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
   services.mentat = {
     enable = true;
     claudePackage = pkgs.claudeCodeCli;
@@ -72,6 +83,7 @@
     voice = {
       enable = true;
       environmentFile = config.age.secrets."mentat-voice-env".path;
+      privateContextFile = config.age.secrets."mentat-voice-private".path;
       # What token-route clients (the Android app) are told to connect to:
       # the tailnet-published signal, not the loopback URL the agent uses.
       publicLivekitUrl = "wss://ultraviolet.tail82223.ts.net:7443";

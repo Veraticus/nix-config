@@ -4,7 +4,7 @@ This configuration preserves the deployed user configuration from deployed user 
 2b1a0eeb85461bccbc42808c94a666eef07aa127 (published from
 `worktree-astra-xhigh-steelman`), which is newer than local main
 `8d8c473`. It consumes the intended Steward source
-`joshsymonds/steward` at `34a5531ec3a495d89739a0ca72b3fb14832eb35b` for
+`joshsymonds/steward` at `3516f7989d768a9045b0fab9dee8ef08a798fcd0` for
 Vermissian; neither pin is a release claim.
 
 ## Shared ownership

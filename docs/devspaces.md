@@ -1,10 +1,10 @@
 # Dev Contexts
 
-This document describes the new dev context abstraction that replaced the older devspace stack. Contexts are just names plus a little metadata, but we treat them as first-class across tmux, shells, prompts, and notifications. Whether you attach from a Mac, run inside Coder, or SSH straight into a server, the same variables (`DEV_CONTEXT`, `DEV_CONTEXT_KIND`, `DEV_CONTEXT_ICON`) follow you.
+This document describes the new dev context abstraction that replaced the older devspace stack. Contexts are just names plus a little metadata, but we treat them as first-class across tmux, shells, and prompts. Whether you attach from a Mac, run inside Coder, or SSH straight into a server, the same variables (`DEV_CONTEXT`, `DEV_CONTEXT_KIND`, `DEV_CONTEXT_ICON`) follow you.
 
 ## Goals
 - Provide a single, user-facing label for every long-lived shell
-- Make prompts, terminal titles, and notifications agree on that label
+- Make prompts and terminal titles agree on that label
 - Support both tmux-managed sessions and non-tmux environments (Coder, bare hosts)
 - Keep the implementation small enough to reason about and extend quickly
 
@@ -25,8 +25,8 @@ This document describes the new dev context abstraction that replaced the older 
 5. **Prompt + titles** (`home-manager/starship/default.nix`, `home-manager/tmux/default.nix`)
    - Starship adds a right-side context segment with optional icons
    - Tmux titles use the per-session option `@dev_context` so Kitty tabs and other terminals stay in sync
-6. **Notifications** (`cc-tools notify (see home-manager/claude-code/hooks/README.md)`)
-   - Reads the derived context metadata and embeds it in mobile alerts
+6. **Notifications** (`steward notify --harness claude-code`; see `home-manager/claude-code/hooks/README.md`)
+   - Uses `TMUX_PANE` to resolve `session_name:window_index`; the title is the Steward label/project plus that locus, or the hostname fallback outside tmux
 
 ## Planetary helpers
 

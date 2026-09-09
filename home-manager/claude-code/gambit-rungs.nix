@@ -21,44 +21,66 @@
   #
   # Each `route` must be a route key patchbay publishes under codexUpstream;
   # home-manager/patchbay/chatgpt-models.nix owns that list and the check
-  # asserts the two agree.
+  # asserts the two agree. A route whose Seat carries speed = "fast" makes
+  # the rung a fast rung on both harnesses: the Claude Code agent gets it from
+  # the Seat, the Pi twin from the codex-fast extension below.
+  #
+  # The worker ladder is the one tiltyard's matrix data supports: two cheap
+  # fast rungs, then the orchestrator's own model. Same-seat retries convert
+  # ~2 points, terra between sol-low and sol converts 0/32 failures, and the
+  # rungs above sol-low convert ~12% of what sol-low fails — so sol-xhigh and
+  # astra-xhigh stay for review and steelman only.
   gambitRungs = {
+    # Worker entry rung: Luna, always on the fast tier.
     "luna-low" = {
       route = "chatgpt/luna";
       effort = "low";
     };
+    # Worker second rung and escalation entry: Sol on the fast tier.
     "sol-low" = {
-      route = "chatgpt/sol";
+      route = "chatgpt/sol-fast";
       effort = "low";
     };
+    # Scout rung: Terra, always on the fast tier.
     "terra-medium" = {
       route = "chatgpt/terra";
       effort = "medium";
     };
+    # Review finders and verifier: Sol at standard speed.
     "sol-xhigh" = {
       route = "chatgpt/sol";
       effort = "xhigh";
     };
-    # GPT-6 Astra at the effort the Pi orchestrator runs it: a rung for
-    # steelman/review dispatch and for exercising the production orchestrator
-    # model from Claude Code over patchbay's HTTPS path (cli-proxy-api) rather
-    # than Pi's Codex WebSocket, which is a second transport when one stalls.
+    # GPT-6 Astra at the effort the Pi orchestrator runs it: the terminal
+    # worker rung — the orchestrator's own model in an isolated context, after
+    # both fast rungs have failed — and a second transport for the production
+    # orchestrator model from Claude Code over patchbay's HTTPS path
+    # (cli-proxy-api) rather than Pi's Codex WebSocket, when one stalls.
     "astra-high" = {
       route = "chatgpt/astra";
       effort = "high";
     };
-    # The steelman rung: Astra at its highest effort, read-only, for the one
-    # discovery pass brainstorming runs on an agreed design.
+    # Astra at its highest effort: the read-only steelman pass brainstorming
+    # runs on an agreed design.
     "astra-xhigh" = {
       route = "chatgpt/astra";
       effort = "xhigh";
     };
   };
 
-  # Route key -> upstream model id, owned by the patchbay module. Used for the
-  # human-readable label on the Claude Code agent and for the Pi twin's
-  # provider model id, so a rung never hardcodes a model generation.
+  # Route key -> the Seat's upstream identity (model id, optional speed),
+  # owned by the patchbay module. The model id labels the Claude Code agent
+  # and names the Pi twin's provider model, so a rung never hardcodes a model
+  # generation; the speed decides whether the Pi twin loads the fast
+  # extension.
   chatgptModels = import ../patchbay/chatgpt-models.nix;
+  routeModel = route: chatgptModels.${route}.model;
+  routeFast = route: chatgptModels.${route} ? speed;
+
+  # The Pi-side counterpart of a fast Seat: a before_provider_request hook
+  # that asks the openai-codex provider for the priority tier. Referenced by
+  # store path from the rung frontmatter, so only fast rungs ever load it.
+  codexFastExtension = ../pi/codex-fast.ts;
 
   # The naming contract models.json depends on: a rung's writing agent is the
   # rung name, its advisory agent is the rung name plus "-ro".
@@ -102,7 +124,7 @@
       [
         "---"
         "name: ${agentName}"
-        ''description: "Gambit rung: ${chatgptModels.${route}} (${route}) at ${effort} effort via patchbay${lib.optionalString readonly ", read-only advisory variant"}"''
+        ''description: "Gambit rung: ${routeModel route} (${route}) at ${effort} effort via patchbay${lib.optionalString readonly ", read-only advisory variant"}"''
         "model: ${route}"
         "effort: ${effort}"
       ]
@@ -132,16 +154,20 @@
   # patchbay route, effort, and camel-case denylist fields. Keep extensions
   # and skills out of rung children: Gambit passes the complete contract and
   # brief, and only the root orchestrator may mutate task state or dispatch.
+  # The one extension a writing fast rung loads is codex-fast, which adds
+  # nothing but the service tier; a read-only variant is `isolated`, which
+  # forces extensions off, so scouting stays at standard speed on Pi.
   mkPiRungAgent = rung: readonly: let
     inherit (gambitRungs.${rung}) route effort;
     agentName = rungAgentName rung readonly;
-    model = "openai-codex/${chatgptModels.${route}}";
+    model = "openai-codex/${routeModel route}";
+    fast = routeFast route && !readonly;
   in
     pkgs.writeText "gambit-pi-rung-${agentName}.md" (lib.concatStringsSep "\n" (
       [
         "---"
         "name: ${agentName}"
-        ''description: "Gambit rung: ${model} at ${effort} thinking${lib.optionalString readonly ", read-only advisory variant"}"''
+        ''description: "Gambit rung: ${model} at ${effort} thinking${lib.optionalString fast ", fast tier"}${lib.optionalString readonly ", read-only advisory variant"}"''
         "model: ${model}"
         "thinking: ${effort}"
         ''tools: "${
@@ -149,7 +175,11 @@
             then "read, bash, grep, find, ls"
             else "*"
           }"''
-        "extensions: false"
+        (
+          if fast
+          then ''extensions: ["${codexFastExtension}"]''
+          else "extensions: false"
+        )
         "skills: false"
       ]
       ++ lib.optional readonly "isolated: true"
@@ -253,12 +283,12 @@
       };
     roles = {
       worker = {
-        entry = "sol-low";
-        ladder = ["sol-low" "terra-medium" "sol-xhigh" "opus"];
+        entry = "luna-low";
+        ladder = ["luna-low" "sol-low" "astra-high"];
       };
       escalation = {
-        entry = "terra-medium";
-        ladder = ["terra-medium" "sol-xhigh" "opus"];
+        entry = "sol-low";
+        ladder = ["sol-low" "astra-high"];
       };
       scout = {
         entry = "terra-medium";

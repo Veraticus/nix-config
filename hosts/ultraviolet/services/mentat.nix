@@ -74,6 +74,13 @@
       type = "http";
       url = "https://ultraviolet.tail82223.ts.net:8443/mcp";
     };
+    # The daemon's own MCP endpoint (send_sms, open_on_phone — the phone bridge)
+    # for the child sessions: mentatd binds loopback on 8484, and the child runs
+    # on this host, so no serve hop is needed.
+    mcpConfig.mentat = {
+      type = "http";
+      url = "http://127.0.0.1:8484/mcp";
+    };
     reminder.enable = true; # 09:00 daily
 
     # The LiveKit voice agent. livekitUrl and mentatUrl are left at their

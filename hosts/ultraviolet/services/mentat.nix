@@ -61,6 +61,31 @@
     mode = "0400";
   };
 
+  # The public OAuth front's credentials: the Cloudflare Access OIDC app
+  # ("mentat" SaaS app, redirect https://mentat.husbuddies.gay/auth/callback)
+  # and the front's own JWT signing secret. root:root 0400 because
+  # mentat-public runs as a DynamicUser and systemd opens LoadCredential
+  # sources as PID 1 before dropping privileges (same reason as
+  # mentat-voice-env). Revocation = rotate mentat-jwt-secret and restart.
+  age.secrets."mentat-access-client-id" = {
+    file = ../../../secrets/hosts/ultraviolet/mentat-access-client-id.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+  age.secrets."mentat-access-client-secret" = {
+    file = ../../../secrets/hosts/ultraviolet/mentat-access-client-secret.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+  age.secrets."mentat-jwt-secret" = {
+    file = ../../../secrets/hosts/ultraviolet/mentat-jwt-secret.age;
+    owner = "root";
+    group = "root";
+    mode = "0400";
+  };
+
   services.mentat = {
     enable = true;
     claudePackage = pkgs.claudeCodeCli;
@@ -83,6 +108,20 @@
     };
     reminder.enable = true; # 09:00 daily
 
+    # The public OAuth front: a FastMCP proxy over the daemon's loopback /mcp
+    # behind the Cloudflare Access OIDC app, reached through the cloudflared
+    # tunnel (dashboard route mentat.husbuddies.gay → http://localhost:8486).
+    # The front is what claude.ai / routines / Claude Code web connect to;
+    # mentatd itself stays unauthenticated and loopback-bound.
+    public = {
+      enable = true;
+      baseUrl = "https://mentat.husbuddies.gay";
+      accessConfigUrl = "https://husbuddies.cloudflareaccess.com/cdn-cgi/access/sso/oidc/864043e3331aa6f51c4ad984e8d48fa285c760c39ccb985c5508fd1d374af7f3/.well-known/openid-configuration";
+      accessClientIdFile = config.age.secrets."mentat-access-client-id".path;
+      accessClientSecretFile = config.age.secrets."mentat-access-client-secret".path;
+      jwtSecretFile = config.age.secrets."mentat-jwt-secret".path;
+    };
+
     # The LiveKit voice agent. livekitUrl and mentatUrl are left at their
     # defaults on purpose — both services are loopback-bound on this very
     # host (ws://127.0.0.1:7880 is livekit.nix's signalPort, and mentatd
@@ -102,6 +141,11 @@
   # constant /run/agenix runtime path).
   systemd.services.mentatd.restartTriggers = [config.age.secrets."mentat-env".file];
   systemd.services.mentat-voice.restartTriggers = [config.age.secrets."mentat-voice-env".file];
+  systemd.services.mentat-public.restartTriggers = [
+    config.age.secrets."mentat-access-client-id".file
+    config.age.secrets."mentat-access-client-secret".file
+    config.age.secrets."mentat-jwt-secret".file
+  ];
 
   # Tailnet ingress: mentatd binds loopback only (the API is
   # unauthenticated by design); `tailscale serve` is the only way in.

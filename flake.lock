@@ -2121,11 +2121,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788996593,
-        "narHash": "sha256-r5XNUY77TJ4rPHvifoQWy0w2r5EIveF4QC74+IiyRvw=",
+        "lastModified": 1789000047,
+        "narHash": "sha256-Yj41m5YOxqwXTiFQ3syZe2c6GWmlU5qeJPUs6h78xMg=",
         "owner": "joshsymonds",
         "repo": "mentat",
-        "rev": "32b603f6cc768d69358220c74768a1464abfa7a1",
+        "rev": "d9cdd760c7e0df0f89d30ef61d3fa1b1b169694d",
         "type": "github"
       },
       "original": {

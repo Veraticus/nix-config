@@ -1384,11 +1384,11 @@
         "nixpkgs": "nixpkgs_4"
       },
       "locked": {
-        "lastModified": 1788882557,
-        "narHash": "sha256-ngZ8U+QD1lA4vsSmqobkp9WlArxInog5SnWSKnW0In4=",
+        "lastModified": 1788945028,
+        "narHash": "sha256-OnGJWg5YgEqwCpF6gGqzxp8B5dVdbN5ccPFSGK1DmDg=",
         "owner": "joshsymonds",
         "repo": "gambit",
-        "rev": "2e61315d18d21584a59ccc340071b4c395d9012d",
+        "rev": "71f662c4df05c31301dff9733d0c30d4cbb69a25",
         "type": "github"
       },
       "original": {
@@ -2121,11 +2121,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787336545,
-        "narHash": "sha256-O4pwzdyfi5MLQVycjocZq20AjAobPrJjuMvjYjWHVvY=",
+        "lastModified": 1789000047,
+        "narHash": "sha256-Yj41m5YOxqwXTiFQ3syZe2c6GWmlU5qeJPUs6h78xMg=",
         "owner": "joshsymonds",
         "repo": "mentat",
-        "rev": "15f9d219a9a9af0df98564887d746408119ba0db",
+        "rev": "d9cdd760c7e0df0f89d30ef61d3fa1b1b169694d",
         "type": "github"
       },
       "original": {
@@ -3286,17 +3286,17 @@
     "patchbay": {
       "flake": false,
       "locked": {
-        "lastModified": 1787463268,
-        "narHash": "sha256-FGGkIMoMWN/7uNbxYJ626OE5ey9E1K0AgHucUUKl+pY=",
+        "lastModified": 1788936585,
+        "narHash": "sha256-iTI4qu3QUg7Cvo4st5tNJIY3BAq58IzQCHpksHB2rwc=",
         "ref": "main",
-        "rev": "d82a65e450d760443e20681b432e71f9ebad7ede",
-        "revCount": 50,
+        "rev": "d1e0128915edf5c711edbd46dd8b9525da275d19",
+        "revCount": 51,
         "type": "git",
         "url": "ssh://git@github.com/joshsymonds/patchbay.git"
       },
       "original": {
         "ref": "main",
-        "rev": "d82a65e450d760443e20681b432e71f9ebad7ede",
+        "rev": "d1e0128915edf5c711edbd46dd8b9525da275d19",
         "type": "git",
         "url": "ssh://git@github.com/joshsymonds/patchbay.git"
       }
@@ -3716,11 +3716,11 @@
         "nixpkgs": "nixpkgs_15"
       },
       "locked": {
-        "lastModified": 1787796814,
-        "narHash": "sha256-FCiqD9wgccRxY3ECcDi7hUrn5SxbxLr6uMO8V7q9ic8=",
+        "lastModified": 1788588877,
+        "narHash": "sha256-GreSib7jWcqwyBTLL0OxMGni4x93kI5gQwScKaB+oz8=",
         "ref": "refs/heads/main",
-        "rev": "2f9090cb079dc0f482765366c42ab2a79394672f",
-        "revCount": 3062,
+        "rev": "124a840172eb9ee35756adcef3b751949d381870",
+        "revCount": 3167,
         "type": "git",
         "url": "ssh://git@github.com/joshsymonds/savecraft.git"
       },
@@ -3867,17 +3867,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1788895847,
-        "narHash": "sha256-AvvMkaOHUTx94FgSioWYf/CzI7HBZssK06bK6rIjrtM=",
+        "lastModified": 1788911697,
+        "narHash": "sha256-KAID2xYLBdLgPRpNrS/7tBXYcGt3Tt3jpRTYxQC3dPw=",
         "owner": "joshsymonds",
         "repo": "steward",
-        "rev": "5beb3021f67b5051df515c4ce579d5f708c1063c",
+        "rev": "3516f7989d768a9045b0fab9dee8ef08a798fcd0",
         "type": "github"
       },
       "original": {
         "owner": "joshsymonds",
         "repo": "steward",
-        "rev": "5beb3021f67b5051df515c4ce579d5f708c1063c",
+        "rev": "3516f7989d768a9045b0fab9dee8ef08a798fcd0",
         "type": "github"
       }
     },

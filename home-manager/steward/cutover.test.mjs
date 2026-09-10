@@ -95,7 +95,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
   const lock = JSON.parse(readFileSync(resolve(repository, "flake.lock"), "utf8"));
   assert.match(
     flake,
-    /steward\.url = "github:joshsymonds\/steward\/5beb3021f67b5051df515c4ce579d5f708c1063c";/,
+    /steward\.url = "github:joshsymonds\/steward\/3516f7989d768a9045b0fab9dee8ef08a798fcd0";/,
   );
   assert.equal(lock.nodes.root.inputs.steward, "steward");
   assert.deepEqual(
@@ -108,7 +108,7 @@ test("flake pins the canonical Steward repository and actual locked implementati
     {
       owner: "joshsymonds",
       repo: "steward",
-      rev: "5beb3021f67b5051df515c4ce579d5f708c1063c",
+      rev: "3516f7989d768a9045b0fab9dee8ef08a798fcd0",
       type: "github",
     },
   );
@@ -466,6 +466,36 @@ test("cutover documentation gives current-main validation and the deployment ret
   assert.match(documentation, /sd-switch/);
   assert.match(documentation, /cc-tools-notifyd.*inactive/is);
   assert.match(documentation, /steward-notifyd.*active/is);
+});
+
+test("active notification documentation matches current Steward wiring and identity", () => {
+  const hooks = readFileSync(resolve(repository, "home-manager/claude-code/hooks/README.md"), "utf8");
+  const remote = readFileSync(resolve(repository, "docs/claude-remote-setup.md"), "utf8");
+  const devspaces = readFileSync(resolve(repository, "docs/devspaces.md"), "utf8");
+  const active = [hooks, remote, devspaces].join("\n");
+
+  assert.match(hooks, /github\.com\/joshsymonds\/steward/);
+  assert.match(hooks, /steward notify --harness claude-code/);
+  assert.match(hooks, /permission_prompt\|agent_needs_input\|elicitation_dialog\|elicitation_url_dialog/);
+  assert.match(hooks, /SessionEnd.*cleanup/is);
+  assert.match(hooks, /usage-summary-refresh\.sh/);
+  assert.match(hooks, /Pi.*root TUI.*agent_settled/is);
+  assert.match(hooks, /no Codex integration/i);
+  assert.match(hooks, /STEWARD_NTFY_URL_FILE.*STEWARD_NTFY_TOKEN_FILE/s);
+  assert.match(hooks, /\$\{XDG_STATE_HOME:-~\/\.local\/state\}\/steward\/notify\/notify-decisions\.jsonl/);
+  assert.match(hooks, /in-memory claims/i);
+  assert.match(hooks, /current-hook fallback/i);
+  assert.match(hooks, /no judge, watchdog, or task-pending gate/i);
+
+  for (const contextDoc of [remote, devspaces]) {
+    assert.match(contextDoc, /steward notify --harness claude-code/);
+    assert.match(contextDoc, /TMUX_PANE/);
+    assert.match(contextDoc, /session_name:window_index/);
+    assert.match(contextDoc, /label\/project.*hostname fallback/is);
+    assert.doesNotMatch(contextDoc, /notifications?.*(?:read|consume|derive).*(?:DEV_CONTEXT|DEV_CONTEXT_ICON)/i);
+  }
+
+  assert.doesNotMatch(active, /cc-tools notify|CC_TOOLS_NTFY_|Haiku judge|detached watchdog|background tasks are pending|Codex wires/i);
 });
 
 test("active consumer files contain no old package, service, socket, env, or runtime alias", () => {

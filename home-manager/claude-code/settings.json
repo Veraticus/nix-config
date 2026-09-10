@@ -11,6 +11,7 @@
   "autoUpdater": {
     "disabled": true
   },
+  "cleanupPeriodDays": 36500,
   "env": {
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "600000",

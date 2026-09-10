@@ -4,7 +4,7 @@ This configuration preserves the deployed user configuration from deployed user 
 2b1a0eeb85461bccbc42808c94a666eef07aa127 (published from
 `worktree-astra-xhigh-steelman`), which is newer than local main
 `8d8c473`. It consumes the intended Steward source
-`joshsymonds/steward` at `5beb3021f67b5051df515c4ce579d5f708c1063c` for
+`joshsymonds/steward` at `3516f7989d768a9045b0fab9dee8ef08a798fcd0` for
 Vermissian; neither pin is a release claim.
 
 ## Shared ownership
@@ -125,10 +125,15 @@ preflight. Preserve sanitized evidence, identify the failure, and reserve the
 single diagnostic pass for that named issue. Additional passes require explicit
 approval. Source fixes must pass their synthetic gates before a diagnostic.
 
-The historical full pass `p5B9555P` stopped after one configured helper success.
-It recorded no actual native completions, quota checks, or ntfy delivery; its
-focused diagnostic was unused. This paused history is not reset or a fresh
-budget allocation. Any resumption requires an updated explicit decision.
+The historical full pass `p5B9555P` succeeded at the configured helper step. A
+resumed Claude native Stop used fallback without a completion ID. The single
+focused diagnostic D1 confirmed that the correct transcript was read before the
+terminal assistant append and verified one received fallback notification. The
+new source prevents stale prior-assistant ID/text reuse when a newer user record
+exists, but does **not** solve Claude print-mode flush ordering. Pi live
+acceptance has not run. The full pass remains incomplete, the focused diagnostic
+has been used, and there is no budget reset; further authenticated acceptance
+requires explicit approval.
 
 ### Full pass
 

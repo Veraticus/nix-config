@@ -27,8 +27,9 @@
   expectedDenylist = "disallowedTools: Edit, Write, NotebookEdit, Agent, mcp__*";
 
   # The route keys patchbay actually publishes under codexUpstream, and the
-  # upstream model id each one maps to (the Pi twin dispatches that id
-  # directly on its Codex provider).
+  # Seat identity each one maps to: the upstream model id (the Pi twin
+  # dispatches that id directly on its Codex provider) and the optional speed
+  # tier (the Pi twin loads the codex-fast extension for it).
   chatgptModels = import ../home-manager/patchbay/chatgpt-models.nix;
   chatgptRoutes = lib.attrNames chatgptModels;
   routeModelsJson = pkgs.writeText "patchbay-chatgpt-route-models.json" (builtins.toJSON chatgptModels);
@@ -68,6 +69,27 @@ in
         | all($used[]; . as $rung | ($declared | index($rung)) != null)
       ' "$map" >/dev/null
     done
+
+    # The full map is the measured ladder: two fast rungs, then the
+    # orchestrator's own model, never an Opus escalation. Keep these expected
+    # ladders independent of the source declarations.
+    jq -e '
+      .roles.worker.entry == "luna-low"
+      and .roles.worker.ladder == ["luna-low", "sol-low", "astra-high"]
+      and .roles.escalation.entry == "sol-low"
+      and .roles.escalation.ladder == ["sol-low", "astra-high"]
+    ' ${fullJson} >/dev/null
+
+    # The fast policy, pinned independently of the route file: Luna and Terra
+    # are always fast, Sol is fast only on its own fast route, Astra never.
+    jq -e '
+      .["chatgpt/luna"].speed == "fast"
+      and .["chatgpt/terra"].speed == "fast"
+      and .["chatgpt/sol-fast"].speed == "fast"
+      and (.["chatgpt/sol"] | has("speed") | not)
+      and (.["chatgpt/astra"] | has("speed") | not)
+      and .["chatgpt/sol-fast"].model == .["chatgpt/sol"].model
+    ' ${routeModelsJson} >/dev/null
 
     # The agent rungs of the full map are exactly the declared gambit rungs,
     # and each one follows the <rung> / <rung>-ro naming models.json and the
@@ -124,20 +146,29 @@ in
       # Pi gets the same named rungs rendered in pi-subagents frontmatter.
       # Its direct Codex provider replaces Claude's patchbay route, `thinking`
       # replaces `effort`, and read-only variants expose inspection tools only.
-      pi_model="openai-codex/$(jq -r --arg r "$route" '.[$r]' ${routeModelsJson})"
+      pi_model="openai-codex/$(jq -r --arg r "$route" '.[$r].model' ${routeModelsJson})"
+      speed=$(jq -r --arg r "$route" '.[$r].speed // ""' ${routeModelsJson})
       pi_plain="${piAgentsDir}/$rung.md"
       pi_ro="${piAgentsDir}/$rung-ro.md"
       for f in "$pi_plain" "$pi_ro"; do
         test -f "$f"
         grep -qxF "model: $pi_model" "$f"
         grep -qxF "thinking: $effort" "$f"
-        grep -qxF "extensions: false" "$f"
         grep -qxF "skills: false" "$f"
         if grep -qF "disallowedTools:" "$f"; then
           echo "Pi rung $f leaked Claude-only frontmatter" >&2
           exit 1
         fi
       done
+      # A fast Seat's Pi twin loads exactly the codex-fast extension by store
+      # path; every other writing rung, and every read-only variant (isolated,
+      # so extensions are off regardless), loads none.
+      if [ "$speed" = fast ]; then
+        grep -qE '^extensions: \["/nix/store/[^"/]+-codex-fast\.ts"\]$' "$pi_plain"
+      else
+        grep -qxF "extensions: false" "$pi_plain"
+      fi
+      grep -qxF "extensions: false" "$pi_ro"
       grep -qxF 'tools: "*"' "$pi_plain"
       grep -qxF 'tools: "read, bash, grep, find, ls"' "$pi_ro"
       grep -qxF 'isolated: true' "$pi_ro"

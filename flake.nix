@@ -157,7 +157,7 @@
     };
 
     # Steward - shared coding-agent runtime, statusline, and notifications
-    steward.url = "github:joshsymonds/steward/5beb3021f67b5051df515c4ce579d5f708c1063c";
+    steward.url = "github:joshsymonds/steward/3516f7989d768a9045b0fab9dee8ef08a798fcd0";
     steward.inputs.nixpkgs.follows = "nixpkgs";
 
     # dms-claudecode — DMS plugin showing Claude Code subscription usage
@@ -270,7 +270,7 @@
 
     # Patchbay — per-host Anthropic Messages API gateway (Claude Code → per-project models)
     patchbay = {
-      url = "git+ssh://git@github.com/joshsymonds/patchbay.git?ref=main&rev=d82a65e450d760443e20681b432e71f9ebad7ede";
+      url = "git+ssh://git@github.com/joshsymonds/patchbay.git?ref=main&rev=d1e0128915edf5c711edbd46dd8b9525da275d19";
       flake = false;
     };
 

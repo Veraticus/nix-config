@@ -1,0 +1,174 @@
+diff --git a/internal/runtime/executor/codex_websockets_executor.go b/internal/runtime/executor/codex_websockets_executor.go
+index 84c4069..6c2aaaf 100644
+--- a/internal/runtime/executor/codex_websockets_executor.go
++++ b/internal/runtime/executor/codex_websockets_executor.go
+@@ -12,6 +12,7 @@ import (
+ 	"github.com/router-for-me/CLIProxyAPI/v7/internal/config"
+ 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/auth"
+ 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v7/sdk/cliproxy/executor"
++	"github.com/tidwall/gjson"
+ )
+ 
+ // CodexWebsocketsExecutor executes Codex Responses requests using a WebSocket transport.
+@@ -31,11 +32,15 @@ func NewCodexWebsocketsExecutor(cfg *config.Config) *CodexWebsocketsExecutor {
+ 	}
+ }
+ 
+-// CodexAutoExecutor routes Codex requests to the websocket transport only when:
+-//  1. The downstream transport is websocket, and
+-//  2. The selected auth enables websockets.
++// CodexAutoExecutor routes Codex requests to the websocket transport when the
++// selected auth enables websockets and either:
++//  1. The downstream transport is websocket, or
++//  2. The request asks for the priority (fast) service tier.
+ //
+-// For non-websocket downstream requests, it always uses the legacy HTTP implementation.
++// The Codex backend accepts service_tier on HTTP POST /responses but serves it
++// at the standard tier; priority scheduling is applied only on the Responses
++// websocket transport. Every other non-websocket downstream request uses the
++// legacy HTTP implementation.
+ type CodexAutoExecutor struct {
+ 	httpExec *CodexExecutor
+ 	wsExec   *CodexWebsocketsExecutor
+@@ -68,7 +73,7 @@ func (e *CodexAutoExecutor) Execute(ctx context.Context, auth *cliproxyauth.Auth
+ 	if e == nil || e.httpExec == nil || e.wsExec == nil {
+ 		return cliproxyexecutor.Response{}, fmt.Errorf("codex auto executor: executor is nil")
+ 	}
+-	if cliproxyexecutor.DownstreamWebsocket(ctx) && codexWebsocketsEnabled(auth) {
++	if codexWebsocketsEnabled(auth) && (cliproxyexecutor.DownstreamWebsocket(ctx) || codexPriorityRequested(req)) {
+ 		return e.wsExec.Execute(ctx, auth, req, opts)
+ 	}
+ 	if cliproxyexecutor.RequiredUpstreamWebsocket(ctx) {
+@@ -81,7 +86,7 @@ func (e *CodexAutoExecutor) ExecuteStream(ctx context.Context, auth *cliproxyaut
+ 	if e == nil || e.httpExec == nil || e.wsExec == nil {
+ 		return nil, fmt.Errorf("codex auto executor: executor is nil")
+ 	}
+-	if cliproxyexecutor.DownstreamWebsocket(ctx) && codexWebsocketsEnabled(auth) {
++	if codexWebsocketsEnabled(auth) && (cliproxyexecutor.DownstreamWebsocket(ctx) || codexPriorityRequested(req)) {
+ 		return e.wsExec.ExecuteStream(ctx, auth, req, opts)
+ 	}
+ 	if cliproxyexecutor.RequiredUpstreamWebsocket(ctx) {
+@@ -118,6 +123,22 @@ func (e *CodexAutoExecutor) UpstreamDisconnectChan(sessionID string) <-chan erro
+ 	return e.wsExec.UpstreamDisconnectChan(sessionID)
+ }
+ 
++// codexPriorityRequested reports whether the untranslated source payload asks
++// for the Codex priority service tier: an explicit service_tier of priority or
++// fast, or Anthropic's speed: fast, which the Claude translator maps to
++// priority. It is evaluated before translation and payload rules, on the same
++// source fields those translators read.
++func codexPriorityRequested(req cliproxyexecutor.Request) bool {
++	if len(req.Payload) == 0 {
++		return false
++	}
++	switch strings.ToLower(strings.TrimSpace(gjson.GetBytes(req.Payload, "service_tier").String())) {
++	case "priority", "fast":
++		return true
++	}
++	return strings.EqualFold(strings.TrimSpace(gjson.GetBytes(req.Payload, "speed").String()), "fast")
++}
++
+ func codexWebsocketsEnabled(auth *cliproxyauth.Auth) bool {
+ 	if auth == nil {
+ 		return false
+diff --git a/internal/runtime/executor/codex_websockets_executor_test.go b/internal/runtime/executor/codex_websockets_executor_test.go
+index 3961723..c0c76ae 100644
+--- a/internal/runtime/executor/codex_websockets_executor_test.go
++++ b/internal/runtime/executor/codex_websockets_executor_test.go
+@@ -2576,3 +2576,96 @@ func TestCodexWebsocketZeroTokenIncompleteReleasesSessionRequestLock(t *testing.
+ 		t.Fatal("failed to acquire session request lock after zero-token incomplete failure")
+ 	}
+ }
++
++func TestCodexPriorityRequested(t *testing.T) {
++	for _, tc := range []struct {
++		name    string
++		payload string
++		want    bool
++	}{
++		{name: "empty", payload: "", want: false},
++		{name: "no tier", payload: `{"model":"gpt-5.6-luna","input":[]}`, want: false},
++		{name: "default tier", payload: `{"model":"gpt-5.6-luna","service_tier":"default"}`, want: false},
++		{name: "priority", payload: `{"model":"gpt-5.6-luna","service_tier":"priority"}`, want: true},
++		{name: "fast alias", payload: `{"model":"gpt-5.6-luna","service_tier":"Fast"}`, want: true},
++		{name: "claude speed fast", payload: `{"model":"gpt-5.6-luna","speed":"fast","messages":[]}`, want: true},
++		{name: "claude speed standard", payload: `{"model":"gpt-5.6-luna","speed":"standard","messages":[]}`, want: false},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			got := codexPriorityRequested(cliproxyexecutor.Request{Model: "gpt-5.6-luna", Payload: []byte(tc.payload)})
++			if got != tc.want {
++				t.Fatalf("codexPriorityRequested() = %v, want %v", got, tc.want)
++			}
++		})
++	}
++}
++
++// TestCodexAutoExecutorRoutesPriorityHTTPDownstreamOverWebsocket sends a Claude
++// speed: fast request from an HTTP downstream through the auto executor and
++// asserts the upstream sees a websocket upgrade, not an HTTP POST; the same
++// request without the tier stays on HTTP. Both auths enable websockets, which is
++// what the HTTP downstream previously never benefited from.
++func TestCodexAutoExecutorRoutesPriorityHTTPDownstreamOverWebsocket(t *testing.T) {
++	transports := make(chan string, 4)
++	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
++			transports <- "websocket"
++			w.WriteHeader(http.StatusUpgradeRequired)
++			_, _ = w.Write([]byte(`{"error":{"message":"websocket unavailable"}}`))
++			return
++		}
++		transports <- "http"
++		w.WriteHeader(http.StatusInternalServerError)
++		_, _ = w.Write([]byte(`{"error":{"message":"http stub"}}`))
++	}))
++	defer server.Close()
++
++	exec := NewCodexAutoExecutor(&config.Config{SDKConfig: config.SDKConfig{DisableImageGeneration: config.DisableImageGenerationAll}})
++	auth := &cliproxyauth.Auth{
++		ID:       "codex-priority-test",
++		Provider: "codex",
++		Attributes: map[string]string{
++			"api_key":    "sk-test",
++			"base_url":   server.URL,
++			"websockets": "true",
++		},
++	}
++	opts := cliproxyexecutor.Options{
++		SourceFormat:   sdktranslator.FromString("claude"),
++		ResponseFormat: sdktranslator.FromString("claude"),
++	}
++	execute := func(payload string) {
++		t.Helper()
++		_, _ = exec.ExecuteStream(context.Background(), auth, cliproxyexecutor.Request{
++			Model:   "gpt-5.6-luna",
++			Payload: []byte(payload),
++		}, opts)
++	}
++
++	// drain collects every upstream contact one request produced; the stub
++	// answers the upgrade with 426, so a websocket attempt is followed by the
++	// executor's own HTTP fallback, and both must be attributed to that request.
++	drain := func() []string {
++		var seen []string
++		for {
++			select {
++			case transport := <-transports:
++				seen = append(seen, transport)
++			case <-time.After(500 * time.Millisecond):
++				return seen
++			}
++		}
++	}
++
++	execute(`{"model":"gpt-5.6-luna","max_tokens":16,"speed":"fast","messages":[{"role":"user","content":"hi"}]}`)
++	priority := drain()
++	if len(priority) == 0 || priority[0] != "websocket" {
++		t.Fatalf("priority request transports = %v, want websocket first", priority)
++	}
++
++	execute(`{"model":"gpt-5.6-luna","max_tokens":16,"messages":[{"role":"user","content":"hi"}]}`)
++	standard := drain()
++	if len(standard) != 1 || standard[0] != "http" {
++		t.Fatalf("standard request transports = %v, want [http]", standard)
++	}
++}

@@ -10,7 +10,7 @@ Maintain persistent, labeled environments for Claude Code on remote hosts. Each 
 - Five named planetary contexts (mercury → jupiter) plus ad-hoc labels via `t`
 - Sessions survive SSH disconnects and inherit their context metadata
 - Claude Code keeps running when no client is attached
-- Notifications include the context name/icon so you know which session finished
+- Notifications include Steward's resolved tmux locus so you know which session and window finished
 
 ### 2. Naming Convention & Mental Model
 - `mercury` – quick experiments
@@ -44,7 +44,7 @@ Maintain persistent, labeled environments for Claude Code on remote hosts. Each 
 - `devspace-status` / `ds` shows which contexts are alive
 - Starship exposes the context + icon on the right side of the prompt
 - Kitty window/tab titles reflect the context instead of raw hostnames
-- `ntfy` notifications echo the same label/icon
+- `ntfy` notifications identify the project and resolved tmux session/window
 
 ## Implementation Overview
 
@@ -70,8 +70,8 @@ Maintain persistent, labeled environments for Claude Code on remote hosts. Each 
    - Right-aligned context segment with icons (☿♀♁♂♃ or `` for Coder)
    - Kitty/tmux titles read `DEV_CONTEXT` so tabs match prompts
 
-6. **Notifications (`cc-tools notify (see home-manager/claude-code/hooks/README.md)`)**
-   - Derives the same metadata and includes it in the push title/body
+6. **Notifications (`steward notify --harness claude-code`; see `home-manager/claude-code/hooks/README.md`)**
+   - Uses `TMUX_PANE` to resolve `session_name:window_index`; the title is the Steward label/project plus that locus, or the hostname fallback outside tmux
 
 ## Session Flow
 
@@ -101,7 +101,7 @@ Key tmux bindings remain the same (Ctrl-b + planet initial to jump between plane
 ## Status & Notifications
 - `devspace-status` / `ds` → `tmux list-sessions`
 - `dsl` → includes window counts and creation times
-- `cc-tools notify (see home-manager/claude-code/hooks/README.md)` → reads `DEV_CONTEXT` and `DEV_CONTEXT_ICON` so phone alerts show "☿ mercury" or " coder-workspace"
+- `steward notify --harness claude-code` (see `home-manager/claude-code/hooks/README.md`) → uses `TMUX_PANE` to resolve `session_name:window_index`; alerts show the Steward label/project plus that locus, or the hostname fallback
 
 ## File Map
 
@@ -112,7 +112,7 @@ Key tmux bindings remain the same (Ctrl-b + planet initial to jump between plane
 | `home-manager/devspaces-host` | Planetary aliases on the server |
 | `home-manager/devspaces-client` | Same aliases for macOS (via ET) |
 | `home-manager/starship/default.nix` | Prompt segment showing the context |
-| `cc-tools notify (see home-manager/claude-code/hooks/README.md)` | Push notifications with context metadata |
+| `steward notify --harness claude-code` (see `home-manager/claude-code/hooks/README.md`) | Push notifications with the resolved tmux locus or hostname fallback |
 
 ## Troubleshooting
 
@@ -125,9 +125,9 @@ Key tmux bindings remain the same (Ctrl-b + planet initial to jump between plane
    - Confirm `home-manager/devspaces-client` is imported for that host
    - Rebuild Home Manager (`home-manager switch ...`)
 
-3. **Notifications lack icon**
-   - Ensure the helper passed `t <label> <icon>` or invoked `tmux-devspace attach --icon ...`
-   - Make sure the session was launched through `tmux-devspace`
+3. **Notifications lack the expected tmux locus**
+   - Confirm `TMUX_PANE` is present in the hook environment
+   - Run `tmux display-message -pt "$TMUX_PANE" '#{session_name}:#{window_index}'`
 
 ## Extending the System
 

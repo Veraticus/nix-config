@@ -52,16 +52,21 @@
 
   # The ChatGPT/Codex subscription upstream: the cli-proxy-api user service
   # this module runs when codexUpstream is enabled, translating Anthropic
-  # Messages to the Codex OAuth backend.
-  chatgptSeat = model: {
-    upstream = "http://127.0.0.1:${toString codexPort}";
-    auth_mode = "inject";
-    billing = "subscription";
-    api_key_env_file = "PATCHBAY_CHATGPT_KEY_FILE";
-    inherit model;
-    # The Codex subscription's context window, not OpenRouter's larger one.
-    max_input_tokens = 372000;
-  };
+  # Messages to the Codex OAuth backend. A route carries the Seat's identity:
+  # the Codex model id and, for the fast routes, the `speed` tier the Seat
+  # writes into every request (chatgpt-models.nix says how that reaches
+  # Codex).
+  chatgptSeat = route:
+    {
+      upstream = "http://127.0.0.1:${toString codexPort}";
+      auth_mode = "inject";
+      billing = "subscription";
+      api_key_env_file = "PATCHBAY_CHATGPT_KEY_FILE";
+      inherit (route) model;
+      # The Codex subscription's context window, not OpenRouter's larger one.
+      max_input_tokens = 372000;
+    }
+    // lib.optionalAttrs (route ? speed) {inherit (route) speed;};
 
   # OpenRouter, paid per-token from the household key. Model ids and
   # context lengths verified against https://openrouter.ai/api/v1/models.
@@ -175,12 +180,19 @@
 
   # Marked-subagent Seats: Luna with the effort pinned in the model id
   # itself — CLIProxyAPI translates a "(medium)"/"(low)" suffix to the OpenAI
-  # reasoning-effort parameter. These are subagent-only destinations, so they
-  # get no public selector: nothing outside the subagents policy below can
-  # name them, and /v1/models never lists them.
+  # reasoning-effort parameter — on the fast tier like every Luna Seat. These
+  # are subagent-only destinations, so they get no public selector: nothing
+  # outside the subagents policy below can name them, and /v1/models never
+  # lists them.
   subagentSeats = lib.optionalAttrs cfg.codexUpstream.enable {
-    chatgpt-luna-medium = chatgptSeat "gpt-5.6-luna(medium)";
-    chatgpt-luna-low = chatgptSeat "gpt-5.6-luna(low)";
+    chatgpt-luna-medium = chatgptSeat {
+      model = "gpt-5.6-luna(medium)";
+      speed = "fast";
+    };
+    chatgpt-luna-low = chatgptSeat {
+      model = "gpt-5.6-luna(low)";
+      speed = "fast";
+    };
   };
 
   # Every context binds the same selectors and defaults to the anthropic

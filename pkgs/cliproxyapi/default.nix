@@ -1,48 +1,55 @@
 {
   lib,
-  stdenv,
-  fetchurl,
-  autoPatchelfHook,
-}: let
-  sources = builtins.fromJSON (builtins.readFile ./sources.json);
-  system = stdenv.hostPlatform.system;
-  source =
-    sources.sources.${system}
-    or (throw "cliproxyapi: unsupported system ${system}; supported systems: ${lib.concatStringsSep ", " (builtins.attrNames sources.sources)}");
-in
-  stdenv.mkDerivation {
-    pname = "cliproxyapi";
-    inherit (sources) version;
+  buildGoModule,
+  fetchFromGitHub,
+}:
+buildGoModule (finalAttrs: {
+  pname = "cliproxyapi";
+  version = "7.2.154";
 
-    src = fetchurl {
-      url = "https://github.com/router-for-me/CLIProxyAPI/releases/download/v${sources.version}/CLIProxyAPI_${sources.version}_${source.asset}.tar.gz";
-      inherit (source) hash;
-    };
+  src = fetchFromGitHub {
+    owner = "router-for-me";
+    repo = "CLIProxyAPI";
+    tag = "v${finalAttrs.version}";
+    hash = "sha256-/jD2oDlVQTc6pZ2GJess3uLhmr+/A/1yDxf0b2Zvh9Q=";
+  };
 
-    # Upstream release binaries link only against glibc (libdl, libresolv,
-    # libpthread, libc); autoPatchelfHook fixes the interpreter on NixOS.
-    nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [autoPatchelfHook];
+  # Built from source rather than the upstream release binary so this patch
+  # can ride along. The Codex backend accepts service_tier=priority (Fast
+  # mode) on HTTP POST /responses but serves it at the standard tier; only the
+  # Responses websocket transport honors it, and upstream uses that transport
+  # only when the downstream is a websocket too (router-for-me/CLIProxyAPI
+  # #4586, closed as not planned). The patch routes a priority request —
+  # patchbay's Claude-format `speed: fast`, which the Claude→Codex translator
+  # already maps to priority, included — over the websocket executor from any
+  # downstream, when the auth enables websockets. Carries its own tests.
+  patches = [./priority-over-websocket.patch];
 
-    sourceRoot = ".";
-    dontConfigure = true;
-    dontBuild = true;
+  vendorHash = "sha256-CrDp7MOr+AwJUhTovklXx3F1yaktQlvD7VYhYSY6VvY=";
 
-    installPhase = ''
-      runHook preInstall
+  subPackages = ["cmd/server"];
 
-      install -Dm755 cli-proxy-api "$out/bin/cli-proxy-api"
-      install -Dm644 config.example.yaml "$out/share/doc/cliproxyapi/config.example.yaml"
+  ldflags = [
+    "-s"
+    "-w"
+    "-X main.Version=${finalAttrs.version}"
+  ];
 
-      runHook postInstall
-    '';
+  # The package the patch touches is tested where the patch is developed;
+  # upstream's full suite wants network and minutes this build should not.
+  doCheck = false;
 
-    meta = {
-      description = "Proxy that exposes CLI-agent subscriptions (ChatGPT Codex, Gemini, Claude) as OpenAI/Anthropic-compatible API endpoints";
-      homepage = "https://github.com/router-for-me/CLIProxyAPI";
-      changelog = "https://github.com/router-for-me/CLIProxyAPI/releases/tag/v${sources.version}";
-      license = lib.licenses.mit;
-      sourceProvenance = [lib.sourceTypes.binaryNativeCode];
-      platforms = builtins.attrNames sources.sources;
-      mainProgram = "cli-proxy-api";
-    };
-  }
+  postInstall = ''
+    mv "$out/bin/server" "$out/bin/cli-proxy-api"
+    install -Dm644 config.example.yaml "$out/share/doc/cliproxyapi/config.example.yaml"
+  '';
+
+  meta = {
+    description = "Proxy that exposes CLI-agent subscriptions (ChatGPT Codex, Gemini, Claude) as OpenAI/Anthropic-compatible API endpoints";
+    homepage = "https://github.com/router-for-me/CLIProxyAPI";
+    changelog = "https://github.com/router-for-me/CLIProxyAPI/releases/tag/v${finalAttrs.version}";
+    license = lib.licenses.mit;
+    platforms = lib.platforms.unix;
+    mainProgram = "cli-proxy-api";
+  };
+})

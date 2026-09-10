@@ -212,9 +212,12 @@
     };
   };
 
-  # Aggressive cleanup service for SABnzbd temp files
+  # Cleanup service for SABnzbd temp files. Only touches job directories that
+  # are NOT in SABnzbd's queue — a paused queue's partial downloads and
+  # __ADMIN__ metadata must survive, or every queued job is corrupted on
+  # resume (this happened Aug 2026: queue paused 6 days, cleanup ate it).
   systemd.services.sabnzbd-temp-cleanup = {
-    description = "Clean up SABnzbd temporary files aggressively";
+    description = "Clean up orphaned SABnzbd temporary files";
 
     serviceConfig = {
       Type = "oneshot";
@@ -224,6 +227,7 @@
 
         TEMP_DIR="/var/cache/sabnzbd"
         INCOMPLETE_DIR="$TEMP_DIR/incomplete"
+        INI="/var/lib/sabnzbd/sabnzbd.ini"
 
         echo "[$(date)] Starting SABnzbd temp cleanup"
 
@@ -231,40 +235,49 @@
         USAGE=$(${pkgs.coreutils}/bin/df "$TEMP_DIR" | ${pkgs.gawk}/bin/awk 'NR==2 {print int($5)}')
         echo "Filesystem usage: $USAGE%"
 
-        # Clean based on filesystem usage
-        if [ "$USAGE" -gt 80 ]; then
-            echo "⚠️  Critical: Filesystem over 80% full, aggressive cleanup"
+        API_KEY=$(${pkgs.gnugrep}/bin/grep -oP '^api_key = \K.*' "$INI" 2>/dev/null || true)
+        QUEUE_JSON=""
+        if [ -n "$API_KEY" ]; then
+          QUEUE_JSON=$(${pkgs.curl}/bin/curl -sf --max-time 10 "http://localhost:8080/api?mode=queue&output=json&apikey=$API_KEY" || true)
+        fi
 
-            # Remove all files older than 1 hour
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type f -mmin +60 -delete 2>/dev/null || true
-
-            # Remove empty directories
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type d -empty -delete 2>/dev/null || true
-
-            # If still over 80%, remove orphaned files (not being written to)
-            USAGE=$(${pkgs.coreutils}/bin/df "$TEMP_DIR" | ${pkgs.gawk}/bin/awk 'NR==2 {print int($5)}')
-            if [ "$USAGE" -gt 80 ]; then
-                echo "Still critical, removing orphaned files..."
-                ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type f -mmin +30 ! -exec ${pkgs.lsof}/bin/lsof {} \; -delete 2>/dev/null || true
-            fi
-
-        elif [ "$USAGE" -gt 60 ]; then
-            echo "⚠️  Warning: Filesystem over 60% full, moderate cleanup"
-
-            # Remove files older than 6 hours
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type f -mmin +360 -delete 2>/dev/null || true
-
-            # Remove empty directories
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type d -empty -delete 2>/dev/null || true
-
+        if [ -z "$QUEUE_JSON" ]; then
+          # Fail safe: without the queue we can't tell live jobs from orphans.
+          echo "⚠️  Cannot query SABnzbd queue; skipping incomplete-dir cleanup"
         else
-            echo "✅ Filesystem usage normal, routine cleanup"
+          ACTIVE_JOBS=$(echo "$QUEUE_JSON" | ${pkgs.jq}/bin/jq -r '.queue.slots[].filename')
 
-            # Remove files older than 24 hours (likely abandoned)
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type f -mtime +1 -delete 2>/dev/null || true
+          # Orphans must be at least this old before deletion, by disk pressure
+          if [ "$USAGE" -gt 80 ]; then
+            MIN_AGE_MIN=60
+          elif [ "$USAGE" -gt 60 ]; then
+            MIN_AGE_MIN=360
+          else
+            MIN_AGE_MIN=1440
+          fi
 
-            # Remove empty directories
-            ${pkgs.findutils}/bin/find "$INCOMPLETE_DIR" -type d -empty -delete 2>/dev/null || true
+          for dir in "$INCOMPLETE_DIR"/*/; do
+            [ -d "$dir" ] || continue
+            name=$(${pkgs.coreutils}/bin/basename "$dir")
+            if echo "$ACTIVE_JOBS" | ${pkgs.gnugrep}/bin/grep -qxF "$name"; then
+              continue
+            fi
+            if [ -n "$(${pkgs.findutils}/bin/find "$dir" -maxdepth 0 -mmin +$MIN_AGE_MIN)" ]; then
+              echo "Removing orphaned job dir: $name"
+              ${pkgs.coreutils}/bin/chmod -R u+w "$dir" 2>/dev/null || true
+              ${pkgs.coreutils}/bin/rm -rf "$dir"
+            fi
+          done
+
+          # If SABnzbd paused itself for disk space that has since recovered,
+          # resume it (fulldisk_autoresume covers most cases; this is the
+          # backstop so a pause can never strand the queue for days again).
+          PAUSED=$(echo "$QUEUE_JSON" | ${pkgs.jq}/bin/jq -r '.queue.paused')
+          USAGE=$(${pkgs.coreutils}/bin/df "$TEMP_DIR" | ${pkgs.gawk}/bin/awk 'NR==2 {print int($5)}')
+          if [ "$PAUSED" = "true" ] && [ "$USAGE" -le 75 ]; then
+            echo "Queue is paused and disk is healthy ($USAGE%); resuming"
+            ${pkgs.curl}/bin/curl -sf "http://localhost:8080/api?mode=resume&apikey=$API_KEY" >/dev/null || true
+          fi
         fi
 
         # Always clean up SABnzbd's admin/history if it gets too large

@@ -943,6 +943,23 @@ in {
       fi
     '';
 
+    # Mentat's own MCP server (the phone bridge: send_sms, open_on_phone) beside
+    # shimmer, same merge discipline: .claude.json is runtime-mutable, so MERGE and
+    # only rewrite when the entry differs. mentatd is unauthenticated behind
+    # tailscale serve on 8485, so this only works from tailnet machines.
+    activation.claudeMentatMcp = lib.hm.dag.entryAfter ["claudeShimmerMcp"] ''
+      set -euo pipefail
+      MENTAT_MCP='{"type":"http","url":"https://ultraviolet.tail82223.ts.net:8485/mcp"}'
+      prefs="$HOME/.claude.json"
+      [ -f "$prefs" ] || echo '{}' > "$prefs"
+      if ! ${pkgs.jq}/bin/jq -e --argjson s "$MENTAT_MCP" \
+          '.mcpServers.mentat == $s' "$prefs" >/dev/null 2>&1; then
+        ${pkgs.jq}/bin/jq --argjson s "$MENTAT_MCP" \
+          '.mcpServers = ((.mcpServers // {}) + {mentat: $s})' \
+          "$prefs" > "$prefs.tmp" && mv "$prefs.tmp" "$prefs"
+      fi
+    '';
+
     # Retire the Codex MCP server from the runtime prefs. Gambit's
     # non-Claude rungs are subagent definitions now (see the rung agent
     # block above), so nothing dispatches through mcp__codex__* any more.

@@ -364,11 +364,17 @@
   # Output positions are in *logical* (post-scale) coordinates, so at 1.0
   # the right monitor sits at x=2560 to stay edge-to-edge.
   #
-  # variable-refresh-rate = true: the U2724D advertises Adaptive-Sync up
-  # to 120Hz on DP and the RTX 5070 Ti drives it cleanly.
+  # variable-refresh-rate "on-demand": the U2724D advertises Adaptive-Sync
+  # up to 120Hz and the RTX 5070 Ti drives it cleanly, but with VRR
+  # always-on the refresh floats once an output goes idle (nothing
+  # submitting frames), and this panel visibly strobes as the rate
+  # oscillates — seen on the left monitor 2026-09-10 immediately after
+  # closing the only active app on it. On-demand engages VRR only while
+  # a window matched by a variable-refresh-rate window-rule (the game
+  # rules below) is on the output; the idle desktop stays at fixed 120Hz.
   programs.niri.settings.outputs."Dell Inc. DELL U2724D CDL25Z3" = {
     scale = 1.0;
-    variable-refresh-rate = true;
+    variable-refresh-rate = "on-demand";
     position = {
       x = 0;
       y = 0;
@@ -376,7 +382,7 @@
   };
   programs.niri.settings.outputs."Dell Inc. DELL U2724D CBC35Z3" = {
     scale = 1.0;
-    variable-refresh-rate = true;
+    variable-refresh-rate = "on-demand";
     position = {
       x = 2560;
       y = 0;
@@ -432,6 +438,8 @@
     {
       matches = [{app-id = "^steam_app_";}];
       open-on-output = "Dell Inc. DELL U2724D CDL25Z3";
+      # Triggers the output's on-demand VRR (see outputs above).
+      variable-refresh-rate = true;
     }
     # Two Point Museum (native Linux Unity 6 build, X11 backend under
     # xwayland-satellite, app-id is the binary name, not steam_app_*).
@@ -448,6 +456,7 @@
     {
       matches = [{app-id = "^TPM\\.x86_64$";}];
       open-on-output = "Dell Inc. DELL U2724D CDL25Z3";
+      variable-refresh-rate = true;
     }
   ];
 
